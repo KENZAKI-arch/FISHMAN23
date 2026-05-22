@@ -4,6 +4,7 @@ local View = loadstring(game:HttpGet("https://raw.githubusercontent.com/KENZAKI-
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 -- 1. Setup UI and handle the toggle button
 View.Build(function(isFarming)
@@ -25,6 +26,23 @@ View.Build(function(isFarming)
                 end
             end
         end)
+
+        -- ========================================== --
+        -- SEPARATE AUTO STATS LOOP
+        -- ========================================== --
+        task.spawn(function()
+            local statsEvent = ReplicatedStorage:WaitForChild("Events", 9e9):WaitForChild("stats", 9e9)
+            local args = { "Strength", nil, 1 }
+            
+            while Model.State.isAutoFarming do
+                pcall(function()
+                    statsEvent:FireServer(unpack(args))
+                end)
+                task.wait(0.1) -- Pauses for 0.1 seconds before firing again
+            end
+        end)
+        -- ========================================== --
+        
     end
 end)
 
