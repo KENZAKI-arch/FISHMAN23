@@ -11,14 +11,19 @@ View.Build(function(isFarming)
     Model.State.isAutoFarming = isFarming
 
     if not isFarming then
+        -- *** TRIGGER THE KILL SWITCH ***
+        _G.CancelAutoTravel = true 
+        
         Model.ResetPhysics()
         Model.State.isRecovering = false 
         Model.State.isQuesting = false
     else
+        -- *** RESET THE KILL SWITCH ***
+        _G.CancelAutoTravel = false 
+        
         -- Start Combat Loop
         task.spawn(function()
             while Model.State.isAutoFarming do
-                -- Pause combat if we are teleporting back OR grabbing a quest!
                 if Model.State.isRecovering or Model.State.isQuesting then
                     task.wait(0.5) 
                 else
@@ -27,9 +32,7 @@ View.Build(function(isFarming)
             end
         end)
 
-        -- ========================================== --
-        -- SEPARATE AUTO STATS LOOP
-        -- ========================================== --
+        -- Start Auto Stats Loop
         task.spawn(function()
             local statsEvent = ReplicatedStorage:WaitForChild("Events", 9e9):WaitForChild("stats", 9e9)
             local args = { "Strength", nil, 1 }
@@ -38,11 +41,9 @@ View.Build(function(isFarming)
                 pcall(function()
                     statsEvent:FireServer(unpack(args))
                 end)
-                task.wait(0.1) -- Pauses for 0.1 seconds before firing again
+                task.wait(0.1) 
             end
         end)
-        -- ========================================== --
-        
     end
 end)
 
@@ -97,7 +98,6 @@ RunService.Heartbeat:Connect(function(deltaTime)
         end
     end
 
-    -- If we are safe and NOT getting a quest, track enemies
     if not Model.State.isRecovering and not Model.State.isQuesting then
         Model.UpdateTracking(deltaTime)
     end
