@@ -67,7 +67,7 @@ function Model.UpdateTracking(deltaTime)
         targetSwitchTimer = switchInterval
     end
 
-    targetSwitchTimer += deltaTime
+    targetSwitchTimer = targetSwitchTimer + deltaTime
     if targetSwitchTimer >= switchInterval and npcsFolder then
         targetSwitchTimer = 0
         local validEnemies = {}
