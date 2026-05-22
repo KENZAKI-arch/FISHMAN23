@@ -1,65 +1,82 @@
+-- ========================================== --
+-- PERSISTENCE ENGINE: Survives Teleports
+-- ========================================== --
+local RunService = game:GetService("RunService")
+local CoreGui = game:GetService("CoreGui")
 local TeleportService = game:GetService("TeleportService")
 local Players = game:GetService("Players")
-local CoreGui = game:GetService("CoreGui")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local VirtualInputManager = game:GetService("VirtualInputManager")
 local LocalPlayer = Players.LocalPlayer
 
-local targetPlaceId = 1730877806
+-- Prevent duplicate running
+if _G.FishmanPersistent_Running then return end
+_G.FishmanPersistent_Running = true
+
+-- Create an "Orphaned" Folder in CoreGui to anchor the script
+local MyPersistentContainer = CoreGui:FindFirstChild("MyPersistentContainer") or Instance.new("Folder")
+MyPersistentContainer.Name = "MyPersistentContainer"
+MyPersistentContainer.Parent = CoreGui
 
 -- ========================================== --
 -- PART 1: THE DISCONNECT WATCHER
 -- ========================================== --
 task.spawn(function()
     local promptOverlay = CoreGui:WaitForChild("RobloxPromptGui"):WaitForChild("promptOverlay")
-    
     promptOverlay.ChildAdded:Connect(function(child)
         if child.Name == "ErrorPrompt" then
-            print("[Watcher] Disconnected! Auto-rejoining in 5 seconds...")
-            task.wait(5) 
-            
-            pcall(function()
-                TeleportService:Teleport(targetPlaceId, LocalPlayer)
-            end)
+            print("[Watcher] Disconnected! Rejoining in 5 seconds...")
+            task.wait(5)
+            TeleportService:Teleport(1730877806, LocalPlayer)
         end
     end)
 end)
 
 -- ========================================== --
--- PART 2: UI-DETECTION LOAD SYSTEM
+-- PART 2: UI-DETECTION LOAD SYSTEM (Persistent)
 -- ========================================== --
-
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
-
-print("[Autoload] Waiting for 'Start' UI to appear...")
-
--- 1. WAIT FOR THE TRIGGER: The script sleeps until "Start" UI exists
-repeat task.wait(0.5) until PlayerGui:FindFirstChild("Start")
-print("[Autoload] 'Start' UI detected! Beginning server join...")
-
--- 2. Send the private server code
 task.spawn(function()
-    local codeArgs = { [1] = "qj1ttW4JG1" }
-    pcall(function()
-        ReplicatedStorage:WaitForChild("Events", 9e9):WaitForChild("reserved", 9e9):InvokeServer(unpack(codeArgs))
-        print("[Autoload] Private server code sent.")
-    end)
+    while true do
+        local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+        
+        -- 1. WAIT FOR TRIGGER: "Set Sail" button
+        local startButton = nil
+        repeat 
+            task.wait(1) 
+            for _, v in pairs(PlayerGui:GetDescendants()) do
+                if v:IsA("TextButton") and v.Text == "Set Sail" then
+                    startButton = v
+                    break
+                end
+            end
+        until startButton ~= nil
+        
+        print("[Autoload] 'Set Sail' detected! Joining...")
+        
+        -- 2. Click button
+        VirtualInputManager:SendMouseButtonEvent(startButton.AbsolutePosition.X + 5, startButton.AbsolutePosition.Y + 5, 0, true, game, 1)
+        VirtualInputManager:SendMouseButtonEvent(startButton.AbsolutePosition.X + 5, startButton.AbsolutePosition.Y + 5, 0, false, game, 1)
+        
+        -- 3. Send private server code
+        task.spawn(function()
+            pcall(function()
+                ReplicatedStorage:WaitForChild("Events", 9e9):WaitForChild("reserved", 9e9):InvokeServer("qj1ttW4JG1")
+            end)
+        end)
+        
+        -- 4. Confirm Team Selection
+        repeat task.wait(0.5) until PlayerGui:FindFirstChild("chooseType")
+        pcall(function()
+            PlayerGui:WaitForChild("chooseType", 9e9):WaitForChild("Frame", 9e9):WaitForChild("RemoteEvent", 9e9):FireServer(true)
+            print("[Autoload] Team selected.")
+        end)
+        
+        -- Wait for teleport or reset
+        task.wait(10)
+    end
 end)
 
--- 3. WAIT FOR THE TELEPORT: We wait for the 'Start' UI to disappear
--- This proves we have left the lobby and are loading into the game
-repeat task.wait(0.5) until not PlayerGui:FindFirstChild("Start")
-print("[Autoload] 'Start' UI gone. Teleporting confirmed. Waiting for team menu...")
-
--- 4. Confirm Team Selection
--- Now we wait for the team selection menu to appear
-repeat task.wait(1) until PlayerGui:FindFirstChild("chooseType")
-local confirmArgs = { [1] = true }
-pcall(function()
-    PlayerGui:WaitForChild("chooseType", 9e9):WaitForChild("Frame", 9e9):WaitForChild("RemoteEvent", 9e9):FireServer(unpack(confirmArgs))
-    print("[Autoload] Team selection confirmed.")
+-- Heartbeat monitoring to keep the script "alive" and checking connection
+RunService.Heartbeat:Connect(function()
+    -- Script stays attached to the game heartbeat here
 end)
-
--- 5. Load Controller
