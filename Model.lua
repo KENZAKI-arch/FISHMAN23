@@ -9,13 +9,13 @@ local combatRegister = ReplicatedStorage:WaitForChild("Events", 9e9):WaitForChil
 local questEvent = ReplicatedStorage:WaitForChild("Events", 9e9):WaitForChild("Quest", 9e9)
 local npcsFolder = workspace:WaitForChild("NPCs", 9e9)
 
--- STATE VARIABLES
+-- ADDED: isQuesting switch
 Model.State = {
     isAutoFarming = false,
-    isRecovering = false -- The pause switch for the Controller hook
+    isRecovering = false,
+    isQuesting = false 
 }
 
--- INTERNAL TRACKING (Stealth Mode Speeds)
 local flySpeed = 25 
 local currentEnemy = nil
 local absoluteFloorHeight = nil 
@@ -34,9 +34,8 @@ function Model.ResetPhysics()
     absoluteFloorHeight = nil
 end
 
--- STEALTH MODE: Noclip is disabled to prevent "Msg 15" Anti-Cheat bans
 function Model.ApplyNoclip()
-    -- Intentionally left blank. Do not turn off CanCollide.
+    -- Intentionally left blank to avoid Msg 15
 end
 
 function Model.UpdateTracking(deltaTime)
@@ -121,8 +120,8 @@ function Model.GrabQuest()
     
     if not rootPart or not beckyRoot then return end
 
-    local wasFarming = Model.State.isAutoFarming
-    Model.State.isAutoFarming = false 
+    -- Turn ON questing mode to pause combat smoothly
+    Model.State.isQuesting = true 
 
     local bv = rootPart:FindFirstChild("AntiGravity") or Instance.new("BodyVelocity")
     bv.Name = "AntiGravity"
@@ -134,7 +133,8 @@ function Model.GrabQuest()
     local hoverAltitude = absoluteFloorHeight or (beckyPos.Y + 7.5)
     local targetSpot = Vector3.new(beckyPos.X, hoverAltitude, beckyPos.Z + 3)
 
-    while wasFarming do 
+    -- Fly to Becky
+    while Model.State.isQuesting and Model.State.isAutoFarming do 
         local distance = (rootPart.Position - targetSpot).Magnitude
         if distance <= 2 then break end
         local dt = task.wait()
@@ -144,13 +144,16 @@ function Model.GrabQuest()
         rootPart.RotVelocity = Vector3.new(0, 0, 0)
     end
 
-    if wasFarming then
+    -- Grab the quest
+    if Model.State.isAutoFarming then
         pcall(function() questEvent:InvokeServer("npcChat", true) end)
         task.wait(0.5)
         pcall(function() questEvent:InvokeServer("takequest", "Help becky") end)
         task.wait(0.5)
-        Model.State.isAutoFarming = true 
     end
+    
+    -- Turn OFF questing mode to resume combat
+    Model.State.isQuesting = false 
 end
 
 function Model.EquipMelee()
@@ -187,7 +190,9 @@ function Model.DoCombatCombo()
     end
 
     for currentHit = 1, 4 do
-        if not Model.State.isAutoFarming then break end
+        -- Break if turned off, recovering, or questing
+        if not Model.State.isAutoFarming or Model.State.isRecovering or Model.State.isQuesting then break end
+        
         local character = LocalPlayer.Character
         if not character or not character:FindFirstChild("HumanoidRootPart") then break end
         
@@ -195,7 +200,6 @@ function Model.DoCombatCombo()
         local animName = "Punch" .. currentHit
         local punchAnim = ReplicatedStorage:WaitForChild("CombatAnimations", 9e9):WaitForChild("Melee", 9e9):WaitForChild(animName, 9e9)
         
-        -- FIXED: Restored exact nested table structure for swings
         local swingArgs = {
             [1] = {
                 [1] = "swingsfx",
@@ -210,9 +214,9 @@ function Model.DoCombatCombo()
         }
         task.spawn(function() pcall(function() combatRegister:InvokeServer(unpack(swingArgs)) end) end)
         
-        task.wait(0.35) -- Slightly longer wait to look human to anti-cheat
+        task.wait(0.35) 
         
-        if not Model.State.isAutoFarming then break end
+        if not Model.State.isAutoFarming or Model.State.isRecovering or Model.State.isQuesting then break end
         
         local currentTargets = Model.GetEnemiesInRange()
         local roots = {}
@@ -221,7 +225,6 @@ function Model.DoCombatCombo()
         end
         
         if #roots > 0 then
-            -- FIXED: Restored exact nested table structure for damage
             local damageArgs = {
                 [1] = {
                     [1] = "damage",
