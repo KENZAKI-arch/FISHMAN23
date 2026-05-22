@@ -1,6 +1,7 @@
 -- Fetch the modules (Change these to your github raw links if loading from executor)
-local Model = loadstring(game:HttpGet("https://raw.githubusercontent.com/YOUR_LINK/Model.lua"))()
-local View = loadstring(game:HttpGet("https://raw.githubusercontent.com/YOUR_LINK/View.lua"))()
+-- Fetch the modules using safe, public links
+local Model = loadstring(game:HttpGet("https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/Model.lua"))()
+local View = loadstring(game:HttpGet("https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/View.lua"))()
 
 local RunService = game:GetService("RunService")
 
