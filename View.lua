@@ -54,7 +54,6 @@ function View.Build(onToggleCallback)
         onToggleCallback(isFarming)
     end)
 
-    -- Return a function so the Controller can update the UI dynamically
     return {
         UpdateUI = function(text, color)
             toggleBtn.Text = text
