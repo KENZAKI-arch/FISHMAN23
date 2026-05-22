@@ -223,4 +223,4 @@ function Model.DoCombatCombo()
     if Model.State.isAutoFarming then task.wait(0.1) end
 end
 
-return Model MEOWAAA
+return Model MEOWAAAa
