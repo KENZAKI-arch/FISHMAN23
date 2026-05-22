@@ -55,7 +55,7 @@ print("[Autoload] 'Start' UI gone. Teleporting confirmed. Waiting for team menu.
 
 -- 4. Confirm Team Selection
 -- Now we wait for the team selection menu to appear
-repeat task.wait(0.5) until PlayerGui:FindFirstChild("chooseType")
+repeat task.wait(1) until PlayerGui:FindFirstChild("chooseType")
 local confirmArgs = { [1] = true }
 pcall(function()
     PlayerGui:WaitForChild("chooseType", 9e9):WaitForChild("Frame", 9e9):WaitForChild("RemoteEvent", 9e9):FireServer(unpack(confirmArgs))
@@ -63,8 +63,3 @@ pcall(function()
 end)
 
 -- 5. Load Controller
-task.wait(3)
-print("[Autoload] Launching Controller.lua...")
-pcall(function()
-    loadstring(game:HttpGet("https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/Controller.lua"))()
-end)
