@@ -25,16 +25,19 @@ task.spawn(function()
 end)
 
 -- ========================================== --
--- -- ========================================== --
--- PART 2: SMART AUTOLOAD & JOIN
+-- PART 2: UI-DETECTION LOAD SYSTEM
 -- ========================================== --
 
--- 1. WAIT FOR THE GAME TO ACTUALLY START
--- We wait until your character exists, which ONLY happens after you click 'Play'
-print("[Autoload] Waiting for character to spawn...")
+local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
-repeat task.wait(1) until LocalPlayer.Character ~= nil
-print("[Autoload] Character spawned! Proceeding to join server...")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+
+print("[Autoload] Waiting for 'Start' UI to appear...")
+
+-- 1. WAIT FOR THE TRIGGER: The script sleeps until "Start" UI exists
+repeat task.wait(0.5) until PlayerGui:FindFirstChild("Start")
+print("[Autoload] 'Start' UI detected! Beginning server join...")
 
 -- 2. Send the private server code
 task.spawn(function()
@@ -45,17 +48,21 @@ task.spawn(function()
     end)
 end)
 
--- 3. Confirmation
-task.wait(3)
-print("[Autoload] Confirming team selection...")
+-- 3. WAIT FOR THE TELEPORT: We wait for the 'Start' UI to disappear
+-- This proves we have left the lobby and are loading into the game
+repeat task.wait(0.5) until not PlayerGui:FindFirstChild("Start")
+print("[Autoload] 'Start' UI gone. Teleporting confirmed. Waiting for team menu...")
+
+-- 4. Confirm Team Selection
+-- Now we wait for the team selection menu to appear
+repeat task.wait(0.5) until PlayerGui:FindFirstChild("chooseType")
 local confirmArgs = { [1] = true }
 pcall(function()
-    -- I added an extra check here to make sure the GUI is actually there
-    LocalPlayer:WaitForChild("PlayerGui", 9e9):WaitForChild("chooseType", 9e9):WaitForChild("Frame", 9e9):WaitForChild("RemoteEvent", 9e9):FireServer(unpack(confirmArgs))
+    PlayerGui:WaitForChild("chooseType", 9e9):WaitForChild("Frame", 9e9):WaitForChild("RemoteEvent", 9e9):FireServer(unpack(confirmArgs))
     print("[Autoload] Team selection confirmed.")
 end)
 
--- 4. Load Controller
+-- 5. Load Controller
 task.wait(3)
 print("[Autoload] Launching Controller.lua...")
 pcall(function()
