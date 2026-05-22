@@ -9,9 +9,10 @@ local combatRegister = ReplicatedStorage:WaitForChild("Events", 9e9):WaitForChil
 local questEvent = ReplicatedStorage:WaitForChild("Events", 9e9):WaitForChild("Quest", 9e9)
 local npcsFolder = workspace:WaitForChild("NPCs", 9e9)
 
--- State Variables
+-- ADDED: The isRecovering pause switch
 Model.State = {
-    isAutoFarming = false
+    isAutoFarming = false,
+    isRecovering = false 
 }
 
 -- Internal tracking variables
@@ -126,7 +127,7 @@ function Model.GrabQuest()
     if not rootPart or not beckyRoot then return end
 
     local wasFarming = Model.State.isAutoFarming
-    Model.State.isAutoFarming = false -- Temporarily pause combat/tracking
+    Model.State.isAutoFarming = false 
 
     local bv = rootPart:FindFirstChild("AntiGravity") or Instance.new("BodyVelocity")
     bv.Name = "AntiGravity"
@@ -138,7 +139,6 @@ function Model.GrabQuest()
     local hoverAltitude = absoluteFloorHeight or (beckyPos.Y + 7.5)
     local targetSpot = Vector3.new(beckyPos.X, hoverAltitude, beckyPos.Z + 3)
 
-    -- Fly to Becky
     while wasFarming do 
         local distance = (rootPart.Position - targetSpot).Magnitude
         if distance <= 2 then break end
@@ -154,7 +154,7 @@ function Model.GrabQuest()
         task.wait(0.5)
         pcall(function() questEvent:InvokeServer("takequest", "Help becky") end)
         task.wait(0.5)
-        Model.State.isAutoFarming = true -- Resume
+        Model.State.isAutoFarming = true 
     end
 end
 
