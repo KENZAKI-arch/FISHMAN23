@@ -27,38 +27,36 @@ end)
 -- ========================================== --
 -- PART 2: SMART AUTOLOAD & JOIN
 -- ========================================== --
-print("[Autoload] Waiting for game to load...")
+print("[Autoload] Waiting for Player and Character...")
 
-if not game:IsLoaded() then
-    game.Loaded:Wait()
+-- Wait until the LocalPlayer exists
+local LocalPlayer = Players.LocalPlayer
+while not LocalPlayer.Character do
+    task.wait(1)
 end
-task.wait(3) 
+print("[Autoload] Character found! Starting login sequence...")
 
--- 1. Send the private server code
-print("[Autoload] Attempting to send private server code...")
+-- Now proceed with your join logic
 task.spawn(function()
     local codeArgs = { [1] = "qj1ttW4JG1" }
     pcall(function()
         ReplicatedStorage:WaitForChild("Events", 9e9):WaitForChild("reserved", 9e9):InvokeServer(unpack(codeArgs))
-        print("[Autoload] Private server code sent successfully.")
+        print("[Autoload] Private server code sent.")
     end)
 end)
 
 task.wait(3)
 
--- 2. Send the confirmation (True)
 print("[Autoload] Confirming team selection...")
 local confirmArgs = { [1] = true }
 pcall(function()
     LocalPlayer:WaitForChild("PlayerGui", 9e9):WaitForChild("chooseType", 9e9):WaitForChild("Frame", 9e9):WaitForChild("RemoteEvent", 9e9):FireServer(unpack(confirmArgs))
-    print("[Autoload] Team selection confirmed.")
+    print("[Autoload] Team selected.")
 end)
 
 task.wait(3)
 
--- 3. AUTOLOAD THE MAIN FARM SCRIPT
-print("[Autoload] Launching main Controller.lua...")
+print("[Autoload] Launching Controller.lua...")
 pcall(function()
     loadstring(game:HttpGet("https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/Controller.lua"))()
-    print("[Autoload] Controller loaded successfully!")
 end)
