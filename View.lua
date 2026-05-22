@@ -12,18 +12,18 @@ function View.Build(onToggleCallback)
     if not success then screenGui.Parent = LocalPlayer:WaitForChild("PlayerGui") end
 
     local toggleBtn = Instance.new("TextButton")
-    toggleBtn.Size = UDim2.new(0, 180, 0, 50)
-    toggleBtn.Position = UDim2.new(0.5, -90, 0.1, 0)
+    toggleBtn.Size = UDim2.new(0, 200, 0, 50)
+    toggleBtn.Position = UDim2.new(0.5, -100, 0.1, 0)
     toggleBtn.BackgroundColor3 = Color3.fromRGB(255, 85, 85)
     toggleBtn.Text = "AUTO FARM: OFF"
     toggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
     toggleBtn.Font = Enum.Font.GothamBold
-    toggleBtn.TextSize = 14
+    toggleBtn.TextSize = 13
     toggleBtn.Parent = screenGui
 
     Instance.new("UICorner", toggleBtn).CornerRadius = UDim.new(0, 8)
 
-    -- Dragging Logic completely isolated in View
+    -- Dragging Logic
     local dragging, dragInput, dragStart, startPos
     
     toggleBtn.InputBegan:Connect(function(input)
@@ -54,14 +54,17 @@ function View.Build(onToggleCallback)
     local isFarming = false
     toggleBtn.MouseButton1Click:Connect(function()
         isFarming = not isFarming
-        
-        -- Update UI visuals
-        toggleBtn.Text = isFarming and "AUTO FARM: ON" or "AUTO FARM: OFF"
-        toggleBtn.BackgroundColor3 = isFarming and Color3.fromRGB(85, 255, 85) or Color3.fromRGB(255, 85, 85)
-        
-        -- Tell Controller what happened
+        -- Tell Controller what happened so IT can decide what text/color to show
         onToggleCallback(isFarming)
     end)
+
+    -- Return a function so the Controller can update the UI dynamically
+    return {
+        UpdateUI = function(text, color)
+            toggleBtn.Text = text
+            toggleBtn.BackgroundColor3 = color
+        end
+    }
 end
 
 return View
