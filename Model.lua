@@ -16,7 +16,7 @@ Model.State = {
     isQuesting = false 
 }
 
-local flySpeed = 25 
+local flySpeed = 35
 local currentEnemy = nil
 local absoluteFloorHeight = nil 
 local targetSwitchTimer = 2
