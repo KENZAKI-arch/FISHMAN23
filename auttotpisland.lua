@@ -93,10 +93,20 @@ flightLoop = RunService.Heartbeat:Connect(function(deltaTime)
     elseif math.abs(currentPos.Y - targetY) > 1 then
         nextPoint = Vector3.new(targetX, targetY, targetZ)
     else
-        -- Arrived naturally
+        -- ========================================== --
+        -- SAFELY ARRIVED AT THE TARGET
+        -- ========================================== --
         disableFlight(character) 
         if noclipLoop then noclipLoop:Disconnect() end
         if flightLoop then flightLoop:Disconnect() end
+        
+        -- Automatically run the separate NPC Save script
+        task.spawn(function()
+            pcall(function()
+                loadstring(game:HttpGet("https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/npcsave.lua"))()
+            end)
+        end)
+        
         return
     end
 
