@@ -11,14 +11,11 @@ View.Build(function(isFarming)
     Model.State.isAutoFarming = isFarming
 
     if not isFarming then
-        -- *** TRIGGER THE KILL SWITCH ***
         _G.CancelAutoTravel = true 
-        
         Model.ResetPhysics()
         Model.State.isRecovering = false 
         Model.State.isQuesting = false
     else
-        -- *** RESET THE KILL SWITCH ***
         _G.CancelAutoTravel = false 
         
         -- Start Combat Loop
@@ -66,6 +63,7 @@ RunService.Heartbeat:Connect(function(deltaTime)
         local relativePos = islandCFrame:PointToObjectSpace(root.Position)
         local halfSize = islandSize / 2
 
+        -- Check if outside the island boundary
         local isOutsideBox = math.abs(relativePos.X) > halfSize.X or 
                              math.abs(relativePos.Y) > halfSize.Y or 
                              math.abs(relativePos.Z) > halfSize.Z
@@ -75,21 +73,27 @@ RunService.Heartbeat:Connect(function(deltaTime)
             Model.ResetPhysics() 
             
             task.spawn(function()
+                -- 1. Trigger Teleport Script
                 pcall(function()
                     loadstring(game:HttpGet("https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/auttotpisland.lua"))()
                 end)
+                
+                -- 2. FOOLPROOF ARRIVAL CHECK: Wait until you reach the exact coordinates
+                local targetLandingPos = Vector3.new(7976.704, -2152.832, -17074.277)
                 
                 while Model.State.isRecovering and Model.State.isAutoFarming do
                     task.wait(1)
                     local currentRoot = Players.LocalPlayer.Character and Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
                     if currentRoot then
-                        local relPos = islandCFrame:PointToObjectSpace(currentRoot.Position)
-                        if math.abs(relPos.X) <= halfSize.X and math.abs(relPos.Y) <= halfSize.Y and math.abs(relPos.Z) <= halfSize.Z then
-                            break 
+                        -- Measure the distance to the target spot
+                        local distance = (currentRoot.Position - targetLandingPos).Magnitude
+                        if distance < 15 then
+                            break -- We are within 15 studs of the target! Stop waiting!
                         end
                     end
                 end
                 
+                -- 3. We arrived! Wait 10 seconds for the NPC save to finish, then resume farming
                 if Model.State.isAutoFarming then
                     task.wait(10)
                     Model.State.isRecovering = false 
