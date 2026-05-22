@@ -1,45 +1,111 @@
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+
 local LocalPlayer = Players.LocalPlayer
 
--- THE SPECIFIC SET POINT
+-- THE SPECIFIC SET POINT TO RETURN TO
 local targetX = 7976.704
 local targetY = -2152.832
 local targetZ = -17074.277
-local travelSpeed = 35 
+local travelSpeed = 90 -- NOTE: Lower to 35 if anti-cheat kicks you
 
+-- =========================================== --
+-- 1. FLY PHYSICS CONTROLS                     --
+-- =========================================== --
+local function enableFlight(character)
+    if not character then return end
+    local rootPart = character:FindFirstChild("HumanoidRootPart")
+    local humanoid = character:FindFirstChild("Humanoid")
+    
+    if rootPart and humanoid then
+        humanoid.PlatformStand = true 
+        
+        local bg = rootPart:FindFirstChild("AutoTravel_Gyro") or Instance.new("BodyGyro")
+        bg.Name = "AutoTravel_Gyro"
+        bg.P = 9e4
+        bg.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
+        bg.CFrame = rootPart.CFrame
+        bg.Parent = rootPart
+        
+        local bv = rootPart:FindFirstChild("AutoTravel_Velocity") or Instance.new("BodyVelocity")
+        bv.Name = "AutoTravel_Velocity"
+        bv.Velocity = Vector3.new(0, 0, 0)
+        bv.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+        bv.Parent = rootPart
+    end
+end
+
+local function disableFlight(character)
+    if not character then return end
+    local rootPart = character:FindFirstChild("HumanoidRootPart")
+    local humanoid = character:FindFirstChild("Humanoid")
+    
+    if rootPart then
+        local bg = rootPart:FindFirstChild("AutoTravel_Gyro")
+        if bg then bg:Destroy() end
+        local bv = rootPart:FindFirstChild("AutoTravel_Velocity")
+        if bv then bv:Destroy() end
+    end
+    if humanoid then humanoid.PlatformStand = false end
+end
+
+-- =========================================== --
+-- 2. AUTO-EXECUTE FLIGHT LOGIC                --
+-- =========================================== --
 local character = LocalPlayer.Character
 if not character then return end
-local rootPart = character:FindFirstChild("HumanoidRootPart")
-if not rootPart then return end
 
--- Enable Physics
-local humanoid = character:FindFirstChild("Humanoid")
-humanoid.PlatformStand = true 
-local bg = Instance.new("BodyGyro", rootPart)
-bg.P = 9e4
-bg.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
-bg.CFrame = rootPart.CFrame
-local bv = Instance.new("BodyVelocity", rootPart)
-bv.Velocity = Vector3.new(0, 0, 0)
-bv.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+enableFlight(character)
 
--- Movement Loop
-local connection
-connection = RunService.Heartbeat:Connect(function(deltaTime)
-    local currentPos = rootPart.Position
-    local target = Vector3.new(targetX, targetY, targetZ)
-    
-    local dist = (currentPos - target).Magnitude
-    if dist < 5 then
-        -- Arrived: Clean up
-        humanoid.PlatformStand = false
-        bg:Destroy()
-        bv:Destroy()
-        connection:Disconnect()
+local noclipLoop
+local flightLoop
+
+noclipLoop = RunService.Stepped:Connect(function()
+    if character then
+        for _, part in pairs(character:GetDescendants()) do
+            if part:IsA("BasePart") then part.CanCollide = false end
+        end
+    end
+end)
+
+flightLoop = RunService.Heartbeat:Connect(function(deltaTime)
+    local rootPart = character:FindFirstChild("HumanoidRootPart")
+    if not rootPart then return end
+
+    -- ========================================== --
+    -- THE GLOBAL KILL SWITCH
+    -- ========================================== --
+    if _G.CancelAutoTravel == true then
+        disableFlight(character)
+        if noclipLoop then noclipLoop:Disconnect() end
+        if flightLoop then flightLoop:Disconnect() end
         return
     end
+
+    local currentPos = rootPart.Position
+    local nextPoint
     
-    local alpha = math.clamp((travelSpeed * deltaTime) / dist, 0, 1)
-    rootPart.CFrame = rootPart.CFrame:Lerp(CFrame.new(target), alpha)
+    if math.abs(currentPos.X - targetX) > 1 then
+        nextPoint = Vector3.new(targetX, currentPos.Y, currentPos.Z)
+    elseif math.abs(currentPos.Z - targetZ) > 1 then
+        nextPoint = Vector3.new(targetX, currentPos.Y, targetZ)
+    elseif math.abs(currentPos.Y - targetY) > 1 then
+        nextPoint = Vector3.new(targetX, targetY, targetZ)
+    else
+        -- Arrived naturally
+        disableFlight(character) 
+        if noclipLoop then noclipLoop:Disconnect() end
+        if flightLoop then flightLoop:Disconnect() end
+        return
+    end
+
+    local distance = (currentPos - nextPoint).Magnitude
+    if distance > 0 then
+        local alpha = math.clamp((travelSpeed * deltaTime) / distance, 0, 1)
+        rootPart.CFrame = rootPart.CFrame:Lerp(CFrame.new(nextPoint), alpha)
+    end
+    
+    rootPart.Velocity = Vector3.new(0, 0, 0)
+    rootPart.RotVelocity = Vector3.new(0, 0, 0)
 end)
