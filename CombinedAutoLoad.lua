@@ -25,18 +25,18 @@ task.spawn(function()
 end)
 
 -- ========================================== --
+-- -- ========================================== --
 -- PART 2: SMART AUTOLOAD & JOIN
 -- ========================================== --
-print("[Autoload] Waiting for Player and Character...")
 
--- Wait until the LocalPlayer exists
+-- 1. WAIT FOR THE GAME TO ACTUALLY START
+-- We wait until your character exists, which ONLY happens after you click 'Play'
+print("[Autoload] Waiting for character to spawn...")
 local LocalPlayer = Players.LocalPlayer
-while not LocalPlayer.Character do
-    task.wait(1)
-end
-print("[Autoload] Character found! Starting login sequence...")
+repeat task.wait(1) until LocalPlayer.Character ~= nil
+print("[Autoload] Character spawned! Proceeding to join server...")
 
--- Now proceed with your join logic
+-- 2. Send the private server code
 task.spawn(function()
     local codeArgs = { [1] = "qj1ttW4JG1" }
     pcall(function()
@@ -45,17 +45,18 @@ task.spawn(function()
     end)
 end)
 
+-- 3. Confirmation
 task.wait(3)
-
 print("[Autoload] Confirming team selection...")
 local confirmArgs = { [1] = true }
 pcall(function()
+    -- I added an extra check here to make sure the GUI is actually there
     LocalPlayer:WaitForChild("PlayerGui", 9e9):WaitForChild("chooseType", 9e9):WaitForChild("Frame", 9e9):WaitForChild("RemoteEvent", 9e9):FireServer(unpack(confirmArgs))
-    print("[Autoload] Team selected.")
+    print("[Autoload] Team selection confirmed.")
 end)
 
+-- 4. Load Controller
 task.wait(3)
-
 print("[Autoload] Launching Controller.lua...")
 pcall(function()
     loadstring(game:HttpGet("https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/Controller.lua"))()
