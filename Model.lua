@@ -9,14 +9,14 @@ local combatRegister = ReplicatedStorage:WaitForChild("Events", 9e9):WaitForChil
 local questEvent = ReplicatedStorage:WaitForChild("Events", 9e9):WaitForChild("Quest", 9e9)
 local npcsFolder = workspace:WaitForChild("NPCs", 9e9)
 
--- ADDED: The isRecovering pause switch
+-- STATE VARIABLES
 Model.State = {
     isAutoFarming = false,
-    isRecovering = false 
+    isRecovering = false -- The pause switch for the Controller hook
 }
 
--- Internal tracking variables
-local flySpeed = 40 
+-- INTERNAL TRACKING (Stealth Mode Speeds)
+local flySpeed = 25 
 local currentEnemy = nil
 local absoluteFloorHeight = nil 
 local targetSwitchTimer = 2
@@ -34,14 +34,9 @@ function Model.ResetPhysics()
     absoluteFloorHeight = nil
 end
 
+-- STEALTH MODE: Noclip is disabled to prevent "Msg 15" Anti-Cheat bans
 function Model.ApplyNoclip()
-    local character = LocalPlayer.Character
-    if not character then return end
-    for _, part in pairs(character:GetDescendants()) do
-        if part:IsA("BasePart") and part.CanCollide then
-            part.CanCollide = false
-        end
-    end
+    -- Intentionally left blank. Do not turn off CanCollide.
 end
 
 function Model.UpdateTracking(deltaTime)
@@ -200,9 +195,22 @@ function Model.DoCombatCombo()
         local animName = "Punch" .. currentHit
         local punchAnim = ReplicatedStorage:WaitForChild("CombatAnimations", 9e9):WaitForChild("Melee", 9e9):WaitForChild(animName, 9e9)
         
-        local swingArgs = { "swingsfx", "Melee", currentHit, "Ground", false, punchAnim, 2, 1.5 }
+        -- FIXED: Restored exact nested table structure for swings
+        local swingArgs = {
+            [1] = {
+                [1] = "swingsfx",
+                [2] = "Melee",
+                [3] = currentHit,
+                [4] = "Ground",
+                [5] = false,
+                [6] = punchAnim,
+                [7] = 2,
+                [8] = 1.5
+            }
+        }
         task.spawn(function() pcall(function() combatRegister:InvokeServer(unpack(swingArgs)) end) end)
-        task.wait(0.2)
+        
+        task.wait(0.35) -- Slightly longer wait to look human to anti-cheat
         
         if not Model.State.isAutoFarming then break end
         
@@ -213,10 +221,19 @@ function Model.DoCombatCombo()
         end
         
         if #roots > 0 then
+            -- FIXED: Restored exact nested table structure for damage
             local damageArgs = {
-                "damage", roots, "Melee", {currentHit, "Ground", "Melee"}, true, myCFrame, ["aircombo"] = "Ground"
+                [1] = {
+                    [1] = "damage",
+                    [2] = roots,
+                    [3] = "Melee",
+                    [4] = {[1] = currentHit, [2] = "Ground", [3] = "Melee"},
+                    [5] = true,
+                    [6] = myCFrame,
+                    ["aircombo"] = "Ground"
+                }
             }
-            task.spawn(function() pcall(function() combatRegister:InvokeServer(damageArgs) end) end)
+            task.spawn(function() pcall(function() combatRegister:InvokeServer(unpack(damageArgs)) end) end)
         end
         task.wait(0.2)
     end
