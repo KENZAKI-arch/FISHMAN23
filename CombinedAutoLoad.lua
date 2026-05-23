@@ -1,3 +1,12 @@
+-- ========================================== --
+-- DUPLICATE GUARD
+-- ========================================== --
+if getgenv().FishmanAutoFarmRunning then 
+    warn("Script is already running! Preventing duplicate.")
+    return 
+end
+getgenv().FishmanAutoFarmRunning = true
+
 local Players = game:GetService("Players")
 local TeleportService = game:GetService("TeleportService")
 local CoreGui = game:GetService("CoreGui")
@@ -9,18 +18,24 @@ local targetPlaceId = 1730877806
 -- ========================================== --
 -- THE VIP LIST (PLAYER PS CODES)
 -- ========================================== --
--- Add the exact usernames on the left, and their PS codes on the right.
 local playerCodes = {
     ["Lava_Golem77"] = "qj1ttW4JG1",
-    ["Aqua_Knight4412"]       = "PRriWnrVWW",
+    ["Aqua_Knight4412"] = "PRriWnrVWW",
     ["Solar_Bear21"] = "QhEcbyZOjF",
-    ["Cosmic_Toast55"]       = "eVyQDUetrk",
-    ["Quantum_Klein12"]       = "3ITxE7x6BI",
-    ["Glacial_Eagle11"]       = "orXYYLZ717"
+    ["Cosmic_Toast55"] = "eVyQDUetrk",
+    ["Quantum_Klein12"] = "3ITxE7x6BI",
+    ["Glacial_Eagle11"] = "orXYYLZ717"
 }
 
--- Look up the code for whoever is currently running the script
 local myPSCode = playerCodes[LocalPlayer.Name]
+
+-- Debug: confirm which account is running
+print("[Debug] Running as: " .. LocalPlayer.Name)
+if myPSCode then
+    print("[Debug] PS Code found: " .. myPSCode)
+else
+    print("[Debug] No PS Code assigned!")
+end
 
 -- ========================================== --
 -- THE INFINITE LOOP (AUTO-LOAD)
@@ -46,6 +61,9 @@ task.spawn(function()
             print("[Watcher] Disconnected! Auto-rejoining in 5 seconds...")
             task.wait(5) 
             
+            -- Clear the flag BEFORE teleporting
+            getgenv().FishmanAutoFarmRunning = false
+            
             pcall(function()
                 TeleportService:Teleport(targetPlaceId, LocalPlayer)
             end)
@@ -59,13 +77,11 @@ end)
 if game.PlaceId == targetPlaceId and game.PrivateServerId == "" then
     
     -- PATH A: We are in the public lobby.
-    -- First, check if this specific player has a PS code assigned to them!
     if myPSCode then
         print("[Logic] Code found for " .. LocalPlayer.Name .. "! Joining Private Server in 5 seconds...")
         task.wait(5)
         
         task.spawn(function()
-            -- We inject their specific code here instead of the hardcoded one
             local codeArgs = { [1] = myPSCode }
             local events = ReplicatedStorage:WaitForChild("Events", 9e9)
             local reserved = events:WaitForChild("reserved", 9e9)
@@ -73,6 +89,9 @@ if game.PlaceId == targetPlaceId and game.PrivateServerId == "" then
         end)
         
         task.wait(1)
+        
+        -- Clear the flag BEFORE teleporting to PS
+        getgenv().FishmanAutoFarmRunning = false
         
         local confirmArgs = { [1] = "true" }
         
@@ -84,7 +103,6 @@ if game.PlaceId == targetPlaceId and game.PrivateServerId == "" then
         remoteEvent:FireServer(unpack(confirmArgs))
         print("[Logic] Sequence complete. Teleporting...")
     else
-        -- If they are NOT on the VIP list, the script just ignores the teleport.
         print("[Logic] No Private Server code assigned for " .. LocalPlayer.Name .. ". Staying in public server.")
     end
 
@@ -93,7 +111,6 @@ else
     -- PATH B: We are in the Private Server.
     print("[Logic] In Private Server. Loading Auto-Farm...")
     
-    -- Load the Controller script to start the auto-farm!
     loadstring(game:HttpGet("https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/Controller.lua"))()
     
 end
