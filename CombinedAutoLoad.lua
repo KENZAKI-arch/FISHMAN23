@@ -1,3 +1,12 @@
+if getgenv().FishmanAutoFarmRunning then 
+    warn("Script is already running! Preventing duplicate.")
+    return 
+end
+getgenv().FishmanAutoFarmRunning = true
+
+
+
+
 local Players = game:GetService("Players")
 local TeleportService = game:GetService("TeleportService")
 local CoreGui = game:GetService("CoreGui")
