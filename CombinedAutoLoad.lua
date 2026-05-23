@@ -9,14 +9,11 @@ local targetPlaceId = 1730877806
 -- ========================================== --
 -- THE INFINITE LOOP (AUTO-LOAD)
 -- ========================================== --
--- Grab the exploit's teleport function
 local queue_on_teleport = queue_on_teleport or (syn and syn.queue_on_teleport) or (fluxus and fluxus.queue_on_teleport)
 
--- The command to load THIS exact script from your GitHub
 local myScriptURL = "https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/CombinedAutoLoad.lua"
 local loadCommand = "loadstring(game:HttpGet('" .. myScriptURL .. "'))()"
 
--- Queue it IMMEDIATELY so it survives unexpected disconnects!
 if queue_on_teleport then
     queue_on_teleport(loadCommand) 
     print("[Loader] Locked and loaded for the next teleport!")
@@ -34,7 +31,6 @@ task.spawn(function()
             task.wait(5) 
             
             pcall(function()
-                -- Always teleport back to the public target place
                 TeleportService:Teleport(targetPlaceId, LocalPlayer)
             end)
         end
@@ -44,7 +40,6 @@ end)
 -- ========================================== --
 -- THE FORK IN THE ROAD (Routing)
 -- ========================================== --
--- Are we in the main game AND in a public server?
 if game.PlaceId == targetPlaceId and game.PrivateServerId == "" then
     
     -- PATH A: We are in the public lobby. Join the Private Server!
@@ -52,9 +47,7 @@ if game.PlaceId == targetPlaceId and game.PrivateServerId == "" then
     task.wait(5)
     
     task.spawn(function()
-        local codeArgs = {
-            [1] = "qj1ttW4JG1"
-        }
+        local codeArgs = { [1] = "qj1ttW4JG1" }
         local events = ReplicatedStorage:WaitForChild("Events", 9e9)
         local reserved = events:WaitForChild("reserved", 9e9)
         reserved:InvokeServer(unpack(codeArgs))
@@ -62,9 +55,7 @@ if game.PlaceId == targetPlaceId and game.PrivateServerId == "" then
     
     task.wait(1)
     
-    local confirmArgs = {
-        [1] = "true"
-    }
+    local confirmArgs = { [1] = "true" }
     
     local playerGui = LocalPlayer:WaitForChild("PlayerGui", 9e9)
     local chooseType = playerGui:WaitForChild("chooseType", 9e9)
@@ -76,9 +67,10 @@ if game.PlaceId == targetPlaceId and game.PrivateServerId == "" then
 
 else
     
-    -- PATH B: We are in the Private Server (or another game).
-    print("[Logic] In Private Server. Waiting for disconnect...")
+    -- PATH B: We are in the Private Server.
+    print("[Logic] In Private Server. Loading Auto-Farm...")
     
-    -- (If you have an auto-farm script, you would paste it down here)
+    -- Load the Controller script here!
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/Controller.lua"))()
     
 end
