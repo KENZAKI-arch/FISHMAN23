@@ -70,7 +70,7 @@ else
     -- PATH B: We are in the Private Server.
     print("[Logic] In Private Server. Loading Auto-Farm...")
 
-    task.wait(14)
+    task.wait(30)
     
     -- Load the Controller script here!
     loadstring(game:HttpGet("https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/Controller.lua"))()
