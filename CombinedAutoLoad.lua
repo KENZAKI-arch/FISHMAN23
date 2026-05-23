@@ -1,5 +1,5 @@
-local TeleportService = game:GetService("TeleportService")
 local Players = game:GetService("Players")
+local TeleportService = game:GetService("TeleportService")
 local CoreGui = game:GetService("CoreGui")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local LocalPlayer = Players.LocalPlayer
@@ -7,9 +7,24 @@ local LocalPlayer = Players.LocalPlayer
 local targetPlaceId = 1730877806
 
 -- ========================================== --
--- PART 1: THE DISCONNECT WATCHER
+-- THE INFINITE LOOP (AUTO-LOAD)
 -- ========================================== --
--- This runs constantly in the background, watching for the disconnect screen.
+-- Grab the exploit's teleport function
+local queue_on_teleport = queue_on_teleport or (syn and syn.queue_on_teleport) or (fluxus and fluxus.queue_on_teleport)
+
+-- The command to load THIS exact script from your GitHub
+local myScriptURL = "https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/CombinedAutoLoad.lua"
+local loadCommand = "loadstring(game:HttpGet('" .. myScriptURL .. "'))()"
+
+-- Queue it IMMEDIATELY so it survives unexpected disconnects!
+if queue_on_teleport then
+    queue_on_teleport(loadCommand) 
+    print("[Loader] Locked and loaded for the next teleport!")
+end
+
+-- ========================================== --
+-- DISCONNECT WATCHER (Runs all the time)
+-- ========================================== --
 task.spawn(function()
     local promptOverlay = CoreGui:WaitForChild("RobloxPromptGui"):WaitForChild("promptOverlay")
     
@@ -19,6 +34,7 @@ task.spawn(function()
             task.wait(5) 
             
             pcall(function()
+                -- Always teleport back to the public target place
                 TeleportService:Teleport(targetPlaceId, LocalPlayer)
             end)
         end
@@ -26,30 +42,26 @@ task.spawn(function()
 end)
 
 -- ========================================== --
--- PART 2: TARGET PLACE LOGIC
+-- THE FORK IN THE ROAD (Routing)
 -- ========================================== --
--- This checks your current location. If you are in the target place, it runs the sequence.
-if game.PlaceId == targetPlaceId then
-    print("[Logic] Target place detected. Starting sequence in 5 seconds...")
+-- Are we in the main game AND in a public server?
+if game.PlaceId == targetPlaceId and game.PrivateServerId == "" then
+    
+    -- PATH A: We are in the public lobby. Join the Private Server!
+    print("[Logic] In Public Target Place. Joining Private Server in 5 seconds...")
     task.wait(5)
     
-    -- STEP 1: Send the teleport code to the server
     task.spawn(function()
         local codeArgs = {
             [1] = "qj1ttW4JG1"
         }
-        
-        -- Storing these variables makes the code a bit cleaner and easier to read
         local events = ReplicatedStorage:WaitForChild("Events", 9e9)
         local reserved = events:WaitForChild("reserved", 9e9)
-        
         reserved:InvokeServer(unpack(codeArgs))
     end)
     
-    -- Wait a tiny bit just to make sure Step 1 sends before Step 2 confirms
     task.wait(1)
     
-    -- STEP 2: Send the "tradeHub" confirmation
     local confirmArgs = {
         [1] = "true"
     }
@@ -60,5 +72,13 @@ if game.PlaceId == targetPlaceId then
     local remoteEvent = frame:WaitForChild("RemoteEvent", 9e9)
     
     remoteEvent:FireServer(unpack(confirmArgs))
-    print("[Logic] Sequence complete!")
+    print("[Logic] Sequence complete. Teleporting...")
+
+else
+    
+    -- PATH B: We are in the Private Server (or another game).
+    print("[Logic] In Private Server. Waiting for disconnect...")
+    
+    -- (If you have an auto-farm script, you would paste it down here)
+    
 end
