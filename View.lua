@@ -65,8 +65,12 @@ function View.Build(onToggleCallback)
         onToggleCallback(isFarming)
     end
 
+    -- Allow the AFK timer to work initially
+    local allowAfkAutoStart = true
+
     -- Manual Button Click Event
     toggleBtn.MouseButton1Click:Connect(function()
+        allowAfkAutoStart = false -- If you manually click the button, disable the AFK timer so it stops fighting you
         setFarmingState(not isFarming)
     end)
 
@@ -84,8 +88,9 @@ function View.Build(onToggleCallback)
     -- Loop to check AFK status
     task.spawn(function()
         while task.wait(0.5) do
-            -- If the script is currently OFF, and 3 seconds have passed without input
-            if not isFarming and (os.clock() - lastInputTime >= 3) then
+            -- If AFK auto-start is allowed, the script is OFF, and 3 seconds have passed without input
+            if allowAfkAutoStart and not isFarming and (os.clock() - lastInputTime >= 3) then
+                allowAfkAutoStart = false -- Trigger it once, then disable the AFK watcher permanently
                 setFarmingState(true)
             end
         end
