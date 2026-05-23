@@ -23,7 +23,7 @@ function View.Build(onToggleCallback)
 
     Instance.new("UICorner", toggleBtn).CornerRadius = UDim.new(0, 8)
 
-    -- Dragging Logic completely isolated in View
+    -- Dragging Logic
     local dragging, dragInput, dragStart, startPos
     
     toggleBtn.InputBegan:Connect(function(input)
@@ -50,10 +50,12 @@ function View.Build(onToggleCallback)
         end
     end)
 
-    -- Button Click Event
+    -- State Management Helper
     local isFarming = false
-    toggleBtn.MouseButton1Click:Connect(function()
-        isFarming = not isFarming
+
+    local function setFarmingState(state)
+        if isFarming == state then return end
+        isFarming = state
         
         -- Update UI visuals
         toggleBtn.Text = isFarming and "AUTO FARM: ON" or "AUTO FARM: OFF"
@@ -61,6 +63,32 @@ function View.Build(onToggleCallback)
         
         -- Tell Controller what happened
         onToggleCallback(isFarming)
+    end
+
+    -- Manual Button Click Event
+    toggleBtn.MouseButton1Click:Connect(function()
+        setFarmingState(not isFarming)
+    end)
+
+    -- AFK Tracker Logic
+    local lastInputTime = os.clock()
+
+    local function resetAfkTimer()
+        lastInputTime = os.clock()
+    end
+
+    -- Reset the timer whenever the player presses a key, clicks, or moves the mouse
+    UserInputService.InputBegan:Connect(resetAfkTimer)
+    UserInputService.InputChanged:Connect(resetAfkTimer)
+
+    -- Loop to check AFK status
+    task.spawn(function()
+        while task.wait(0.5) do
+            -- If the script is currently OFF, and 3 seconds have passed without input
+            if not isFarming and (os.clock() - lastInputTime >= 3) then
+                setFarmingState(true)
+            end
+        end
     end)
 end
 
