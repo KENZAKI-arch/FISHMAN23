@@ -11,9 +11,12 @@ local targetPlaceId = 1730877806
 -- ========================================== --
 -- Add the exact usernames on the left, and their PS codes on the right.
 local playerCodes = {
-    ["YourExactUsername"] = "qj1ttW4JG1",
-    ["PlayerName2"]       = "AbCdEfGh12",
-    ["PlayerName3"]       = "XyZ1234567"
+    ["Lava_Golem77"] = "qj1ttW4JG1",
+    ["Aqua_Knight4412"]       = "PRriWnrVWW",
+    ["Solar_Bear21"] = "QhEcbyZOjF",
+    ["Cosmic_Toast55"]       = "eVyQDUetrk",
+    ["Quantum_Klein12"]       = "3ITxE7x6BI",
+    ["Glacial_Eagle11"]       = "orXYYLZ717"
 }
 
 -- Look up the code for whoever is currently running the script
