@@ -1,6 +1,7 @@
 local View = {}
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
+local Workspace = game:GetService("Workspace")
 
 function View.Build(onToggleCallback)
     local LocalPlayer = Players.LocalPlayer
@@ -65,34 +66,29 @@ function View.Build(onToggleCallback)
         onToggleCallback(isFarming)
     end
 
-    -- Allow the AFK timer to work initially
-    local allowAfkAutoStart = true
+    local allowAutoStart = true
 
     -- Manual Button Click Event
     toggleBtn.MouseButton1Click:Connect(function()
-        allowAfkAutoStart = false -- If you manually click the button, disable the AFK timer so it stops fighting you
+        allowAutoStart = false -- If you manually click, it stops the auto-starter from interfering
         setFarmingState(not isFarming)
     end)
 
-    -- AFK Tracker Logic
-    local lastInputTime = os.clock()
-
-    local function resetAfkTimer()
-        lastInputTime = os.clock()
-    end
-
-    -- Reset the timer whenever the player presses a key, clicks, or moves the mouse
-    UserInputService.InputBegan:Connect(resetAfkTimer)
-    UserInputService.InputChanged:Connect(resetAfkTimer)
-
-    -- Loop to check AFK status
+    -- Map Detection Auto-Start Logic
     task.spawn(function()
-        while task.wait(0.5) do
-            -- If AFK auto-start is allowed, the script is OFF, and 3 seconds have passed without input
-            if allowAfkAutoStart and not isFarming and (os.clock() - lastInputTime >= 3) then
-                allowAfkAutoStart = false -- Trigger it once, then disable the AFK watcher permanently
-                setFarmingState(true)
-            end
+        -- 1. Check the workspace and wait infinitely until the "Islands" folder exists
+        local islands = Workspace:WaitForChild("Islands", 9e9)
+        
+        -- 2. Wait infinitely until "Fishman Island" physically exists inside the folder
+        islands:WaitForChild("Fishman Island", 9e9)
+        
+        -- 3. The island is completely loaded! Wait exactly 5 seconds.
+        task.wait(5)
+        
+        -- 4. Start the farm (as long as you haven't manually clicked the button yet)
+        if allowAutoStart and not isFarming then
+            allowAutoStart = false
+            setFarmingState(true)
         end
     end)
 end
