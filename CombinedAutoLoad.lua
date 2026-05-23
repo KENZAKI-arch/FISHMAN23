@@ -27,6 +27,10 @@ local playerCodes = {
     ["Solar_Bear21"] = "QhEcbyZOjF",
     ["Cosmic_Toast55"] = "eVyQDUetrk",
     ["Quantum_Klein12"] = "3ITxE7x6BI",
+    ["Neon_Glitch002"] = "JYUyHbhHtR",
+    ["Robo_Penguin77"] = "vYF7N93cqH",
+    ["Pixel_Ninja889"] = "7SLb9HLpN5",
+    ["YujiKajitsu"] = "dmgBOmXnQy",
     ["Glacial_Eagle11"] = "orXYYLZ717"
 }
 
