@@ -53,7 +53,7 @@ if game.PlaceId == targetPlaceId and game.PrivateServerId == "" then
     
     -- PATH A: We are in the public lobby. Join the Private Server!
     print("[Logic] In Public Target Place. Joining Private Server in 5 seconds...")
-    task.wait(5)
+    task.wait(10)
     
     task.spawn(function()
         local codeArgs = { [1] = "qj1ttW4JG1" }
