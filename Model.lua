@@ -148,7 +148,15 @@ function Model.GrabQuest()
     if Model.State.isAutoFarming then
         pcall(function() questEvent:InvokeServer("npcChat", true) end)
         task.wait(0.5)
-        pcall(function() questEvent:InvokeServer("takequest", "Help becky") end)
+        pcall(function()
+            local args = {
+                [1] = {
+                    [1] = "takequest";
+                    [2] = "Help becky";
+                };
+            }
+            game:GetService("ReplicatedStorage"):WaitForChild("Events", 9e9):WaitForChild("Quest", 9e9):InvokeServer(unpack(args))
+        end)
         task.wait(0.5)
     end
     
