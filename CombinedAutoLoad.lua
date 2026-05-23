@@ -11,6 +11,9 @@ local Players = game:GetService("Players")
 local TeleportService = game:GetService("TeleportService")
 local CoreGui = game:GetService("CoreGui")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+-- Wait for LocalPlayer to exist
+repeat task.wait() until Players.LocalPlayer
 local LocalPlayer = Players.LocalPlayer
 
 local targetPlaceId = 1730877806
@@ -24,7 +27,6 @@ local playerCodes = {
     ["Solar_Bear21"] = "QhEcbyZOjF",
     ["Cosmic_Toast55"] = "eVyQDUetrk",
     ["Quantum_Klein12"] = "3ITxE7x6BI",
-    ["Neon_Glitch002"] = "mEfecCi6hG",
     ["Glacial_Eagle11"] = "orXYYLZ717"
 }
 
