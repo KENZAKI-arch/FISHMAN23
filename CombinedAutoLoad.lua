@@ -31,7 +31,8 @@ local playerCodes = {
     ["Robo_Penguin77"] = "vYF7N93cqH",
     ["Pixel_Ninja889"] = "7SLb9HLpN5",
     ["YujiKajitsu"] = "dmgBOmXnQy",
-    ["Glacial_Eagle11"] = "orXYYLZ717"
+    ["Glacial_Eagle11"] = "orXYYLZ717",
+    ["Rakuen_30"] = "PRriWnrVWW"
 }
 
 local myPSCode = playerCodes[LocalPlayer.Name]
