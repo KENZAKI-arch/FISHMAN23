@@ -95,8 +95,6 @@ if game.PlaceId == targetPlaceId and game.PrivateServerId == "" then
 
 else
     
-    else
-    
     -- PATH B: We are in the Private Server.
     print("[Logic] In Private Server. Loading scripts...")
     
