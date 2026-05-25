@@ -79,7 +79,8 @@ if game.PlaceId == targetPlaceId and game.PrivateServerId == "" then
         -- Clear the flag BEFORE teleporting to PS
         getgenv().FishmanAutoFarmRunning = false
         
-        local confirmArgs = { [1] = "true" }
+        -- YOUR NEW CHANGE IS HERE
+        local confirmArgs = { [1] = "fishHub" }
         
         local playerGui = LocalPlayer:WaitForChild("PlayerGui", 9e9)
         local chooseType = playerGui:WaitForChild("chooseType", 9e9)
