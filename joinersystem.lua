@@ -8,7 +8,7 @@ local Players = game:GetService("Players")
 local TeleportService = game:GetService("TeleportService")
 local CoreGui = game:GetService("CoreGui")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local UserInputService = game:GetService("UserInputService") -- Added to track mouse movement
+local UserInputService = game:GetService("UserInputService") 
 
 -- Safely wait for LocalPlayer
 while not Players.LocalPlayer do task.wait(0.5) end
@@ -102,10 +102,9 @@ local function CreateMainUI()
     MainFrame.Size = UDim2.new(0, 300, 0, 240) 
     MainFrame.Position = UDim2.new(0.5, -150, 0.2, 0)
     MainFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
-    MainFrame.Active = true -- Required for clicking to work perfectly
+    MainFrame.Active = true 
     MainFrame.Parent = ScreenGui
     
-    -- Apply the dragging tool to the Main Panel
     MakeDraggable(MainFrame)
 
     local Title = Instance.new("TextLabel")
@@ -224,7 +223,6 @@ task.spawn(function()
             Frame.Active = true 
             Frame.Parent = RejoinUI
             
-            -- Apply the dragging tool to the Disconnect box too
             MakeDraggable(Frame)
 
             local Label = Instance.new("TextLabel")
@@ -294,7 +292,21 @@ if game.PlaceId == targetPlaceId and game.PrivateServerId == "" then
         print("[Logic] In lobby. Ready when you click 'TELEPORT NOW'.")
     end
 else
-    print("[Logic] Arrived in Private Server. Use the UI to jump elsewhere when ready.")
+    print("[Logic] Arrived in Private Server.")
+    
+    -- THIS IS THE NEW CODE: Start the auto fisher if we are in the right place!
+    local currentDest = getgenv().FishmanDestination
+    if currentDest == "fishHub" or currentDest == "tradeHub" then
+        print("[Logic] Successfully arrived at " .. currentDest .. "! Loading AutoFisher...")
+        
+        task.spawn(function()
+            pcall(function()
+                loadstring(game:HttpGet("https://raw.githubusercontent.com/KENZAKI-arch/AF2/refs/heads/main/Controller.lua"))()
+            end)
+        end)
+    else
+        print("[Logic] Use the UI to jump elsewhere when ready.")
+    end
 end
 
 print("--- [Checkpoint 8] Script Finished Loading ---")
