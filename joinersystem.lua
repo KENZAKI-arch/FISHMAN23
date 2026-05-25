@@ -42,7 +42,7 @@ local function RunFishmanSetup()
     -- ========================================== --
     -- TELEPORT MEMORY INJECTION (Using your URL)
     -- ========================================== --
-    local myScriptURL = "https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/CombinedAutoLoad.lua"
+    local myScriptURL = "https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/joinersystem.lua"
     local qot = queue_on_teleport or (syn and syn.queue_on_teleport) or (fluxus and fluxus.queue_on_teleport)
 
     local function UpdateTeleportMemory(willAutoTeleport)
