@@ -9,6 +9,7 @@ local TeleportService = game:GetService("TeleportService")
 local CoreGui = game:GetService("CoreGui")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService") 
+local HttpService = game:GetService("HttpService") -- Added for file saving
 
 -- Safely wait for LocalPlayer
 while not Players.LocalPlayer do task.wait(0.5) end
@@ -63,8 +64,21 @@ local function MakeDraggable(frame)
 end
 
 -- ========================================== --
--- 1. GLOBAL MEMORY
+-- 1. HARD DRIVE MEMORY (Bulletproof Save)
 -- ========================================== --
+local SaveFileName = "FishmanSaveData.json"
+
+-- Attempt to read the save file from your computer first
+pcall(function()
+    if isfile(SaveFileName) then
+        local savedData = HttpService:JSONDecode(readfile(SaveFileName))
+        getgenv().FishmanPSCode = savedData.PSCode
+        getgenv().FishmanDestination = savedData.Dest
+        getgenv().FishmanAutoTeleport = savedData.AutoTP
+    end
+end)
+
+-- If no file exists yet, give it default settings
 getgenv().FishmanPSCode = getgenv().FishmanPSCode or ""
 getgenv().FishmanDestination = getgenv().FishmanDestination or "fishHub" 
 getgenv().FishmanAutoTeleport = getgenv().FishmanAutoTeleport or false 
@@ -72,11 +86,21 @@ getgenv().FishmanAutoTeleport = getgenv().FishmanAutoTeleport or false
 local queue_on_teleport = queue_on_teleport or (syn and syn.queue_on_teleport) or (fluxus and fluxus.queue_on_teleport)
 local myScriptURL = "https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/joinersystem.lua"
 
-local function UpdateTeleportMemory(willAutoTeleport)
+local function SaveTeleportMemory(willAutoTeleport)
+    getgenv().FishmanAutoTeleport = willAutoTeleport
+    
+    -- Write everything to a file on your PC so it survives disconnects
+    pcall(function()
+        local dataToSave = {
+            PSCode = getgenv().FishmanPSCode,
+            Dest = getgenv().FishmanDestination,
+            AutoTP = getgenv().FishmanAutoTeleport
+        }
+        writefile(SaveFileName, HttpService:JSONEncode(dataToSave))
+    end)
+    
+    -- Backup teleport queue
     local command = [[
-        getgenv().FishmanPSCode = "]] .. getgenv().FishmanPSCode .. [["
-        getgenv().FishmanDestination = "]] .. getgenv().FishmanDestination .. [["
-        getgenv().FishmanAutoTeleport = ]] .. tostring(willAutoTeleport) .. [[
         loadstring(game:HttpGet("]] .. myScriptURL .. [["))()
     ]]
     if queue_on_teleport then
@@ -128,7 +152,7 @@ local function CreateMainUI()
     CodeBox.FocusLost:Connect(function()
         getgenv().FishmanPSCode = CodeBox.Text
         print("[UI] PS Code updated to: " .. getgenv().FishmanPSCode)
-        UpdateTeleportMemory(false)
+        SaveTeleportMemory(false)
     end)
 
     local function CreateDestButton(text, argValue, yPos)
@@ -149,7 +173,7 @@ local function CreateMainUI()
                 end
             end
             Btn.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
-            UpdateTeleportMemory(false)
+            SaveTeleportMemory(false)
         end)
     end
 
@@ -190,8 +214,7 @@ local function CreateMainUI()
             
         else
             print("[Manual] Jumping to Lobby first...")
-            getgenv().FishmanAutoTeleport = true
-            UpdateTeleportMemory(true)
+            SaveTeleportMemory(true)
             TeleportService:Teleport(targetPlaceId, LocalPlayer)
         end
     end)
@@ -200,7 +223,7 @@ local function CreateMainUI()
 end
 
 CreateMainUI()
-UpdateTeleportMemory(getgenv().FishmanAutoTeleport)
+SaveTeleportMemory(getgenv().FishmanAutoTeleport)
 
 -- ========================================== --
 -- 3. CUSTOM KICK / DISCONNECT WATCHER (AFK Auto-Rejoin)
@@ -250,8 +273,9 @@ task.spawn(function()
                 if RejoinUI.Parent then
                     RejoinUI:Destroy()
                     print("[Watcher] Kicked! Forcing teleport back to Lobby first...")
-                    getgenv().FishmanAutoTeleport = true
-                    UpdateTeleportMemory(true) 
+                    
+                    -- This saves 'AutoTeleport = true' to your hard drive file
+                    SaveTeleportMemory(true) 
                     
                     -- Spam the teleport command to the Lobby (1730877806) until it works
                     task.spawn(function()
@@ -279,3 +303,51 @@ task.spawn(function()
         end
     end)
 end)
+
+-- ========================================== --
+-- 4. AUTO-ROUTING LOGIC
+-- ========================================== --
+if game.PlaceId == targetPlaceId and game.PrivateServerId == "" then
+    if getgenv().FishmanAutoTeleport == true then
+        print("[Logic] Arrived in Lobby! Automatically finishing teleport...")
+        
+        -- Turn off AutoTeleport in the save file so you don't get stuck in a loop forever
+        SaveTeleportMemory(false)
+        
+        if getgenv().FishmanPSCode ~= "" then
+            task.spawn(function()
+                local events = ReplicatedStorage:WaitForChild("Events", 9e9)
+                local reserved = events:WaitForChild("reserved", 9e9)
+                reserved:InvokeServer(getgenv().FishmanPSCode)
+            end)
+            task.wait(1.5) 
+        end
+        
+        local confirmArgs = { [1] = getgenv().FishmanDestination }
+        local playerGui = LocalPlayer:WaitForChild("PlayerGui", 9e9)
+        local chooseType = playerGui:WaitForChild("chooseType", 9e9)
+        local frame = chooseType:WaitForChild("Frame", 9e9)
+        local remoteEvent = frame:WaitForChild("RemoteEvent", 9e9)
+        
+        remoteEvent:FireServer(unpack(confirmArgs))
+    else
+        print("[Logic] In lobby. Ready when you click 'TELEPORT NOW'.")
+    end
+else
+    print("[Logic] Arrived in Private Server.")
+    
+    local currentDest = getgenv().FishmanDestination
+    if currentDest == "fishHub" or currentDest == "tradeHub" then
+        print("[Logic] Successfully arrived at " .. currentDest .. "! Loading AutoFisher...")
+        
+        task.spawn(function()
+            pcall(function()
+                loadstring(game:HttpGet("https://raw.githubusercontent.com/KENZAKI-arch/AF2/refs/heads/main/Controller.lua"))()
+            end)
+        end)
+    else
+        print("[Logic] Use the UI to jump elsewhere when ready.")
+    end
+end
+
+print("--- [Checkpoint 8] Script Finished Loading ---")
