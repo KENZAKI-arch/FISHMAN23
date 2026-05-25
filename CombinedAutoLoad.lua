@@ -22,17 +22,17 @@ local targetPlaceId = 1730877806
 -- THE VIP LIST (PLAYER PS CODES)
 -- ========================================== --
 local playerCodes = {
-    ["Lava_Golem77"] = "qj1ttW4JG1",
-    ["Aqua_Knight4412"] = "PRriWnrVWW",
-    ["Solar_Bear21"] = "QhEcbyZOjF",
-    ["Cosmic_Toast55"] = "eVyQDUetrk",
-    ["Quantum_Klein12"] = "3ITxE7x6BI",
-    ["Neon_Glitch002"] = "JYUyHbhHtR",
-    ["Robo_Penguin77"] = "vYF7N93cqH",
-    ["Pixel_Ninja889"] = "7SLb9HLpN5",
-    ["YujiKajitsu"] = "dmgBOmXnQy",
-    ["Glacial_Eagle11"] = "orXYYLZ717",
-    ["Rakuen_30"] = "PRriWnrVWW"
+    ["NeonPixelFox48"] = "qj1ttW4JG1",
+    ["AstroPuffin24"] = "PRriWnrVWW",
+    ["DiscreteMath_0"] = "QhEcbyZOjF",
+    ["EchoSmasher_X"] = "eVyQDUetrk",
+    ["CactusKing770"] = "3ITxE7x6BI",
+    ["LunarPancake553"] = "JYUyHbhHtR",
+    ["FrostyGleam_943"] = "vYF7N93cqH",
+    ["ZephyrSharkV"] = "7SLb9HLpN5",
+    ["TurboWisp_99"] = "dmgBOmXnQy",
+    ["MysticLlama88124"] = "orXYYLZ717",
+    ["SolarPenguin_Z"] = "PRriWnrVWW"
 }
 
 local myPSCode = playerCodes[LocalPlayer.Name]
