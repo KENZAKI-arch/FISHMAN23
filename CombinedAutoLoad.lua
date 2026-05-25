@@ -22,7 +22,7 @@ local targetPlaceId = 1730877806
 -- THE VIP LIST (PLAYER PS CODES)
 -- ========================================== --
 local playerCodes = {
-    ["NeonPixelFox48"] = "qj1ttW4JG1",
+    ["MechaGlider42"] = "qj1ttW4JG1",
     ["AstroPuffin24"] = "PRriWnrVWW",
     ["DiscreteMath_0"] = "QhEcbyZOjF",
     ["EchoSmasher_X"] = "eVyQDUetrk",
