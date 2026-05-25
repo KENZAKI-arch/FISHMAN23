@@ -23,7 +23,7 @@ local targetPlaceId = 1730877806
 -- ========================================== --
 local playerCodes = {
     ["MechaGlider42"] = "qj1ttW4JG1",
-    ["AstroPuffin24"] = "PRriWnrVWW",
+    ["SolarPenguin_Z"] = "PRriWnrVWW",
     ["DiscreteMath_0"] = "QhEcbyZOjF",
     ["EchoSmasher_X"] = "eVyQDUetrk",
     ["CactusKing770"] = "3ITxE7x6BI",
