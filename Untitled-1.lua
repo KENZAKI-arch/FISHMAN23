@@ -19,31 +19,12 @@ local LocalPlayer = Players.LocalPlayer
 local targetPlaceId = 1730877806
 
 -- ========================================== --
--- THE VIP LIST (PLAYER PS CODES)
+--(PLAYER PS CODE)
 -- ========================================== --
-local playerCodes = {
-    ["MechaGlider42"] = "qj1ttW4JG1",
-    ["SolarPenguin"] = "PRriWnrVWW",
-    ["DiscreteMath_0"] = "QhEcbyZOjF",
-    ["EchoSmasher_X"] = "eVyQDUetrk",
-    ["CactusKing770"] = "3ITxE7x6BI",
-    ["LunarPancake553"] = "JYUyHbhHtR",
-    ["FrostyGleam_943"] = "vYF7N93cqH",
-    ["ZephyrSharkV"] = "7SLb9HLpN5",
-    ["TurboWisp_99"] = "dmgBOmXnQy",
-    ["MysticLlama88124"] = "orXYYLZ717",
-    ["SolarPenguin_Z"] = "PRriWnrVWW"
-}
+local Code = qj1ttW4JG1
+    
 
-local myPSCode = playerCodes[LocalPlayer.Name]
 
--- Debug: confirm which account is running
-print("[Debug] Running as: " .. LocalPlayer.Name)
-if myPSCode then
-    print("[Debug] PS Code found: " .. myPSCode)
-else
-    print("[Debug] No PS Code assigned!")
-end
 
 -- ========================================== --
 -- THE INFINITE LOOP (AUTO-LOAD)
@@ -119,6 +100,6 @@ else
     -- PATH B: We are in the Private Server.
     print("[Logic] In Private Server. Loading Auto-Farm...")
     
-    loadstring(game:HttpGet("https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/Untitled-1.lua"))()
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/KENZAKI-arch/AF2/refs/heads/main/Controller.lua"))()
     
 end
