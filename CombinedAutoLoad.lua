@@ -31,7 +31,7 @@ local playerCodes = {
     ["ChronoWhisper12"] = "vYF7N93cqH",
     ["LuminousTide5"] = "7SLb9HLpN5",
     ["FriskCharacter1223"] = "dmgBOmXnQy",
-    ["ViridianSpark12334"] = "Cl2TZMcuBt",
+    ["Bluepurpleguygojo23"] = "Cl2TZMcuBt",
     ["IgnisWeaver"] = "orXYYLZ717",
     ["ThalassaRift12"] = "PRriWnrVWW"
 }
