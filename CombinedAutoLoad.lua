@@ -22,17 +22,18 @@ local targetPlaceId = 1730877806
 -- THE VIP LIST (PLAYER PS CODES)
 -- ========================================== --
 local playerCodes = {
-    ["MechaGlider42"] = "qj1ttW4JG1",
-    ["SolarPenguin"] = "PRriWnrVWW",
-    ["DiscreteMath_0"] = "QhEcbyZOjF",
-    ["EchoSmasher_X"] = "eVyQDUetrk",
-    ["CactusKing770"] = "3ITxE7x6BI",
-    ["LunarPancake553"] = "JYUyHbhHtR",
-    ["FrostyGleam_943"] = "vYF7N93cqH",
-    ["ZephyrSharkV"] = "7SLb9HLpN5",
-    ["TurboWisp_99"] = "dmgBOmXnQy",
-    ["MysticLlama88124"] = "orXYYLZ717",
-    ["SolarPenguin_Z"] = "PRriWnrVWW"
+    ["VesperaDrift"] = "qj1ttW4JG1",
+    ["QuasarGlint5"] = "zbjzi1NnJX",
+    ["NebulaQuintet"] = "QhEcbyZOjF",
+    ["ObsidianEcho9"] = "eVyQDUetrk",
+    ["CipherLoom7"] = "3ITxE7x6BI",
+    ["SylphMirage"] = "JYUyHbhHtR",
+    ["ChronoWhisper12"] = "vYF7N93cqH",
+    ["LuminousTide5"] = "7SLb9HLpN5",
+    ["FriskCharacter1223"] = "dmgBOmXnQy",
+    ["ViridianSpark12334"] = "orXYYLZ717",
+    ["IgnisWeaver"] = "orXYYLZ717",
+    ["ThalassaRift12"] = "PRriWnrVWW"
 }
 
 local myPSCode = playerCodes[LocalPlayer.Name]
