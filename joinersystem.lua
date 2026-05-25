@@ -70,7 +70,7 @@ getgenv().FishmanDestination = getgenv().FishmanDestination or "fishHub"
 getgenv().FishmanAutoTeleport = getgenv().FishmanAutoTeleport or false 
 
 local queue_on_teleport = queue_on_teleport or (syn and syn.queue_on_teleport) or (fluxus and fluxus.queue_on_teleport)
-local myScriptURL = "https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/CombinedAutoLoad.lua"
+local myScriptURL = "https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/joinersystem.lua"
 
 local function UpdateTeleportMemory(willAutoTeleport)
     local command = [[
