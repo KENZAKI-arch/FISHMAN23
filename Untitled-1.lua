@@ -50,7 +50,7 @@ end
 -- ========================================== --
 local queue_on_teleport = queue_on_teleport or (syn and syn.queue_on_teleport) or (fluxus and fluxus.queue_on_teleport)
 
-local myScriptURL = "https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/CombinedAutoLoad.lua"
+local myScriptURL = ""
 local loadCommand = "loadstring(game:HttpGet('" .. myScriptURL .. "'))()"
 
 if queue_on_teleport then
@@ -119,6 +119,6 @@ else
     -- PATH B: We are in the Private Server.
     print("[Logic] In Private Server. Loading Auto-Farm...")
     
-    loadstring(game:HttpGet("https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/Controller.lua"))()
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/KENZAKI-arch/AF2/refs/heads/main/Controller.lua"))()
     
 end
