@@ -203,7 +203,7 @@ CreateMainUI()
 UpdateTeleportMemory(getgenv().FishmanAutoTeleport)
 
 -- ========================================== --
--- 3. CUSTOM KICK / DISCONNECT WATCHER
+-- 3. CUSTOM KICK / DISCONNECT WATCHER (AFK Auto-Rejoin)
 -- ========================================== --
 task.spawn(function()
     local promptOverlay = CoreGui:WaitForChild("RobloxPromptGui"):WaitForChild("promptOverlay")
@@ -227,7 +227,7 @@ task.spawn(function()
 
             local Label = Instance.new("TextLabel")
             Label.Size = UDim2.new(1, 0, 0, 50)
-            Label.Text = "You were disconnected.\nDo you want to rejoin?"
+            Label.Text = "Disconnected.\nRouting to Lobby in 10 seconds..."
             Label.TextColor3 = Color3.new(1, 1, 1)
             Label.BackgroundTransparency = 1
             Label.Parent = Frame
@@ -235,78 +235,47 @@ task.spawn(function()
             local YesBtn = Instance.new("TextButton")
             YesBtn.Size = UDim2.new(0.4, 0, 0, 40)
             YesBtn.Position = UDim2.new(0.05, 0, 0.6, 0)
-            YesBtn.Text = "Yes, Rejoin"
+            YesBtn.Text = "Rejoin Now"
             YesBtn.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
             YesBtn.Parent = Frame
 
             local NoBtn = Instance.new("TextButton")
             NoBtn.Size = UDim2.new(0.4, 0, 0, 40)
             NoBtn.Position = UDim2.new(0.55, 0, 0.6, 0)
-            NoBtn.Text = "No, Stay Here"
+            NoBtn.Text = "Cancel"
             NoBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
             NoBtn.Parent = Frame
 
+            local function triggerRejoin()
+                if RejoinUI.Parent then
+                    RejoinUI:Destroy()
+                    print("[Watcher] Kicked! Forcing teleport back to Lobby first...")
+                    getgenv().FishmanAutoTeleport = true
+                    UpdateTeleportMemory(true) 
+                    
+                    -- Spam the teleport command to the Lobby (1730877806) until it works
+                    task.spawn(function()
+                        while task.wait(1) do
+                            pcall(function()
+                                TeleportService:Teleport(1730877806, LocalPlayer)
+                            end)
+                        end
+                    end)
+                end
+            end
+
+            local autoRejoinCountdown = task.delay(10, triggerRejoin)
+
             YesBtn.MouseButton1Click:Connect(function()
-                RejoinUI:Destroy()
-                print("[Watcher] Rejoining through Lobby...")
-                getgenv().FishmanAutoTeleport = true
-                UpdateTeleportMemory(true) 
-                TeleportService:Teleport(targetPlaceId, LocalPlayer)
+                task.cancel(autoRejoinCountdown) 
+                triggerRejoin() 
             end)
 
             NoBtn.MouseButton1Click:Connect(function()
+                task.cancel(autoRejoinCountdown) 
                 RejoinUI:Destroy()
                 child.Visible = true 
             end)
         end
     end)
 end)
-
--- ========================================== --
--- 4. AUTO-ROUTING LOGIC
--- ========================================== --
-if game.PlaceId == targetPlaceId and game.PrivateServerId == "" then
-    if getgenv().FishmanAutoTeleport == true then
-        print("[Logic] Arrived in Lobby! Automatically finishing teleport...")
-        
-        getgenv().FishmanAutoTeleport = false 
-        UpdateTeleportMemory(false)
-        
-        if getgenv().FishmanPSCode ~= "" then
-            task.spawn(function()
-                local events = ReplicatedStorage:WaitForChild("Events", 9e9)
-                local reserved = events:WaitForChild("reserved", 9e9)
-                reserved:InvokeServer(getgenv().FishmanPSCode)
-            end)
-            task.wait(1.5) 
-        end
-        
-        local confirmArgs = { [1] = getgenv().FishmanDestination }
-        local playerGui = LocalPlayer:WaitForChild("PlayerGui", 9e9)
-        local chooseType = playerGui:WaitForChild("chooseType", 9e9)
-        local frame = chooseType:WaitForChild("Frame", 9e9)
-        local remoteEvent = frame:WaitForChild("RemoteEvent", 9e9)
-        
-        remoteEvent:FireServer(unpack(confirmArgs))
-    else
-        print("[Logic] In lobby. Ready when you click 'TELEPORT NOW'.")
-    end
-else
-    print("[Logic] Arrived in Private Server.")
-    
-    -- THIS IS THE NEW CODE: Start the auto fisher if we are in the right place!
-    local currentDest = getgenv().FishmanDestination
-    if currentDest == "fishHub" or currentDest == "tradeHub" then
-        print("[Logic] Successfully arrived at " .. currentDest .. "! Loading AutoFisher...")
-        
-        task.spawn(function()
-            pcall(function()
-                loadstring(game:HttpGet("https://raw.githubusercontent.com/KENZAKI-arch/AF2/refs/heads/main/Controller.lua"))()
-            end)
-        end)
-    else
-        print("[Logic] Use the UI to jump elsewhere when ready.")
-    end
-end
-
-print("--- [Checkpoint 8] Script Finished Loading ---")
