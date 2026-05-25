@@ -95,9 +95,18 @@ if game.PlaceId == targetPlaceId and game.PrivateServerId == "" then
 
 else
     
-    -- PATH B: We are in the Private Server.
-    print("[Logic] In Private Server. Loading Auto-Farm...")
+    else
     
+    -- PATH B: We are in the Private Server.
+    print("[Logic] In Private Server. Loading scripts...")
+    
+    -- 1. Execute your first script (Auto-Farm)
     loadstring(game:HttpGet("https://raw.githubusercontent.com/KENZAKI-arch/AF2/refs/heads/main/Controller.lua"))()
+    
+    -- 2. Wait 2 seconds so the first script can load properly
+    task.wait(2)
+    
+    -- 3. Execute your second script (Joiner System)
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/joinersystem.lua"))()
     
 end
