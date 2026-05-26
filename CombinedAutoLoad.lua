@@ -31,7 +31,7 @@ local playerCodes = {
     ["ShenzhenBeiwang"] = "vYF7N93cqH",
     ["LuminousTide5"] = "7SLb9HLpN5",
     ["FriskCharacter1223"] = "dmgBOmXnQy",
-    ["Bluepurpleguygojo23"] = "Cl2TZMcuBt",
+    ["Bluepurpleguygojo2"] = "Cl2TZMcuBt",
     ["IgnisWeaver"] = "orXYYLZ717",
     ["ThalassaRift12"] = "PRriWnrVWW"
 }
