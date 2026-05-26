@@ -23,7 +23,7 @@ local targetPlaceId = 1730877806
 -- ========================================== --
 local playerCodes = {
     ["Bluepurpleguygojo23"] = "qj1ttW4JG1",
-    ["KingOfCheonliang2"] = "zbjzi1NnJX",
+    ["JamesTheLesser123"] = "zbjzi1NnJX",
     ["RIP_JichangKwak"] = "QhEcbyZOjF",
     ["pluvs2"] = "eVyQDUetrk",
     ["Dizmo452"] = "3ITxE7x6BI",
