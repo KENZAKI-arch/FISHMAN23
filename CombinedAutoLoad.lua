@@ -22,13 +22,13 @@ local targetPlaceId = 1730877806
 -- THE VIP LIST (PLAYER PS CODES)
 -- ========================================== --
 local playerCodes = {
-    ["VesperaDrift"] = "qj1ttW4JG1",
-    ["QuasarGlint5"] = "zbjzi1NnJX",
-    ["NebulaQuintet"] = "QhEcbyZOjF",
-    ["ObsidianEcho9"] = "eVyQDUetrk",
-    ["CipherLoom7"] = "3ITxE7x6BI",
-    ["SylphMirage"] = "JYUyHbhHtR",
-    ["ChronoWhisper12"] = "vYF7N93cqH",
+    ["Bluepurpleguygojo23"] = "qj1ttW4JG1",
+    ["KingOfCheonliang2"] = "zbjzi1NnJX",
+    ["RIP_JichangKwak"] = "QhEcbyZOjF",
+    ["pluvs2"] = "eVyQDUetrk",
+    ["Dizmo452"] = "3ITxE7x6BI",
+    ["BlackFusion234"] = "JYUyHbhHtR",
+    ["ShenzhenBeiwang"] = "vYF7N93cqH",
     ["LuminousTide5"] = "7SLb9HLpN5",
     ["FriskCharacter1223"] = "dmgBOmXnQy",
     ["Bluepurpleguygojo23"] = "Cl2TZMcuBt",
