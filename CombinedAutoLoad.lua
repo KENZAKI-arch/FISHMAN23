@@ -22,9 +22,9 @@ local targetPlaceId = 1730877806
 -- THE VIP LIST (PLAYER PS CODES)
 -- ========================================== --
 local playerCodes = {
-    ["Bluepurpleguygojo23"] = "qj1ttW4JG1",
-    ["JamesTheLesser123"] = "zbjzi1NnJX",
-    ["Playpark234"] = "QhEcbyZOjF",
+    ["MechaGlider42"] = "qj1ttW4JG1",
+    ["TurboWisp_99"] = "zbjzi1NnJX",
+    ["ViridianSpark12334"] = "QhEcbyZOjF",
     ["ButterflyWater1282"] = "eVyQDUetrk",
     ["Seonhee234"] = "7SLb9HLpN5",
     ["DomainRichards123"] = "qj1ttW4JG1",
