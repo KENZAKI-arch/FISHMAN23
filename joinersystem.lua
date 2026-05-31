@@ -16,7 +16,7 @@ local function RunFishmanSetup()
 
     local LocalPlayer = Players.LocalPlayer
     while not LocalPlayer do 
-        task.wait(1)
+        task.wait(3)
         LocalPlayer = Players.LocalPlayer 
     end
 
@@ -178,7 +178,7 @@ local function RunFishmanSetup()
                         local reserved = events:WaitForChild("reserved", 9e9)
                         pcall(function() reserved:InvokeServer(GlobalMem.FishmanPSCode) end)
                     end)
-                    task.wait(2.5) 
+                    task.wait(3) 
                 end
                 
                 local confirmArgs = { [1] = GlobalMem.FishmanDestination }
