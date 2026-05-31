@@ -16,7 +16,7 @@ local function RunFishmanSetup()
 
     local LocalPlayer = Players.LocalPlayer
     while not LocalPlayer do 
-        task.wait(0.5)
+        task.wait(1)
         LocalPlayer = Players.LocalPlayer 
     end
 
