@@ -102,7 +102,7 @@ else
     loadstring(game:HttpGet("https://raw.githubusercontent.com/KENZAKI-arch/AF2/refs/heads/main/Controller.lua"))()
     
     -- 2. Wait 2 seconds so the first script can load properly
-    task.wait(2)
+    task.wait(6)
     
     -- 3. Execute your second script (Joiner System)
     loadstring(game:HttpGet("https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/joinersystem.lua"))()
