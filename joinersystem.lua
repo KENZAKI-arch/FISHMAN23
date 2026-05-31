@@ -178,7 +178,7 @@ local function RunFishmanSetup()
                         local reserved = events:WaitForChild("reserved", 9e9)
                         pcall(function() reserved:InvokeServer(GlobalMem.FishmanPSCode) end)
                     end)
-                    task.wait(3) 
+                    task.wait(5) 
                 end
                 
                 local confirmArgs = { [1] = GlobalMem.FishmanDestination }
@@ -276,7 +276,7 @@ local function RunFishmanSetup()
                     local reserved = events:WaitForChild("reserved", 9e9)
                     pcall(function() reserved:InvokeServer(GlobalMem.FishmanPSCode) end)
                 end)
-                task.wait(2.5) 
+                task.wait(5) 
             end
             
             local confirmArgs = { [1] = GlobalMem.FishmanDestination }
