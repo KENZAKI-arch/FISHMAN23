@@ -65,7 +65,7 @@ if game.PlaceId == targetPlaceId and game.PrivateServerId == "" then
     -- PATH A: We are in the public lobby.
     if myPSCode then
         print("[Logic] Code found for " .. LocalPlayer.Name .. "! Joining Private Server in 5 seconds...")
-        task.wait(5)
+        task.wait(7)
         
         task.spawn(function()
             local codeArgs = { [1] = myPSCode }
@@ -74,7 +74,7 @@ if game.PlaceId == targetPlaceId and game.PrivateServerId == "" then
             reserved:InvokeServer(unpack(codeArgs))
         end)
         
-        task.wait(1)
+        task.wait(4)
         
         -- Clear the flag BEFORE teleporting to PS
         getgenv().FishmanAutoFarmRunning = false
