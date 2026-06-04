@@ -1,12 +1,3 @@
--- ========================================== --
--- DUPLICATE GUARD
--- ========================================== --
-if getgenv().FishmanAutoFarmRunning then 
-    warn("Script is already running! Preventing duplicate.")
-    return 
-end
-getgenv().FishmanAutoFarmRunning = true
-
 local Players = game:GetService("Players")
 local TeleportService = game:GetService("TeleportService")
 local CoreGui = game:GetService("CoreGui")
@@ -47,9 +38,6 @@ task.spawn(function()
             print("[Watcher] Disconnected! Auto-rejoining in 5 seconds...")
             task.wait(5) 
             
-            -- Clear the flag BEFORE teleporting
-            getgenv().FishmanAutoFarmRunning = false
-            
             pcall(function()
                 TeleportService:Teleport(targetPlaceId, LocalPlayer)
             end)
@@ -75,9 +63,6 @@ if game.PlaceId == targetPlaceId and game.PrivateServerId == "" then
         end)
         
         task.wait(4)
-        
-        -- Clear the flag BEFORE teleporting to PS
-        getgenv().FishmanAutoFarmRunning = false
         
         -- YOUR NEW CHANGE IS HERE
         local confirmArgs = { [1] = "fishHub" }
