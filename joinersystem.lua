@@ -88,8 +88,13 @@ local function RunFishmanSetup()
                 getgenv().FishmanDestination = "]] .. GlobalMem.FishmanDestination .. [["
                 getgenv().FishmanAutoTeleport = ]] .. tostring(willAutoTeleport) .. [[
                 
-                -- Download and run the script from GitHub
-                loadstring(game:HttpGet("]] .. myScriptURL .. [["))()
+                -- Wait 2 seconds for autoexec to run. If it didn't, fallback to downloading from GitHub
+                task.spawn(function()
+                    task.wait(2)
+                    if not getgenv().FishmanScriptRunning then
+                        loadstring(game:HttpGet("]] .. myScriptURL .. [["))()
+                    end
+                end)
             end)
         ]]
         pcall(function() qot(command) end)
