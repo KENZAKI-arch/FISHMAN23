@@ -84,6 +84,9 @@ local function RunFishmanSetup()
                 getgenv().FishmanPSCode = "]] .. GlobalMem.FishmanPSCode .. [["
                 getgenv().FishmanDestination = "]] .. GlobalMem.FishmanDestination .. [["
                 getgenv().FishmanAutoTeleport = ]] .. tostring(willAutoTeleport) .. [[
+                
+                -- Download and run the script from GitHub
+                loadstring(game:HttpGet("]] .. myScriptURL .. [["))()
             end)
         ]]
         pcall(function() qot(command) end)
