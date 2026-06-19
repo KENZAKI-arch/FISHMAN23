@@ -47,6 +47,7 @@ local function RunFishmanSetup()
                 if GlobalMem.FishmanPSCode == nil then GlobalMem.FishmanPSCode = data.FishmanPSCode end
                 if GlobalMem.FishmanDestination == nil then GlobalMem.FishmanDestination = data.FishmanDestination end
                 if GlobalMem.FishmanAutoTeleport == nil then GlobalMem.FishmanAutoTeleport = data.FishmanAutoTeleport end
+                print("[Fishman] Loaded Config from file.")
             end
         end
     end)
@@ -78,6 +79,7 @@ local function RunFishmanSetup()
     local function UpdateTeleportMemory(willAutoTeleport)
         GlobalMem.FishmanAutoTeleport = willAutoTeleport
         SaveConfig()
+        print("[Fishman] State Saved -> AutoTeleport:", willAutoTeleport)
         
         if not qot then return end
         
@@ -132,6 +134,7 @@ local function RunFishmanSetup()
     -- CREATE THE MAIN MENU
     -- ========================================== --
     local function CreateMainUI()
+        print("[Fishman] Loading User Interface...")
         if GuiFolder:FindFirstChild("FishmanControlPanel") then
             GuiFolder.FishmanControlPanel:Destroy()
         end
@@ -248,6 +251,7 @@ local function RunFishmanSetup()
             
             promptOverlay.ChildAdded:Connect(function(child)
                 if child.Name == "ErrorPrompt" then
+                    print("[Fishman] Disconnection detected! Preparing auto-rejoin sequence...")
                     child.Visible = false 
                     
                     local RejoinUI = Instance.new("ScreenGui")
@@ -284,6 +288,7 @@ local function RunFishmanSetup()
                             end)
                             
                             if isOnline then
+                                print("[Fishman] Internet connection restored! Rejoining Lobby...")
                                 Label.Text = "Internet restored!\nAuto-Rejoining Lobby..."
                                 task.wait(1)
                                 pcall(function()
@@ -301,10 +306,12 @@ local function RunFishmanSetup()
     -- AUTO-ROUTING LOGIC
     -- ========================================== --
     if game.PlaceId == targetPlaceId and game.PrivateServerId == "" then
+        print("[Fishman] In Lobby - Auto-Routing will begin in 3 seconds.")
         task.spawn(function()
             task.wait(3) -- Wait 3 seconds so the user can see the UI before teleporting
             
             if GlobalMem.FishmanPSCode ~= "" then
+                print("[Fishman] Teleporting to Private Server:", GlobalMem.FishmanPSCode)
                 task.spawn(function()
                     local events = ReplicatedStorage:WaitForChild("Events", 9e9)
                     local reserved = events:WaitForChild("reserved", 9e9)
