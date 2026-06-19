@@ -290,10 +290,8 @@ local function RunFishmanSetup()
     -- AUTO-ROUTING LOGIC
     -- ========================================== --
     if game.PlaceId == targetPlaceId and game.PrivateServerId == "" then
-        -- If we just arrived in the Lobby from a previous teleport...
-        if GlobalMem.FishmanAutoTeleport == true then
-            GlobalMem.FishmanAutoTeleport = false 
-            UpdateTeleportMemory(false)
+        task.spawn(function()
+            task.wait(3) -- Wait 3 seconds so the user can see the UI before teleporting
             
             if GlobalMem.FishmanPSCode ~= "" then
                 task.spawn(function()
@@ -312,7 +310,7 @@ local function RunFishmanSetup()
                 local remoteEvent = frame:WaitForChild("RemoteEvent", 20)
                 remoteEvent:FireServer(unpack(confirmArgs))
             end)
-        end
+        end)
     end
 end
 
