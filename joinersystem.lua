@@ -225,36 +225,34 @@ local function RunFishmanSetup()
                     MakeDraggable(Frame)
 
                     local Label = Instance.new("TextLabel")
-                    Label.Size = UDim2.new(1, 0, 0, 50)
-                    Label.Text = "You were disconnected.\nDo you want to rejoin?"
+                    Label.Size = UDim2.new(1, 0, 1, 0)
+                    Label.Text = "WiFi Dropped!\nWaiting for internet to return..."
                     Label.TextColor3 = Color3.new(1, 1, 1)
                     Label.BackgroundTransparency = 1
+                    Label.Font = Enum.Font.GothamBold
+                    Label.TextSize = 16
                     Label.Parent = Frame
 
-                    local YesBtn = Instance.new("TextButton")
-                    YesBtn.Size = UDim2.new(0.4, 0, 0, 40)
-                    YesBtn.Position = UDim2.new(0.05, 0, 0.6, 0)
-                    YesBtn.Text = "Yes, Rejoin"
-                    YesBtn.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
-                    YesBtn.Parent = Frame
-
-                    local NoBtn = Instance.new("TextButton")
-                    NoBtn.Size = UDim2.new(0.4, 0, 0, 40)
-                    NoBtn.Position = UDim2.new(0.55, 0, 0.6, 0)
-                    NoBtn.Text = "No, Stay Here"
-                    NoBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-                    NoBtn.Parent = Frame
-
-                    YesBtn.MouseButton1Click:Connect(function()
-                        RejoinUI:Destroy()
+                    task.spawn(function()
+                        -- Prepare memory so it auto teleports to tradehub/qj1ttW4JG1 once we load back in
                         GlobalMem.FishmanAutoTeleport = true
-                        UpdateTeleportMemory(true) 
-                        TeleportService:Teleport(targetPlaceId, LocalPlayer)
-                    end)
-
-                    NoBtn.MouseButton1Click:Connect(function()
-                        RejoinUI:Destroy()
-                        child.Visible = true 
+                        UpdateTeleportMemory(true)
+                        
+                        while true do
+                            task.wait(5)
+                            -- Secretly check if WiFi is back without triggering Roblox's "Reconnect Failed" box
+                            local isOnline = pcall(function()
+                                return game:HttpGet("https://raw.githubusercontent.com")
+                            end)
+                            
+                            if isOnline then
+                                Label.Text = "Internet restored!\nAuto-Rejoining Lobby..."
+                                task.wait(1)
+                                pcall(function()
+                                    TeleportService:Teleport(targetPlaceId, LocalPlayer)
+                                end)
+                            end
+                        end
                     end)
                 end
             end)
