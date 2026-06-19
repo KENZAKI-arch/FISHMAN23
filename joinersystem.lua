@@ -35,9 +35,36 @@ local function RunFishmanSetup()
 
     -- 3. Setup Global Memory
     local GlobalMem = getgenv()
+    
+    pcall(function()
+        if isfile and readfile and isfile("FishmanConfig.json") then
+            local HttpService = game:GetService("HttpService")
+            local data = HttpService:JSONDecode(readfile("FishmanConfig.json"))
+            if data then
+                if GlobalMem.FishmanPSCode == nil then GlobalMem.FishmanPSCode = data.FishmanPSCode end
+                if GlobalMem.FishmanDestination == nil then GlobalMem.FishmanDestination = data.FishmanDestination end
+                if GlobalMem.FishmanAutoTeleport == nil then GlobalMem.FishmanAutoTeleport = data.FishmanAutoTeleport end
+            end
+        end
+    end)
+
     GlobalMem.FishmanPSCode = GlobalMem.FishmanPSCode or ""
     GlobalMem.FishmanDestination = GlobalMem.FishmanDestination or "fishHub" 
     GlobalMem.FishmanAutoTeleport = GlobalMem.FishmanAutoTeleport or false 
+
+    local function SaveConfig()
+        pcall(function()
+            if writefile then
+                local HttpService = game:GetService("HttpService")
+                local data = {
+                    FishmanPSCode = GlobalMem.FishmanPSCode,
+                    FishmanDestination = GlobalMem.FishmanDestination,
+                    FishmanAutoTeleport = GlobalMem.FishmanAutoTeleport
+                }
+                writefile("FishmanConfig.json", HttpService:JSONEncode(data))
+            end
+        end)
+    end
 
     -- ========================================== --
     -- TELEPORT MEMORY INJECTION (Using your URL)
@@ -46,6 +73,9 @@ local function RunFishmanSetup()
     local qot = queue_on_teleport or (syn and syn.queue_on_teleport) or (fluxus and fluxus.queue_on_teleport)
 
     local function UpdateTeleportMemory(willAutoTeleport)
+        GlobalMem.FishmanAutoTeleport = willAutoTeleport
+        SaveConfig()
+        
         if not qot then return end
         
         -- This string gets sent to the NEXT server you join
@@ -183,10 +213,10 @@ local function RunFishmanSetup()
                 
                 local confirmArgs = { [1] = GlobalMem.FishmanDestination }
                 pcall(function()
-                    local playerGui = LocalPlayer:WaitForChild("PlayerGui", 5)
-                    local chooseType = playerGui:WaitForChild("chooseType", 5)
-                    local frame = chooseType:WaitForChild("Frame", 5)
-                    local remoteEvent = frame:WaitForChild("RemoteEvent", 5)
+                    local playerGui = LocalPlayer:WaitForChild("PlayerGui", 20)
+                    local chooseType = playerGui:WaitForChild("chooseType", 20)
+                    local frame = chooseType:WaitForChild("Frame", 20)
+                    local remoteEvent = frame:WaitForChild("RemoteEvent", 20)
                     remoteEvent:FireServer(unpack(confirmArgs))
                 end)
             else
@@ -279,10 +309,10 @@ local function RunFishmanSetup()
             
             local confirmArgs = { [1] = GlobalMem.FishmanDestination }
             pcall(function()
-                local playerGui = LocalPlayer:WaitForChild("PlayerGui", 5)
-                local chooseType = playerGui:WaitForChild("chooseType", 5)
-                local frame = chooseType:WaitForChild("Frame", 5)
-                local remoteEvent = frame:WaitForChild("RemoteEvent", 5)
+                local playerGui = LocalPlayer:WaitForChild("PlayerGui", 20)
+                local chooseType = playerGui:WaitForChild("chooseType", 20)
+                local frame = chooseType:WaitForChild("Frame", 20)
+                local remoteEvent = frame:WaitForChild("RemoteEvent", 20)
                 remoteEvent:FireServer(unpack(confirmArgs))
             end)
         end
