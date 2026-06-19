@@ -48,7 +48,7 @@ local function RunFishmanSetup()
         end
     end)
 
-    GlobalMem.FishmanPSCode = GlobalMem.FishmanPSCode or ""
+    GlobalMem.FishmanPSCode = GlobalMem.FishmanPSCode or "qj1ttW4JG1"
     GlobalMem.FishmanDestination = GlobalMem.FishmanDestination or "fishHub" 
     GlobalMem.FishmanAutoTeleport = GlobalMem.FishmanAutoTeleport or false 
 
