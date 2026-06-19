@@ -155,7 +155,7 @@ local function RunFishmanSetup()
             end)
         end
 
-        CreateDestButton("Fish Hub", "fishHub", 0.35)
+        CreateDestButton("Fish Hub12", "fishHub", 0.35)
         CreateDestButton("Trade Hub", "tradeHub", 0.50)
         CreateDestButton("Second Sea", "Second Sea", 0.65)
 
