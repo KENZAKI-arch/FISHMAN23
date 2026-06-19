@@ -96,7 +96,7 @@ local function RunFishmanSetup()
                 -- Wait 2 seconds for autoexec to run. If it didn't, fallback to downloading from GitHub
                 task.spawn(function()
                     task.wait(2)
-                    if not getgenv().FishmanScriptRunning then
+                    if getgenv().FishmanScriptServer ~= game.JobId then
                         loadstring(game:HttpGet("]] .. myScriptURL .. [["))()
                     end
                 end)
