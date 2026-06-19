@@ -1,3 +1,6 @@
+if getgenv().FishmanScriptRunning then return end
+getgenv().FishmanScriptRunning = true
+
 local function RunFishmanSetup()
     print("--- [Fishman] Script Starting ---")
 
