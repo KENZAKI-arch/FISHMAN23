@@ -163,7 +163,7 @@ local function RunFishmanSetup()
         TeleportBtn.Name = "TeleportButton"
         TeleportBtn.Size = UDim2.new(0.9, 0, 0, 40)
         TeleportBtn.Position = UDim2.new(0.05, 0, 0.80, 0)
-        TeleportBtn.Text = "🚀 TELEPORT NOW2345"
+        TeleportBtn.Text = "🚀 TELEPORT NOW23458"
         TeleportBtn.Font = Enum.Font.GothamBold
         TeleportBtn.BackgroundColor3 = Color3.fromRGB(202, 150, 0)
         TeleportBtn.TextColor3 = Color3.new(1, 1, 1)
