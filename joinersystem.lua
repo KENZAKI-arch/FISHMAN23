@@ -1,5 +1,8 @@
-if getgenv().FishmanScriptRunning then return end
-getgenv().FishmanScriptRunning = true
+if getgenv().FishmanScriptServer == game.JobId then 
+    print("[Fishman] Script is already running in this server!")
+    return 
+end
+getgenv().FishmanScriptServer = game.JobId
 
 local function RunFishmanSetup()
     print("--- [Fishman] Script Starting ---")
