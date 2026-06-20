@@ -16,7 +16,7 @@ function View.Build(onToggleCallback)
     toggleBtn.Size = UDim2.new(0, 180, 0, 50)
     toggleBtn.Position = UDim2.new(0.5, -90, 0.1, 0)
     toggleBtn.BackgroundColor3 = Color3.fromRGB(255, 85, 85)
-    toggleBtn.Text = "AUTO FARM: OFF"
+    toggleBtn.Text = "AUTO FARMer: OFF"
     toggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
     toggleBtn.Font = Enum.Font.GothamBold
     toggleBtn.TextSize = 14
