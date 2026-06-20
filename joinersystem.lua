@@ -246,7 +246,7 @@ local function RunFishmanSetup()
     UpdateTeleportMemory(GlobalMem.FishmanAutoTeleport)
 
     -- ========================================== --
-    -- CONDITIONAL AUTO-ROUTING LOGIC
+    -- CONDITIONAL AUTO-ROUTING LOGIC   AAAA
     -- ========================================== --
     if game.PlaceId == targetPlaceId and game.PrivateServerId == "" and GlobalMem.FishmanAutoTeleport then
         print("[Fishman] Auto-Teleport active - Routing to destination in 3 seconds.")
