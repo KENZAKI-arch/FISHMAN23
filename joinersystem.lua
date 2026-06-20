@@ -28,7 +28,7 @@ local function RunFishmanSetup()
 
     local targetPlaceId = 1730877806
 
-    -- 2. Find a safe place to put the UI and folders
+    -- 2. Find a safe place to put the UI and folders i hope works
     local GuiFolder
     pcall(function() GuiFolder = (gethui and gethui()) end)
     if not GuiFolder and CoreGui then
