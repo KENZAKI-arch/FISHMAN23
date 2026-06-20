@@ -7,7 +7,7 @@ getgenv().FishmanScriptServer = game.JobId
 local function RunFishmanSetup()
     print("--- [Fishman] Script Starting ---")
 
-    -- 1. Safely wait for the game to loads
+    -- 1. Safely wait for the game to loadsaa
     if not game:IsLoaded() then 
         game.Loaded:Wait() 
     end
