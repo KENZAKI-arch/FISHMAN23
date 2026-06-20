@@ -199,7 +199,7 @@ local function RunFishmanSetup()
             end)
         end
 
-        CreateDestButton("Fish Hub12", "fishHub", 0.35)
+        CreateDestButton("Fish Hub", "fishHub", 0.35)
         CreateDestButton("Trade Hub", "tradeHub", 0.50)
         CreateDestButton("Second Sea", "Second Sea", 0.65)
 
@@ -207,7 +207,7 @@ local function RunFishmanSetup()
         TeleportBtn.Name = "TeleportButton"
         TeleportBtn.Size = UDim2.new(0.9, 0, 0, 40)
         TeleportBtn.Position = UDim2.new(0.05, 0, 0.80, 0)
-        TeleportBtn.Text = "🚀 TELEPORT NOW23458"
+        TeleportBtn.Text = "🚀 TELEPORT NOW"
         TeleportBtn.Font = Enum.Font.GothamBold
         TeleportBtn.BackgroundColor3 = Color3.fromRGB(202, 150, 0)
         TeleportBtn.TextColor3 = Color3.new(1, 1, 1)
