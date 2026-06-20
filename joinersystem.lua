@@ -250,7 +250,7 @@ local function RunFishmanSetup()
     -- ========================================== --
     if game.PlaceId == targetPlaceId and game.PrivateServerId == "" and GlobalMem.FishmanAutoTeleport then
         print("[Fishman] Auto-Teleport active - Routing to destination in 3 seconds.")
-        -- Reset the flag so it doesn't happen automatically next time they join the lobby manually
+        -- Reset the flag so it doesn't happen automatically next time they join the lobby manuallyAAAAAAAAAA
         GlobalMem.FishmanAutoTeleport = false
         SaveConfig()
 
