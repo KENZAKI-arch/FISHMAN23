@@ -70,7 +70,7 @@ local function RunFishmanSetup()
                 }
                 writefile("FishmanConfig.json", HttpService:JSONEncode(data))
             end
-        end)
+        end)a
     end
 
     -- ========================================== --
