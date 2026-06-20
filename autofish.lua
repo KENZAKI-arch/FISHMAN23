@@ -935,7 +935,7 @@ addConn(RunService.Heartbeat:Connect(function(dt)
 end))
 
 -- ======================================================================
--- 👻 TRUE NOCLIP (Tied to Physics Engine)
+-- 👻 TRUE NOCLIP (Tied to Physics Engine)1
 -- ======================================================================
 addConn(RunService.Stepped:Connect(function()
     if not _running then return end
