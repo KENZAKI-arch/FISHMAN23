@@ -59,7 +59,7 @@ local function RunFishmanSetup()
     GlobalMem.FishmanDestination = GlobalMem.FishmanDestination or "fishHub" 
     GlobalMem.FishmanAutoTeleport = GlobalMem.FishmanAutoTeleport or false 
 
-    local function SaveConfig()aaa
+    local function SaveConfig()
         pcall(function()
             if writefile then
                 local HttpService = game:GetService("HttpService")
@@ -70,7 +70,7 @@ local function RunFishmanSetup()
                 }
                 writefile("FishmanConfig.json", HttpService:JSONEncode(data))
             end
-        end)a
+        end)
     end
 
     -- ========================================== --
@@ -79,9 +79,9 @@ local function RunFishmanSetup()
     local myScriptURL = "https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/joinersystem.lua"
     local qot = queue_on_teleport or (syn and syn.queue_on_teleport) or (fluxus and fluxus.queue_on_teleport)
 
-    local function UpdateTeleportMemory(willAutoTeleport)A
+    local function UpdateTeleportMemory(willAutoTeleport)
         GlobalMem.FishmanAutoTeleport = willAutoTeleport
-        SaveConfig()a
+        SaveConfig()
         print("[Fishman] State Saved -> AutoTeleport:", willAutoTeleport)
         
         if not qot then return end
