@@ -7,7 +7,7 @@ getgenv().FishmanScriptServer = game.JobId
 local function RunFishmanSetup()
     print("--- [Fishman] Script Starting ---")
 
-    -- 1. Safely wait for the game to loadsaa
+    -- 1. Safely wait for the game to load
     if not game:IsLoaded() then 
         game.Loaded:Wait() 
     end
@@ -28,7 +28,7 @@ local function RunFishmanSetup()
 
     local targetPlaceId = 1730877806
 
-    -- 2. Find a safe place to put the UI and folders i hope works
+    -- 2. Find a safe place to put the UI and folders
     local GuiFolder
     pcall(function() GuiFolder = (gethui and gethui()) end)
     if not GuiFolder and CoreGui then
@@ -42,10 +42,12 @@ local function RunFishmanSetup()
     -- 3. Setup Global Memory
     local GlobalMem = getgenv()
     
+    local configFileName = "FishmanConfig_" .. tostring(LocalPlayer.UserId) .. ".json"
+
     pcall(function()
-        if isfile and readfile and isfile("FishmanConfig.json") then
+        if isfile and readfile and isfile(configFileName) then
             local HttpService = game:GetService("HttpService")
-            local data = HttpService:JSONDecode(readfile("FishmanConfig.json"))
+            local data = HttpService:JSONDecode(readfile(configFileName))
             if data then
                 if GlobalMem.FishmanPSCode == nil then GlobalMem.FishmanPSCode = data.FishmanPSCode end
                 if GlobalMem.FishmanDestination == nil then GlobalMem.FishmanDestination = data.FishmanDestination end
@@ -68,7 +70,7 @@ local function RunFishmanSetup()
                     FishmanDestination = GlobalMem.FishmanDestination,
                     FishmanAutoTeleport = GlobalMem.FishmanAutoTeleport
                 }
-                writefile("FishmanConfig.json", HttpService:JSONEncode(data))
+                writefile(configFileName, HttpService:JSONEncode(data))
             end
         end)
     end
@@ -246,7 +248,7 @@ local function RunFishmanSetup()
     UpdateTeleportMemory(GlobalMem.FishmanAutoTeleport)
 
     -- ========================================== --
-    -- CONDITIONAL AUTO-ROUTING LOGIC   AAAA
+    -- CONDITIONAL AUTO-ROUTING LOGIC
     -- ========================================== --
     if game.PlaceId == targetPlaceId and game.PrivateServerId == "" and GlobalMem.FishmanAutoTeleport then
         print("[Fishman] Auto-Teleport active - Routing to destination in 3 seconds.")
