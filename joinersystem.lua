@@ -286,11 +286,6 @@ local function RunFishmanSetup()
                 remoteEvent:FireServer(unpack(confirmArgs))
             end)
         end)
-    elseif game.PlaceId ~= targetPlaceId and not GlobalMem.FishmanAutoTeleport then
-        print("[Fishman] Not in Lobby - Defaulting to Trade Hub.")
-        GlobalMem.FishmanAutoTeleport = false
-        UpdateTeleportMemory(false)
-        TeleportService:Teleport(targetPlaceId, LocalPlayer)
     end
 end
 
