@@ -247,34 +247,7 @@ local function RunFishmanSetup()
 
 
 
-    -- ========================================== --
-    -- AUTO-ROUTING LOGIC
-    -- ========================================== --
-    if game.PlaceId == targetPlaceId and game.PrivateServerId == "" then
-        print("[Fishman] In Lobby - Auto-Routing will begin in 3 seconds.")
-        task.spawn(function()
-            task.wait(3) -- Wait 3 seconds so the user can see the UI before teleporting
-            
-            if GlobalMem.FishmanPSCode ~= "" then
-                print("[Fishman] Teleporting to Private Server:", GlobalMem.FishmanPSCode)
-                task.spawn(function()
-                    local events = ReplicatedStorage:WaitForChild("Events", 9e9)
-                    local reserved = events:WaitForChild("reserved", 9e9)
-                    pcall(function() reserved:InvokeServer(GlobalMem.FishmanPSCode) end)
-                end)
-                task.wait(5) 
-            end
-            
-            local confirmArgs = { [1] = GlobalMem.FishmanDestination }
-            pcall(function()
-                local playerGui = LocalPlayer:WaitForChild("PlayerGui", 20)
-                local chooseType = playerGui:WaitForChild("chooseType", 20)
-                local frame = chooseType:WaitForChild("Frame", 20)
-                local remoteEvent = frame:WaitForChild("RemoteEvent", 20)
-                remoteEvent:FireServer(unpack(confirmArgs))
-            end)
-        end)
-    end
+
 end
 
 -- Run everything safely!
