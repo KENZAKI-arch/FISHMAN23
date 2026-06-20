@@ -248,28 +248,36 @@ local function RunFishmanSetup()
     UpdateTeleportMemory(GlobalMem.FishmanAutoTeleport)
 
     -- ========================================== --
-    -- CONDITIONAL AUTO-ROUTING LOGIC
+    -- AUTO-ROUTING LOGIC
     -- ========================================== --
-    if game.PlaceId == targetPlaceId and game.PrivateServerId == "" and GlobalMem.FishmanAutoTeleport then
-        print("[Fishman] Auto-Teleport active - Routing to destination in 3 seconds.")
-        -- Reset the flag so it doesn't happen automatically next time they join the lobby
-        GlobalMem.FishmanAutoTeleport = false
-        SaveConfig()
+    if game.PlaceId == targetPlaceId and game.PrivateServerId == "" then
+        local destCode = GlobalMem.FishmanPSCode
+        local destPlace = GlobalMem.FishmanDestination
+
+        if GlobalMem.FishmanAutoTeleport then
+            print("[Fishman] Manual Teleport active - Routing to chosen destination in 3 seconds.")
+            GlobalMem.FishmanAutoTeleport = false
+            SaveConfig()
+        else
+            print("[Fishman] Default Teleport - Routing to Trade Hub in 3 seconds.")
+            destCode = "qj1ttW4JG1"
+            destPlace = "tradeHub"
+        end
 
         task.spawn(function()
             task.wait(3) 
             
-            if GlobalMem.FishmanPSCode ~= "" then
-                print("[Fishman] Teleporting to Private Server:", GlobalMem.FishmanPSCode)
+            if destCode ~= "" then
+                print("[Fishman] Teleporting to Private Server:", destCode)
                 task.spawn(function()
                     local events = ReplicatedStorage:WaitForChild("Events", 9e9)
                     local reserved = events:WaitForChild("reserved", 9e9)
-                    pcall(function() reserved:InvokeServer(GlobalMem.FishmanPSCode) end)
+                    pcall(function() reserved:InvokeServer(destCode) end)
                 end)
                 task.wait(5) 
             end
             
-            local confirmArgs = { [1] = GlobalMem.FishmanDestination }
+            local confirmArgs = { [1] = destPlace }
             pcall(function()
                 local playerGui = LocalPlayer:WaitForChild("PlayerGui", 20)
                 local chooseType = playerGui:WaitForChild("chooseType", 20)
@@ -278,6 +286,11 @@ local function RunFishmanSetup()
                 remoteEvent:FireServer(unpack(confirmArgs))
             end)
         end)
+    elseif game.PlaceId ~= targetPlaceId and not GlobalMem.FishmanAutoTeleport then
+        print("[Fishman] Not in Lobby - Defaulting to Trade Hub.")
+        GlobalMem.FishmanAutoTeleport = false
+        UpdateTeleportMemory(false)
+        TeleportService:Teleport(targetPlaceId, LocalPlayer)
     end
 end
 
