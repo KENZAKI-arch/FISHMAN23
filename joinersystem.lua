@@ -245,9 +245,38 @@ local function RunFishmanSetup()
     CreateMainUI()
     UpdateTeleportMemory(GlobalMem.FishmanAutoTeleport)
 
+    -- ========================================== --
+    -- CONDITIONAL AUTO-ROUTING LOGIC
+    -- ========================================== --
+    if game.PlaceId == targetPlaceId and game.PrivateServerId == "" and GlobalMem.FishmanAutoTeleport then
+        print("[Fishman] Auto-Teleport active - Routing to destination in 3 seconds.")
+        -- Reset the flag so it doesn't happen automatically next time they join the lobby manually
+        GlobalMem.FishmanAutoTeleport = false
+        SaveConfig()
 
-
-
+        task.spawn(function()
+            task.wait(3) 
+            
+            if GlobalMem.FishmanPSCode ~= "" then
+                print("[Fishman] Teleporting to Private Server:", GlobalMem.FishmanPSCode)
+                task.spawn(function()
+                    local events = ReplicatedStorage:WaitForChild("Events", 9e9)
+                    local reserved = events:WaitForChild("reserved", 9e9)
+                    pcall(function() reserved:InvokeServer(GlobalMem.FishmanPSCode) end)
+                end)
+                task.wait(5) 
+            end
+            
+            local confirmArgs = { [1] = GlobalMem.FishmanDestination }
+            pcall(function()
+                local playerGui = LocalPlayer:WaitForChild("PlayerGui", 20)
+                local chooseType = playerGui:WaitForChild("chooseType", 20)
+                local frame = chooseType:WaitForChild("Frame", 20)
+                local remoteEvent = frame:WaitForChild("RemoteEvent", 20)
+                remoteEvent:FireServer(unpack(confirmArgs))
+            end)
+        end)
+    end
 end
 
 -- Run everything safely!
