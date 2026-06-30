@@ -722,7 +722,7 @@ Tabs = {
         Default = GlobalMem.FishmanPSCode,
         Placeholder = "Enter PS Code",
         Numeric = false,
-        Finished = true,
+        Finished = false,
         Callback = function(Value)
             GlobalMem.FishmanPSCode = Value
             SaveConfig()
