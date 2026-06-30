@@ -95,9 +95,9 @@ local function RunFishmanSetup()
                 getgenv().FishmanDestination = "]] .. GlobalMem.FishmanDestination .. [["
                 getgenv().FishmanAutoTeleport = ]] .. tostring(willAutoTeleport) .. [[
                 
-                -- Wait 2 seconds for autoexec to run. If it didn't, fallback to downloading from GitHub
+                -- Wait 15 seconds for autoexec to run. If it didn't, fallback to downloading from GitHub
                 task.spawn(function()
-                    task.wait(2)
+                    task.wait(15)
                     if getgenv().FishmanScriptServer ~= game.JobId then
                         loadstring(game:HttpGet("]] .. myScriptURL .. [["))()
                     end
@@ -165,6 +165,23 @@ local function RunFishmanSetup()
         Title.Font = Enum.Font.GothamBold
         Title.TextSize = 18
         Title.Parent = MainFrame
+
+        local CloseBtn = Instance.new("TextButton")
+        CloseBtn.Size = UDim2.new(0, 30, 0, 30)
+        CloseBtn.Position = UDim2.new(1, -30, 0, 0)
+        CloseBtn.Text = "X"
+        CloseBtn.TextColor3 = Color3.new(1, 1, 1)
+        CloseBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+        CloseBtn.BorderSizePixel = 0
+        CloseBtn.Font = Enum.Font.GothamBold
+        CloseBtn.TextSize = 18
+        CloseBtn.Parent = MainFrame
+        
+        CloseBtn.MouseButton1Click:Connect(function()
+            ScreenGui:Destroy()
+            getgenv().FishmanScriptServer = nil
+            print("[Fishman] Setup Closed & Cleaned Up.")
+        end)
 
         local CodeBox = Instance.new("TextBox")
         CodeBox.Size = UDim2.new(0.9, 0, 0, 40)
@@ -286,6 +303,25 @@ local function RunFishmanSetup()
                 remoteEvent:FireServer(unpack(confirmArgs))
             end)
         end)
+    else
+        if GlobalMem.FishmanPSCode == "qj1ttW4JG1" then
+            print("[Fishman] Detected server qj1ttW4JG1! Executing usedscriptopv2.lua in 3 seconds...")
+            task.spawn(function()
+                task.wait(3)
+                local success, err = pcall(function()
+                    if isfile and readfile and isfile("usedscriptopv2.lua") then
+                        loadstring(readfile("usedscriptopv2.lua"))()
+                    elseif loadfile then
+                        loadfile("usedscriptopv2.lua")()
+                    else
+                        warn("[Fishman] Could not find or execute usedscriptopv2.lua")
+                    end
+                end)
+                if not success then
+                    warn("[Fishman] Error executing usedscriptopv2.lua:", err)
+                end
+            end)
+        end
     end
 end
 
