@@ -60,6 +60,7 @@ pcall(function()
             if GlobalMem.FishmanPSCode == nil then GlobalMem.FishmanPSCode = data.FishmanPSCode end
             if GlobalMem.FishmanDestination == nil then GlobalMem.FishmanDestination = data.FishmanDestination end
             if GlobalMem.FishmanAutoTeleport == nil then GlobalMem.FishmanAutoTeleport = data.FishmanAutoTeleport end
+            if GlobalMem.FishmanAutoJoin == nil then GlobalMem.FishmanAutoJoin = data.FishmanAutoJoin end
             print("[Fishman] Loaded Config from file.")
         end
     end
@@ -68,6 +69,7 @@ end)
 GlobalMem.FishmanPSCode = GlobalMem.FishmanPSCode or "qj1ttW4JG1"
 GlobalMem.FishmanDestination = GlobalMem.FishmanDestination or "fishHub" 
 GlobalMem.FishmanAutoTeleport = GlobalMem.FishmanAutoTeleport or false 
+GlobalMem.FishmanAutoJoin = GlobalMem.FishmanAutoJoin or false
 
 local function SaveConfig()
     pcall(function()
@@ -75,7 +77,8 @@ local function SaveConfig()
             local data = {
                 FishmanPSCode = GlobalMem.FishmanPSCode,
                 FishmanDestination = GlobalMem.FishmanDestination,
-                FishmanAutoTeleport = GlobalMem.FishmanAutoTeleport
+                FishmanAutoTeleport = GlobalMem.FishmanAutoTeleport,
+                FishmanAutoJoin = GlobalMem.FishmanAutoJoin
             }
             writefile(configFileName, HttpService:JSONEncode(data))
         end
@@ -738,8 +741,17 @@ if isLobby then
         end
     })
 
+    Tabs.Teleport:AddToggle("AutoJoin", {
+        Title = "Auto-Join on Load",
+        Default = GlobalMem.FishmanAutoJoin,
+        Callback = function(Value)
+            GlobalMem.FishmanAutoJoin = Value
+            SaveConfig()
+        end
+    })
+
     -- Check if we should automatically route
-    if GlobalMem.FishmanAutoTeleport then
+    if GlobalMem.FishmanAutoTeleport or (GlobalMem.FishmanAutoJoin and GlobalMem.FishmanPSCode ~= "") then
         Fluent:Notify({ Title = "Auto-Teleporting", Content = "Routing to destination...", Duration = 3 })
         GlobalMem.FishmanAutoTeleport = false
         SaveConfig()
