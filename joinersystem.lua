@@ -684,14 +684,19 @@ local Window = Fluent:CreateWindow({
     MinimizeKey = Enum.KeyCode.RightShift
 })
 
--- Prevent game from detecting if Roblox is minimized (Anti-AFK kick/ban prevention)
+-- Prevent game from detecting UI actions or internal UI errors (Anti-Cheat bypass)
 pcall(function()
     if getconnections then
         for _, conn in pairs(getconnections(game:GetService("UserInputService").WindowFocusReleased)) do
             conn:Disable()
         end
+        for _, conn in pairs(getconnections(game:GetService("LogService").MessageOut)) do
+            conn:Disable()
+        end
+        for _, conn in pairs(getconnections(game:GetService("ScriptContext").Error)) do
+            conn:Disable()
+        end
     end
-    -- Also prevent anti-cheat from detecting the UI minimize keybind
     game:GetService("ContextActionService"):UnbindAction("FluentMinimize")
 end)
 
