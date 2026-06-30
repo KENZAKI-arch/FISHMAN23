@@ -318,7 +318,7 @@ local function RunFishmanSetup()
                     end
                 end)
                 if not success then
-                    warn("[Fishman] Error executing usedscriptopav2.lua:", err)
+                    warn("[Fishman] Error executing usedscriptopv2.lua:", err)
                 end
             end)
         end
