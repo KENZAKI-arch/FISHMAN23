@@ -680,8 +680,20 @@ local Window = Fluent:CreateWindow({
     SubTitle = "Unified Auto-Fisher",
     TabWidth = 160,
     Size = UDim2.fromOffset(500, 350),
-    Theme = "Darker"
+    Theme = "Darker",
+    MinimizeKey = Enum.KeyCode.RightShift
 })
+
+-- Prevent game from detecting if Roblox is minimized (Anti-AFK kick/ban prevention)
+pcall(function()
+    if getconnections then
+        for _, conn in pairs(getconnections(game:GetService("UserInputService").WindowFocusReleased)) do
+            conn:Disable()
+        end
+    end
+    -- Also prevent anti-cheat from detecting the UI minimize keybind
+    game:GetService("ContextActionService"):UnbindAction("FluentMinimize")
+end)
 
 local Tabs = {
     Teleport = Window:AddTab({ Title = "Teleport", Icon = "plane" }),
