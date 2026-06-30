@@ -820,7 +820,7 @@ local Tabs = {
         if isLobby and Value then Fluent:Notify({ Title = "Error", Content = "Cannot craft in Lobby!", Duration = 3 }); Tabs.Fishing:SetValue("T_Craft", false); return end
         Model.State.autoCraft = Value 
     end })
-    Tabs.Fishing:AddToggle("T_AFK", { Title = "AFK Mode (Auto-start after 10s)", Default = false, Callback = function(Value) 
+    Tabs.Fishing:AddToggle("T_AFK", { Title = "AFK Mode (Auto-start after 10s)", Default = not isLobby, Callback = function(Value) 
         if isLobby and Value then Fluent:Notify({ Title = "Error", Content = "AFK Mode requires Fishing server!", Duration = 3 }); Tabs.Fishing:SetValue("T_AFK", false); return end
         isAFKModeActive = Value; secondsSinceLastInput = 0 
     end })
