@@ -45,13 +45,13 @@ View.Build(function(isFarming)
 end)
 
 -- 2. Hook into Roblox Engine Loops
-RunService.Stepped:Connect(function()
+local steppedConn = RunService.Stepped:Connect(function()
     if Model.State.isAutoFarming and not Model.State.isRecovering and not Model.State.isQuesting then
         Model.ApplyNoclip()
     end
 end)
 
-RunService.Heartbeat:Connect(function(deltaTime)
+local heartbeatConn = RunService.Heartbeat:Connect(function(deltaTime)
     if not Model.State.isAutoFarming then return end
 
     local char = Players.LocalPlayer.Character
@@ -108,11 +108,39 @@ RunService.Heartbeat:Connect(function(deltaTime)
 end)
 
 -- 3. Background Quest Loop
+local questLoopActive = true
 task.spawn(function()
-    while true do
+    while questLoopActive do
         task.wait(50)
         if Model.State.isAutoFarming and not Model.State.isRecovering and not Model.State.isQuesting then 
             Model.GrabQuest()
         end
     end
 end)
+
+-- 4. Global Stop Hook
+getgenv().StopAutofarm = function()
+    -- Stop all state loops
+    Model.State.isAutoFarming = false
+    Model.State.isRecovering = false
+    Model.State.isQuesting = false
+    questLoopActive = false
+    _G.CancelAutoTravel = true
+    
+    Model.ResetPhysics()
+    
+    -- Disconnect engine hooks
+    if steppedConn then steppedConn:Disconnect() end
+    if heartbeatConn then heartbeatConn:Disconnect() end
+    
+    -- Destroy the Autofarm UI
+    local coreGui = game:GetService("CoreGui"):FindFirstChild("AutoFarmGui")
+    if coreGui then coreGui:Destroy() end
+    
+    local pGui = Players.LocalPlayer:FindFirstChild("PlayerGui")
+    if pGui and pGui:FindFirstChild("AutoFarmGui") then 
+        pGui.AutoFarmGui:Destroy() 
+    end
+    
+    print("[Controller] Autofarm forcefully stopped and UI destroyed.")
+end
