@@ -15,6 +15,7 @@ end
 local _running = true
 local _connections = {}
 local Tabs
+local Fluent
 
 local function addConn(conn)
     table.insert(_connections, conn)
@@ -589,11 +590,11 @@ if not isLobby then
             if isAFKModeActive then
                 secondsSinceLastInput += 1
                 if secondsSinceLastInput == 10 then
-                    if Tabs and Tabs.Fishing then
-                        Tabs.Fishing:SetValue("T_Buy", true)
-                        Tabs.Fishing:SetValue("T_Sell", true)
-                        Tabs.Fishing:SetValue("T_Craft", true)
-                        Tabs.Fishing:SetValue("T_Travel", true)
+                    if Fluent and Fluent.Options then
+                        if Fluent.Options.T_Buy then Fluent.Options.T_Buy:SetValue(true) end
+                        if Fluent.Options.T_Sell then Fluent.Options.T_Sell:SetValue(true) end
+                        if Fluent.Options.T_Craft then Fluent.Options.T_Craft:SetValue(true) end
+                        if Fluent.Options.T_Travel then Fluent.Options.T_Travel:SetValue(true) end
                     else
                         Model.State.autoBuy = true
                         Model.State.autoSell = true
@@ -682,7 +683,7 @@ env.Fishman_StopPrevious = ShutdownEverything
 -- ======================================================================
 -- 🎨 FLUENT UI INTEGRATION
 -- ======================================================================
-local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
+Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
 local Window = Fluent:CreateWindow({
     Title = "🐟 Fishman Hub",
     SubTitle = "Unified Auto-Fisher",
@@ -809,27 +810,27 @@ Tabs = {
 
 -- [FISHING TAB]
     Tabs.Fishing:AddToggle("T_Fish", { Title = "Auto Fish", Default = false, Callback = function(Value) 
-        if isLobby and Value then Fluent:Notify({ Title = "Error", Content = "Cannot fish in Lobby!", Duration = 3 }); Tabs.Fishing:SetValue("T_Fish", false); return end
+        if isLobby and Value then Fluent:Notify({ Title = "Error", Content = "Cannot fish in Lobby!", Duration = 3 }); Fluent.Options.T_Fish:SetValue(false); return end
         Model.State.isFishing = Value 
     end })
     Tabs.Fishing:AddToggle("T_Buy", { Title = "Auto Buy Bait", Default = false, Callback = function(Value) 
-        if isLobby and Value then Fluent:Notify({ Title = "Error", Content = "Cannot buy in Lobby!", Duration = 3 }); Tabs.Fishing:SetValue("T_Buy", false); return end
+        if isLobby and Value then Fluent:Notify({ Title = "Error", Content = "Cannot buy in Lobby!", Duration = 3 }); Fluent.Options.T_Buy:SetValue(false); return end
         Model.State.autoBuy = Value; if Value then Model.CheckInventory() end 
     end })
     Tabs.Fishing:AddToggle("T_Sell", { Title = "Auto Sell Fish", Default = false, Callback = function(Value) 
-        if isLobby and Value then Fluent:Notify({ Title = "Error", Content = "Cannot sell in Lobby!", Duration = 3 }); Tabs.Fishing:SetValue("T_Sell", false); return end
+        if isLobby and Value then Fluent:Notify({ Title = "Error", Content = "Cannot sell in Lobby!", Duration = 3 }); Fluent.Options.T_Sell:SetValue(false); return end
         Model.State.autoSell = Value; if Value then Model.CheckInventory() end 
     end })
     Tabs.Fishing:AddToggle("T_Travel", { Title = "Travel to Bait", Default = false, Callback = function(Value) 
-        if isLobby and Value then Fluent:Notify({ Title = "Error", Content = "Cannot travel in Lobby!", Duration = 3 }); Tabs.Fishing:SetValue("T_Travel", false); return end
+        if isLobby and Value then Fluent:Notify({ Title = "Error", Content = "Cannot travel in Lobby!", Duration = 3 }); Fluent.Options.T_Travel:SetValue(false); return end
         if Value then Model.StartTraveling() else Model.State.isAutoTraveling = false; Model.DisableFlight(); Model.State.travelMessage = "" end 
     end })
     Tabs.Fishing:AddToggle("T_Craft", { Title = "Auto Craft Legendary Bait", Default = false, Callback = function(Value) 
-        if isLobby and Value then Fluent:Notify({ Title = "Error", Content = "Cannot craft in Lobby!", Duration = 3 }); Tabs.Fishing:SetValue("T_Craft", false); return end
+        if isLobby and Value then Fluent:Notify({ Title = "Error", Content = "Cannot craft in Lobby!", Duration = 3 }); Fluent.Options.T_Craft:SetValue(false); return end
         Model.State.autoCraft = Value 
     end })
     Tabs.Fishing:AddToggle("T_AFK", { Title = "AFK Mode (Auto-start after 10s)", Default = not isLobby, Callback = function(Value) 
-        if isLobby and Value then Fluent:Notify({ Title = "Error", Content = "AFK Mode requires Fishing server!", Duration = 3 }); Tabs.Fishing:SetValue("T_AFK", false); return end
+        if isLobby and Value then Fluent:Notify({ Title = "Error", Content = "AFK Mode requires Fishing server!", Duration = 3 }); Fluent.Options.T_AFK:SetValue(false); return end
         isAFKModeActive = Value; secondsSinceLastInput = 0 
     end })
 
@@ -849,7 +850,7 @@ Tabs = {
                 StatusPara:SetDesc("Status: " .. Model.State.travelMessage)
                 if Model.State.travelMessage == "Arrived at Bait" and Model.State.waitingForArrivalToFish then
                     Model.State.waitingForArrivalToFish = false
-                    Tabs.Fishing:SetValue("T_Fish", true) -- Automatically turn on fishing toggle in UI
+                    if Fluent and Fluent.Options and Fluent.Options.T_Fish then Fluent.Options.T_Fish:SetValue(true) end -- Automatically turn on fishing toggle in UI
                 end
             else
                 StatusPara:SetDesc(#statusParts > 0 and ("Active: " .. table.concat(statusParts, " ")) or "Idle")
