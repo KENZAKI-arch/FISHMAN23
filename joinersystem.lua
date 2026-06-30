@@ -744,25 +744,23 @@ local Tabs = {
         end
     })
 
-    Tabs.Teleport:AddToggle("AutoJoin", {
-        Title = "Auto-Join on Load",
-        Default = GlobalMem.FishmanAutoJoin,
-        Callback = function(Value)
-            GlobalMem.FishmanAutoJoin = Value
-            SaveConfig()
-        end
-    })
-
     -- Check if we should automatically route
-    if isLobby and (GlobalMem.FishmanAutoTeleport or (GlobalMem.FishmanAutoJoin and GlobalMem.FishmanPSCode ~= "")) then
-        Fluent:Notify({ Title = "Auto-Teleporting", Content = "Routing to destination...", Duration = 3 })
-        GlobalMem.FishmanAutoTeleport = false
-        SaveConfig()
+    if isLobby then
+        local destCode = GlobalMem.FishmanPSCode
+        local destPlace = GlobalMem.FishmanDestination
+        
+        if GlobalMem.FishmanAutoTeleport then
+            Fluent:Notify({ Title = "Auto-Teleporting", Content = "Routing to chosen destination in 3s...", Duration = 3 })
+            GlobalMem.FishmanAutoTeleport = false
+            SaveConfig()
+        else
+            Fluent:Notify({ Title = "Base of Operations", Content = "Routing to Trade Hub in 3s...", Duration = 3 })
+            destCode = "qj1ttW4JG1"
+            destPlace = "tradeHub"
+        end
         
         task.spawn(function()
             task.wait(3)
-            local destCode = GlobalMem.FishmanPSCode
-            local destPlace = GlobalMem.FishmanDestination
             
             if destCode ~= "" then
                 task.spawn(function()
