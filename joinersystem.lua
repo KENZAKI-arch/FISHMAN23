@@ -664,7 +664,6 @@ local function ShutdownEverything()
     disconnectAll()
     if not isLobby then
         Model.DisableFlight()
-        clearAnimationCache()
     end
     print("[Fishman] Successfully shut down.")
 end
