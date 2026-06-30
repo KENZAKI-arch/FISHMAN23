@@ -889,6 +889,25 @@ Tabs.Autofarm:AddButton({
     end
 })
 
+Tabs.Autofarm:AddButton({
+    Title = "Stop & Clear Autofarm Queue",
+    Description = "Tries to halt the autofarm and wipes the teleport queue.",
+    Callback = function()
+        getgenv().FishmanAutoFarmRunning = false
+        
+        -- Attempt to clear the exploit teleport queue so it stops following you
+        local clear_queue = clear_teleport_queue or (syn and syn.clear_teleport_queue) or (fluxus and fluxus.clear_teleport_queue)
+        if clear_queue then
+            pcall(clear_queue)
+        end
+        
+        -- Attempt to call any generic stop functions from Controller.lua if they exist
+        if typeof(getgenv().StopAutofarm) == "function" then pcall(getgenv().StopAutofarm) end
+        
+        Fluent:Notify({ Title = "Autofarm Halted", Content = "Queue cleared. If loops are still running, please manually rejoin.", Duration = 5 })
+    end
+})
+
 -- [SETTINGS TAB]
 Tabs.Settings:AddButton({
     Title = "Destroy UI & Shutdown",
