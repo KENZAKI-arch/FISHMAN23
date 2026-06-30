@@ -665,6 +665,7 @@ local function ShutdownEverything()
     if not isLobby then
         Model.DisableFlight()
     end
+    env.FishmanScriptServer = nil
     print("[Fishman] Successfully shut down.")
 end
 env.Fishman_StopPrevious = ShutdownEverything
