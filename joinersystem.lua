@@ -1,291 +1,755 @@
-if getgenv().FishmanScriptServer == game.JobId then 
+-- ======================================================================
+-- 🛑 GLOBAL SETUP & DUPLICATE PREVENTION
+-- ======================================================================
+local env = getgenv and getgenv() or shared
+if env.FishmanScriptServer == game.JobId then 
     print("[Fishman] Script is already running in this server!")
     return 
 end
-getgenv().FishmanScriptServer = game.JobId
+env.FishmanScriptServer = game.JobId
 
-local function RunFishmanSetup()
-    print("--- [Fishman] Script Starting ---")
+if env.Fishman_StopPrevious then
+    pcall(env.Fishman_StopPrevious)
+end
 
-    -- 1. Safely wait for the game to load
-    if not game:IsLoaded() then 
-        game.Loaded:Wait() 
+local _running = true
+local _connections = {}
+
+local function addConn(conn)
+    table.insert(_connections, conn)
+    return conn
+end
+
+local function disconnectAll()
+    for _, c in ipairs(_connections) do
+        if c and c.Connected then c:Disconnect() end
     end
+    table.clear(_connections)
+end
 
-    local Players = game:GetService("Players")
-    local TeleportService = game:GetService("TeleportService")
-    local ReplicatedStorage = game:GetService("ReplicatedStorage")
-    local UserInputService = game:GetService("UserInputService")
-    
-    local CoreGui
-    pcall(function() CoreGui = game:GetService("CoreGui") end)
+print("--- [Fishman] Unified Script Starting ---")
+if not game:IsLoaded() then game.Loaded:Wait() end
 
-    local LocalPlayer = Players.LocalPlayer
-    while not LocalPlayer do 
-        task.wait(3)
-        LocalPlayer = Players.LocalPlayer 
+local Players = game:GetService("Players")
+local TeleportService = game:GetService("TeleportService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local HttpService = game:GetService("HttpService")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local LocalPlayer = Players.LocalPlayer
+
+while not LocalPlayer do 
+    task.wait(1)
+    LocalPlayer = Players.LocalPlayer 
+end
+
+local targetPlaceId = 1730877806
+local isLobby = (game.PlaceId == targetPlaceId and game.PrivateServerId == "")
+local GlobalMem = env
+
+-- ======================================================================
+-- ⚙️ CONFIGURATION SYSTEM
+-- ======================================================================
+local configFileName = "FishmanConfig_" .. tostring(LocalPlayer.UserId) .. ".json"
+
+pcall(function()
+    if isfile and readfile and isfile(configFileName) then
+        local data = HttpService:JSONDecode(readfile(configFileName))
+        if data then
+            if GlobalMem.FishmanPSCode == nil then GlobalMem.FishmanPSCode = data.FishmanPSCode end
+            if GlobalMem.FishmanDestination == nil then GlobalMem.FishmanDestination = data.FishmanDestination end
+            if GlobalMem.FishmanAutoTeleport == nil then GlobalMem.FishmanAutoTeleport = data.FishmanAutoTeleport end
+            print("[Fishman] Loaded Config from file.")
+        end
     end
+end)
 
-    local targetPlaceId = 1730877806
+GlobalMem.FishmanPSCode = GlobalMem.FishmanPSCode or "qj1ttW4JG1"
+GlobalMem.FishmanDestination = GlobalMem.FishmanDestination or "fishHub" 
+GlobalMem.FishmanAutoTeleport = GlobalMem.FishmanAutoTeleport or false 
 
-    -- 2. Find a safe place to put the UI and folders
-    local GuiFolder
-    pcall(function() GuiFolder = (gethui and gethui()) end)
-    if not GuiFolder and CoreGui then
-        pcall(function() GuiFolder = CoreGui end)
-    end
-    if not GuiFolder then
-        print("[Warning] CoreGui blocked. Falling back to PlayerGui.")
-        GuiFolder = LocalPlayer:WaitForChild("PlayerGui")
-    end
-
-    -- 3. Setup Global Memory
-    local GlobalMem = getgenv()
-    
-    local configFileName = "FishmanConfig_" .. tostring(LocalPlayer.UserId) .. ".json"
-
+local function SaveConfig()
     pcall(function()
-        if isfile and readfile and isfile(configFileName) then
-            local HttpService = game:GetService("HttpService")
-            local data = HttpService:JSONDecode(readfile(configFileName))
-            if data then
-                if GlobalMem.FishmanPSCode == nil then GlobalMem.FishmanPSCode = data.FishmanPSCode end
-                if GlobalMem.FishmanDestination == nil then GlobalMem.FishmanDestination = data.FishmanDestination end
-                if GlobalMem.FishmanAutoTeleport == nil then GlobalMem.FishmanAutoTeleport = data.FishmanAutoTeleport end
-                print("[Fishman] Loaded Config from file.")
+        if writefile then
+            local data = {
+                FishmanPSCode = GlobalMem.FishmanPSCode,
+                FishmanDestination = GlobalMem.FishmanDestination,
+                FishmanAutoTeleport = GlobalMem.FishmanAutoTeleport
+            }
+            writefile(configFileName, HttpService:JSONEncode(data))
+        end
+    end)
+end
+
+-- ======================================================================
+-- 🚀 TELEPORT MEMORY INJECTION
+-- ======================================================================
+local myScriptURL = "https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/joinersystem.lua"
+local qot = queue_on_teleport or (syn and syn.queue_on_teleport) or (fluxus and fluxus.queue_on_teleport)
+
+local function UpdateTeleportMemory(willAutoTeleport)
+    GlobalMem.FishmanAutoTeleport = willAutoTeleport
+    SaveConfig()
+    
+    if not qot then return end
+    
+    local command = [[
+        pcall(function()
+            getgenv().FishmanPSCode = "]] .. GlobalMem.FishmanPSCode .. [["
+            getgenv().FishmanDestination = "]] .. GlobalMem.FishmanDestination .. [["
+            getgenv().FishmanAutoTeleport = ]] .. tostring(willAutoTeleport) .. [[
+            
+            task.spawn(function()
+                task.wait(15)
+                if getgenv().FishmanScriptServer ~= game.JobId then
+                    loadstring(game:HttpGet("]] .. myScriptURL .. [["))()
+                end
+            end)
+        end)
+    ]]
+    pcall(function() qot(command) end)
+end
+
+-- ======================================================================
+-- 🎣 FISHING ENGINE CORE (Only initialized if NOT in lobby)
+-- ======================================================================
+local Model = { State = {} }
+local shopEvent, buyableItems, sellEvent, questEvent, craftingRemote, Remote
+local statsFolder, inventoryObj, peliObject
+local cachedBaitItems = nil
+local loadedAnimations = {}
+local isAFKModeActive = false
+local secondsSinceLastInput = 0
+local craftHeartbeatConn = nil
+local craftFlyTarget = nil
+
+if not isLobby then
+    shopEvent      = ReplicatedStorage:WaitForChild("Events", 9e9):WaitForChild("Shop", 9e9)
+    buyableItems   = workspace:WaitForChild("BuyableItems", 9e9)
+    sellEvent      = ReplicatedStorage:WaitForChild("FishingShopRemote", 9e9)
+    questEvent     = ReplicatedStorage:WaitForChild("Events", 9e9):WaitForChild("Quest", 9e9)
+    craftingRemote = ReplicatedStorage:WaitForChild("CraftingRemote", 9e9)
+    Remote         = ReplicatedStorage:WaitForChild("Fishing", 9e9):WaitForChild("Remotes", 9e9):WaitForChild("Action", 9e9)
+    statsFolder    = ReplicatedStorage:WaitForChild("Stats" .. LocalPlayer.Name, 9e9)
+    inventoryObj   = statsFolder:WaitForChild("Inventory", 9e9):WaitForChild("Inventory", 9e9)
+    peliObject     = statsFolder:WaitForChild("Stats", 9e9):WaitForChild("Peli", 9e9)
+    
+    Model.State = {
+        isFishing             = false,
+        autoBuy               = false,
+        autoSell              = false,
+        isBuying              = false,
+        isAutoTraveling       = false,
+        travelStage           = 1,
+        waypoint1             = Vector3.new(406.69, 48.32, -32.21),
+        waypoint2             = Vector3.new(174.10, 10.32, -48.09),
+        finalTarget           = Vector3.new(101.53, 9.31, -55.77),
+        travelMessage         = "",
+        autoCraft             = false,
+        isCurrentlyCrafting   = false,
+        waitingForArrivalToFish = false,
+        isCraftFlying         = false,
+    }
+    
+    local LEGENDARY_FISHES  = { "Anglerfish", "Golden Ribbon Angelfish", "Golden Polka Puffer", "Golden Tigerfin" }
+    local MAX_PELI            = 1000000
+    local BAIT_NAME           = "Common Fish Bait"
+    local MIN_BAIT            = 10
+    local BUY_AMOUNT          = 290
+    local BAIT_SEARCH_RADIUS  = 25
+    local THROW_ANIMATION_ID  = "rbxassetid://140322334422224"
+    local REEL_ANIMATION_ID   = "rbxassetid://136623058564703"
+    local fishToSell = { "Crimson Snapper", "Exotic Tigerfin", "Fangfish", "Zebra Ribbon Angelfish", "Blue-Lip Grouper", "Tigerfin", "Crimson Polka Puffer", "Common Fish", "Seaweed", "Old Boot", "Tin Can" }
+    local VALID_RODS = { "Devil Fruit Rod", "Merchants Banana Rod", "Lovestruck Rod", "Fishing Rod" }
+    
+    local function clearAnimationCache()
+        for _, track in pairs(loadedAnimations) do pcall(function() track:Stop(0) end) end
+        table.clear(loadedAnimations)
+    end
+
+    local function playAnimation(animationId)
+        local character = LocalPlayer.Character
+        if not character then return nil end
+        local humanoid = character:FindFirstChildOfClass("Humanoid")
+        if not humanoid then return nil end
+        local animator = humanoid:FindFirstChildOfClass("Animator") or Instance.new("Animator", humanoid)
+
+        local track = loadedAnimations[animationId]
+        if track and not track.IsPlaying and not pcall(function() return track.Length end) then
+            loadedAnimations[animationId] = nil
+            track = nil
+        end
+
+        if not track then
+            local anim = Instance.new("Animation")
+            anim.AnimationId = animationId
+            track = animator:LoadAnimation(anim)
+            track.Priority = Enum.AnimationPriority.Action
+            loadedAnimations[animationId] = track
+        end
+
+        track:Play(0.1)
+        return track
+    end
+    
+    -- FLIGHT & MOVEMENT --
+    function Model.EnableFlight()
+        local character = LocalPlayer.Character
+        if not character then return end
+        local rootPart = character:FindFirstChild("HumanoidRootPart")
+        local humanoid = character:FindFirstChild("Humanoid")
+        if rootPart and humanoid then
+            humanoid.PlatformStand = true
+            local bg = rootPart:FindFirstChild("AutoTravel_Gyro") or Instance.new("BodyGyro")
+            bg.Name = "AutoTravel_Gyro"
+            bg.P = 9e4
+            bg.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
+            bg.CFrame = rootPart.CFrame
+            bg.Parent = rootPart
+            local bv = rootPart:FindFirstChild("AutoTravel_Velocity") or Instance.new("BodyVelocity")
+            bv.Name = "AutoTravel_Velocity"
+            bv.Velocity = Vector3.new(0, 0, 0)
+            bv.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+            bv.Parent = rootPart
+        end
+    end
+
+    function Model.DisableFlight()
+        local character = LocalPlayer.Character
+        if not character then return end
+        local rootPart = character:FindFirstChild("HumanoidRootPart")
+        local humanoid = character:FindFirstChild("Humanoid")
+        if rootPart then
+            local bg = rootPart:FindFirstChild("AutoTravel_Gyro")
+            if bg then bg:Destroy() end
+            local bv = rootPart:FindFirstChild("AutoTravel_Velocity")
+            if bv then bv:Destroy() end
+        end
+        if humanoid then humanoid.PlatformStand = false end
+    end
+    
+    function Model.HandleMovement(deltaTime)
+        local rootPart = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if not rootPart then return end
+        local cur = rootPart.Position
+        
+        local tgt
+        if Model.State.travelStage == 1 then tgt = Model.State.waypoint1
+        elseif Model.State.travelStage == 2 then tgt = Model.State.waypoint2
+        else tgt = Model.State.finalTarget end
+        
+        local tgtY = tgt.Y
+        local nextPoint
+        local goingUp = (tgtY > cur.Y)
+
+        if goingUp and math.abs(cur.Y - tgtY) > 1 then nextPoint = Vector3.new(cur.X, tgtY, cur.Z)
+        elseif math.abs(cur.X - tgt.X) > 1 then nextPoint = Vector3.new(tgt.X, cur.Y, cur.Z)
+        elseif math.abs(cur.Z - tgt.Z) > 1 then nextPoint = Vector3.new(tgt.X, cur.Y, tgt.Z)
+        elseif not goingUp and math.abs(cur.Y - tgtY) > 1 then nextPoint = Vector3.new(tgt.X, tgtY, tgt.Z)
+        else
+            if Model.State.travelStage == 1 then
+                Model.State.travelStage = 2
+                local humanoid = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+                if humanoid then humanoid.PlatformStand = false end
+                return
+            elseif Model.State.travelStage == 2 then
+                Model.State.travelStage = 3
+                return
+            end
+            
+            Model.State.isAutoTraveling = false
+            Model.DisableFlight()
+            Model.State.travelMessage = "Arrived at Bait"
+            return
+        end
+
+        local newX, newZ = cur.X, cur.Z
+        local horizNext = Vector3.new(nextPoint.X, cur.Y, nextPoint.Z)
+        local horizDist = (Vector3.new(cur.X, 0, cur.Z) - Vector3.new(nextPoint.X, 0, nextPoint.Z)).Magnitude
+        
+        if horizDist > 0 then
+            local alpha = math.clamp((90 * deltaTime) / horizDist, 0, 1)
+            local hLerp = cur:Lerp(horizNext, alpha)
+            newX, newZ = hLerp.X, hLerp.Z
+        end
+
+        local newY = cur.Y
+        if Model.State.travelStage > 1 and not goingUp then
+            local params = RaycastParams.new()
+            params.FilterDescendantsInstances = {LocalPlayer.Character}
+            params.FilterType = Enum.RaycastFilterType.Exclude
+
+            local floorY = tgtY
+            local rayStart = Vector3.new(newX, cur.Y + 10, newZ)
+            local remainingDist = 500
+            
+            while remainingDist > 0 do
+                local res = workspace:Raycast(rayStart, Vector3.new(0, -remainingDist, 0), params)
+                if res then
+                    if res.Instance.CanCollide and res.Instance.Anchored then
+                        floorY = math.max(tgtY, res.Position.Y + 3.5)
+                        break
+                    else
+                        local advance = (rayStart - res.Position).Magnitude + 0.1
+                        rayStart = res.Position - Vector3.new(0, 0.1, 0)
+                        remainingDist = remainingDist - advance
+                    end
+                else
+                    break
+                end
+            end
+
+            if cur.Y > floorY then
+                newY = cur.Y - (150 * deltaTime)
+                if newY < floorY then newY = floorY end
+            else
+                newY = floorY
+            end
+        else
+            local yDist = math.abs(nextPoint.Y - cur.Y)
+            if yDist > 0 then
+                local alpha = math.clamp((90 * deltaTime) / yDist, 0, 1)
+                newY = cur.Y + (nextPoint.Y - cur.Y) * alpha
+            end
+        end
+
+        rootPart.CFrame = CFrame.new(newX, newY, newZ) * rootPart.CFrame.Rotation
+        rootPart.AssemblyLinearVelocity = Vector3.zero
+        rootPart.AssemblyAngularVelocity = Vector3.zero
+    end
+    
+    function Model.StartTraveling()
+        local char = LocalPlayer.Character
+        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+        if not hrp then return end
+        
+        local pos = hrp.Position
+        local d1 = (pos - Model.State.waypoint1).Magnitude
+        local d2 = (pos - Model.State.waypoint2).Magnitude
+        local d3 = (pos - Model.State.finalTarget).Magnitude
+
+        if d3 < d2 and d3 < d1 then Model.State.travelStage = 3
+        elseif d2 < d1 then Model.State.travelStage = 2
+        else Model.State.travelStage = 1 end
+
+        Model.State.travelMessage = "Traveling..."
+        Model.State.isAutoTraveling = true
+        Model.EnableFlight()
+    end
+    
+    -- CRAFTING --
+    local function StartCraftFlight()
+        if craftHeartbeatConn then craftHeartbeatConn:Disconnect() end
+        craftHeartbeatConn = RunService.Heartbeat:Connect(function(dt)
+            if not Model.State.isCraftFlying or not craftFlyTarget then return end
+            local rootPart = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+            if not rootPart then return end
+            
+            local cur = rootPart.Position
+            local tgt = craftFlyTarget
+            local nextPoint
+            local goingUp = (tgt.Y > cur.Y)
+            
+            if goingUp and math.abs(cur.Y - tgt.Y) > 1 then nextPoint = Vector3.new(cur.X, tgt.Y, cur.Z)
+            elseif math.abs(cur.X - tgt.X) > 1 then nextPoint = Vector3.new(tgt.X, cur.Y, cur.Z)
+            elseif math.abs(cur.Z - tgt.Z) > 1 then nextPoint = Vector3.new(tgt.X, cur.Y, tgt.Z)
+            elseif not goingUp and math.abs(cur.Y - tgt.Y) > 1 then nextPoint = Vector3.new(tgt.X, tgt.Y, tgt.Z)
+            else Model.State.isCraftFlying = false; return end
+            
+            local dist = (cur - nextPoint).Magnitude
+            if dist > 0 then
+                rootPart.CFrame = rootPart.CFrame:Lerp(CFrame.new(nextPoint) * rootPart.CFrame.Rotation, math.clamp((30 * dt) / dist, 0, 1))
+            end
+            rootPart.AssemblyLinearVelocity = Vector3.zero
+            rootPart.AssemblyAngularVelocity = Vector3.zero
+        end)
+    end
+
+    local function StopCraftFlight()
+        if craftHeartbeatConn then craftHeartbeatConn:Disconnect(); craftHeartbeatConn = nil end
+        Model.State.isCraftFlying = false
+    end
+    
+    local function CraftFlyToAndWait(targetVector)
+        craftFlyTarget = targetVector
+        Model.State.isCraftFlying = true
+        local waited = 0 
+        while Model.State.isCraftFlying and waited < 20 do
+            if not Model.State.autoCraft then break end
+            task.wait(0.1); waited += 0.1
+        end
+        Model.State.isCraftFlying = false
+    end
+
+    local function CraftFlyPath(pathTable)
+        StartCraftFlight()
+        for _, targetPos in ipairs(pathTable) do CraftFlyToAndWait(targetPos) end
+        StopCraftFlight()
+    end
+    
+    local function SafeInvokeQuest(chatState)
+        pcall(function() questEvent:InvokeServer({ [1] = "npcChat", [2] = chatState }) end)
+    end
+    
+    function Model.ExecuteLegendaryCraft(craftQueue)
+        local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if not hrp then return end
+        local originalPos = hrp.Position
+        
+        Model.State.isFishing = false
+        Model.State.autoBuy = false
+        Model.State.autoSell = false
+        Model.State.isAutoTraveling = false
+        Model.State.travelMessage = "Crafting..."
+        
+        Model.DisableFlight()
+        Model.UnequipRod()
+        task.wait(3)
+        if not Model.State.autoCraft then return end
+
+        Model.EnableFlight()
+        CraftFlyPath({ Vector3.new(162.85, originalPos.Y, -55.34) })
+        if not Model.State.autoCraft then Model.DisableFlight(); return end
+        
+        task.wait(0.5)
+        SafeInvokeQuest(true)
+        task.wait(0.5)
+        
+        for _, craftItem in ipairs(craftQueue) do
+            if not Model.State.autoCraft then break end
+            for i = 1, craftItem.Batches do
+                if not Model.State.autoCraft then break end
+                pcall(function()
+                    craftingRemote:InvokeServer({ Count = 40, ExtraData = { ["Legendary Fish"] = craftItem.Name }, Method = "Craft", BlueprintItem = "Legendary Fish Bait" })
+                end)
+                task.wait(0.5)
+            end
+        end
+        SafeInvokeQuest(false)
+        task.wait(0.3)
+        
+        if not Model.State.autoCraft then Model.DisableFlight(); return end
+        CraftFlyPath({ originalPos })
+        Model.DisableFlight()
+        
+        Model.EquipRod()
+        Model.StartTraveling()
+        Model.State.autoSell = true
+        Model.State.waitingForArrivalToFish = true 
+    end
+    
+    -- INVENTORY & FISHING --
+    function Model.EquipRod()
+        local character = LocalPlayer.Character
+        local humanoid  = character and character:FindFirstChildOfClass("Humanoid")
+        if not humanoid then return end
+        for _, tool in ipairs(character:GetChildren()) do
+            if tool:IsA("Tool") and table.find(VALID_RODS, tool.Name) then return end
+        end
+        local backpack = LocalPlayer:FindFirstChild("Backpack")
+        if backpack then
+            for _, tool in ipairs(backpack:GetChildren()) do
+                if tool:IsA("Tool") and table.find(VALID_RODS, tool.Name) then
+                    humanoid:EquipTool(tool)
+                    task.wait(0.2)
+                    return
+                end
+            end
+        end
+    end
+
+    function Model.UnequipRod()
+        local character = LocalPlayer.Character
+        if not character then return end
+        local humanoid  = character and character:FindFirstChildOfClass("Humanoid")
+        if not humanoid then return end
+        for _, tool in ipairs(character:GetChildren()) do
+            if tool:IsA("Tool") and table.find(VALID_RODS, tool.Name) then
+                humanoid:UnequipTools()
+                task.wait(0.2)
+                return
+            end
+        end
+    end
+    
+    function Model.BuyNearestBait()
+        if Model.State.isBuying then return end
+        Model.State.isBuying = true
+        local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+        local rootPart  = character:WaitForChild("HumanoidRootPart")
+        local nearest, nearestDist = nil, BAIT_SEARCH_RADIUS
+
+        if not cachedBaitItems then
+            cachedBaitItems = {}
+            for _, item in ipairs(buyableItems:GetChildren()) do
+                if string.find(string.lower(item.Name), "bait") then
+                    table.insert(cachedBaitItems, item)
+                end
+            end
+            addConn(buyableItems.ChildAdded:Connect(function(item)
+                if string.find(string.lower(item.Name), "bait") then
+                    table.insert(cachedBaitItems, item)
+                end
+            end))
+        end
+
+        for _, item in ipairs(cachedBaitItems) do
+            local pos = (item:IsA("Model") and item.PrimaryPart and item.PrimaryPart.Position) or (item:IsA("BasePart") and item.Position)
+            if pos then
+                local d = (rootPart.Position - pos).Magnitude
+                if d < nearestDist then nearestDist = d; nearest = item end
+            end
+        end
+
+        if nearest then
+            pcall(function()
+                if shopEvent:IsA("RemoteFunction") then shopEvent:InvokeServer(nearest, BUY_AMOUNT)
+                else shopEvent:FireServer(nearest, BUY_AMOUNT) end
+            end)
+        end
+        task.wait(0.5)
+        Model.State.isBuying = false
+    end
+
+    function Model.CheckInventory()
+        local ok, inventoryData = pcall(function() return HttpService:JSONDecode(inventoryObj.Value) end)
+        if not ok or not inventoryData then return end
+
+        if Model.State.autoBuy and not Model.State.isBuying then
+            if (inventoryData[BAIT_NAME] or 0) < MIN_BAIT then Model.BuyNearestBait() end
+        end
+
+        if Model.State.autoSell then
+            local currentPeli = peliObject and peliObject.Value or 0
+            if currentPeli < MAX_PELI then
+                for _, fishName in ipairs(fishToSell) do
+                    if (inventoryData[fishName] or 0) >= 1 then
+                        pcall(function() sellEvent:InvokeServer({ Fish = fishName, All = true, Method = "SellFish" }) end)
+                    end
+                end
+            end
+        end
+    end
+    
+    function Model.DoFishingCycle()
+        local currentPeli = peliObject and peliObject.Value or 0
+        local hookName = LocalPlayer.Name .. "'s hook"
+        if workspace.Effects:FindFirstChild(hookName) then task.wait(); return end
+        local character = LocalPlayer.Character
+        if not character then return end
+
+        Model.EquipRod()
+        task.wait()
+        local rootPart = character:FindFirstChild("HumanoidRootPart")
+        if not rootPart then return end
+
+        local throwTrack = playAnimation(THROW_ANIMATION_ID)
+        if throwTrack then task.delay(0.8, function() throwTrack:Stop(0.15) end) end
+
+        local throwGoal = rootPart.Position + (rootPart.CFrame.LookVector * 40) + Vector3.new(0, 2, 0)
+        pcall(function() Remote:InvokeServer({ Bait = BAIT_NAME, Action = "Throw", Goal = throwGoal }) end)
+
+        local hook = workspace.Effects:WaitForChild(hookName, 3)
+        if hook then
+            local maxWait, waited = 15, 0
+            while waited < maxWait do
+                if not Model.State.isFishing then return end
+                if hook:GetAttribute("Caught") == true then
+                    local diffMult = hook:GetAttribute("MoveMultiplier") or 1.0
+                    currentPeli = peliObject and peliObject.Value or 0
+                    local skipFish = (currentPeli >= MAX_PELI) and (diffMult < 1.2) or (diffMult < 0.9)
+
+                    if skipFish then
+                        pcall(function() Remote:InvokeServer({ Action = "Reel" }) end)
+                        task.wait()
+                        pcall(function() Remote:InvokeServer({ Action = "Cancel" }) end)
+                    else
+                        local reelTrack = playAnimation(REEL_ANIMATION_ID)
+                        task.wait(6)
+                        pcall(function() Remote:InvokeServer({ Action = "Reel" }) end)
+                        if reelTrack then reelTrack:Stop(0.2) end
+                    end
+                    break
+                end
+                task.wait(0.1); waited += 0.1
+            end
+        end
+        pcall(function() Remote:InvokeServer({ Action = "Cancel" }) end)
+        task.wait()
+    end
+    
+    -- BACKGROUND LOOPS --
+    task.spawn(function()
+        while _running and task.wait(1) do
+            if isAFKModeActive then
+                secondsSinceLastInput += 1
+                if secondsSinceLastInput == 10 then
+                    Model.State.autoBuy = true
+                    Model.State.autoSell = true
+                    Model.State.autoCraft = true
+                    Model.StartTraveling()
+                    Model.State.waitingForArrivalToFish = true
+                end
             end
         end
     end)
 
-    GlobalMem.FishmanPSCode = GlobalMem.FishmanPSCode or "qj1ttW4JG1"
-    GlobalMem.FishmanDestination = GlobalMem.FishmanDestination or "fishHub" 
-    GlobalMem.FishmanAutoTeleport = GlobalMem.FishmanAutoTeleport or false 
-
-    local function SaveConfig()
-        pcall(function()
-            if writefile then
-                local HttpService = game:GetService("HttpService")
-                local data = {
-                    FishmanPSCode = GlobalMem.FishmanPSCode,
-                    FishmanDestination = GlobalMem.FishmanDestination,
-                    FishmanAutoTeleport = GlobalMem.FishmanAutoTeleport
-                }
-                writefile(configFileName, HttpService:JSONEncode(data))
-            end
-        end)
-    end
-
-    -- ========================================== --
-    -- TELEPORT MEMORY INJECTION (Using your URL)
-    -- ========================================== --
-    local myScriptURL = "https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/joinersystem.lua"
-    local qot = queue_on_teleport or (syn and syn.queue_on_teleport) or (fluxus and fluxus.queue_on_teleport)
-
-    local function UpdateTeleportMemory(willAutoTeleport)
-        GlobalMem.FishmanAutoTeleport = willAutoTeleport
-        SaveConfig()
-        print("[Fishman] State Saved -> AutoTeleport:", willAutoTeleport)
-        
-        if not qot then return end
-        
-        -- This string gets sent to the NEXT server you join
-        local command = [[
-            pcall(function()
-                getgenv().FishmanPSCode = "]] .. GlobalMem.FishmanPSCode .. [["
-                getgenv().FishmanDestination = "]] .. GlobalMem.FishmanDestination .. [["
-                getgenv().FishmanAutoTeleport = ]] .. tostring(willAutoTeleport) .. [[
-                
-                -- Wait 15 seconds for autoexec to run. If it didn't, fallback to downloading from GitHub
-                task.spawn(function()
-                    task.wait(15)
-                    if getgenv().FishmanScriptServer ~= game.JobId then
-                        loadstring(game:HttpGet("]] .. myScriptURL .. [["))()
-                    end
-                end)
-            end)
-        ]]
-        pcall(function() qot(command) end)
-    end
-
-    -- ========================================== --
-    -- DRAGGING FUNCTION (Makes UI Movable)
-    -- ========================================== --
-    local function MakeDraggable(frame)
-        local dragging, dragInput, dragStart, startPos
-        frame.InputBegan:Connect(function(input)
-            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-                dragging = true
-                dragStart = input.Position
-                startPos = frame.Position
-                input.Changed:Connect(function()
-                    if input.UserInputState == Enum.UserInputState.End then dragging = false end
-                end)
-            end
-        end)
-        frame.InputChanged:Connect(function(input)
-            if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-                dragInput = input
-            end
-        end)
-        UserInputService.InputChanged:Connect(function(input)
-            if input == dragInput and dragging then
-                local delta = input.Position - dragStart
-                frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-            end
-        end)
-    end
-
-    -- ========================================== --
-    -- CREATE THE MAIN MENU
-    -- ========================================== --
-    local function CreateMainUI()
-        print("[Fishman] Loading User Interface...")
-        if GuiFolder:FindFirstChild("FishmanControlPanel") then
-            GuiFolder.FishmanControlPanel:Destroy()
-        end
-
-        local ScreenGui = Instance.new("ScreenGui")
-        ScreenGui.Name = "FishmanControlPanel"
-        ScreenGui.Parent = GuiFolder
-
-        local MainFrame = Instance.new("Frame")
-        MainFrame.Size = UDim2.new(0, 300, 0, 240) 
-        MainFrame.Position = UDim2.new(0.5, -150, 0.2, 0)
-        MainFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
-        MainFrame.Active = true 
-        MainFrame.Parent = ScreenGui
-        
-        MakeDraggable(MainFrame)
-
-        local Title = Instance.new("TextLabel")
-        Title.Size = UDim2.new(1, 0, 0, 30)
-        Title.Text = "🐟 Fishman Setup"
-        Title.TextColor3 = Color3.new(1, 1, 1)
-        Title.BackgroundTransparency = 1
-        Title.Font = Enum.Font.GothamBold
-        Title.TextSize = 18
-        Title.Parent = MainFrame
-
-        local CloseBtn = Instance.new("TextButton")
-        CloseBtn.Size = UDim2.new(0, 30, 0, 30)
-        CloseBtn.Position = UDim2.new(1, -30, 0, 0)
-        CloseBtn.Text = "X"
-        CloseBtn.TextColor3 = Color3.new(1, 1, 1)
-        CloseBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-        CloseBtn.BorderSizePixel = 0
-        CloseBtn.Font = Enum.Font.GothamBold
-        CloseBtn.TextSize = 18
-        CloseBtn.Parent = MainFrame
-        
-        CloseBtn.MouseButton1Click:Connect(function()
-            ScreenGui:Destroy()
-            getgenv().FishmanScriptServer = nil
-            print("[Fishman] Setup Closed & Cleaned Up.")
-        end)
-
-        local CodeBox = Instance.new("TextBox")
-        CodeBox.Size = UDim2.new(0.9, 0, 0, 40)
-        CodeBox.Position = UDim2.new(0.05, 0, 0.15, 0)
-        CodeBox.PlaceholderText = "Enter Private Server Code Here"
-        CodeBox.Text = GlobalMem.FishmanPSCode
-        CodeBox.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
-        CodeBox.TextColor3 = Color3.new(1, 1, 1)
-        CodeBox.Parent = MainFrame
-
-        CodeBox.FocusLost:Connect(function()
-            GlobalMem.FishmanPSCode = CodeBox.Text
-            UpdateTeleportMemory(false)
-        end)
-
-        local function CreateDestButton(text, argValue, yPos)
-            local Btn = Instance.new("TextButton")
-            Btn.Size = UDim2.new(0.9, 0, 0, 30)
-            Btn.Position = UDim2.new(0.05, 0, yPos, 0)
-            Btn.Text = text
-            Btn.BackgroundColor3 = (GlobalMem.FishmanDestination == argValue) and Color3.fromRGB(50, 200, 50) or Color3.fromRGB(80, 80, 90)
-            Btn.TextColor3 = Color3.new(1, 1, 1)
-            Btn.Parent = MainFrame
-
-            Btn.MouseButton1Click:Connect(function()
-                GlobalMem.FishmanDestination = argValue
-                for _, child in pairs(MainFrame:GetChildren()) do
-                    if child:IsA("TextButton") and child.Name ~= "TeleportButton" then 
-                        child.BackgroundColor3 = Color3.fromRGB(80, 80, 90) 
-                    end
+    task.spawn(function()
+        while _running and task.wait(3) do
+            if not Model.State.autoCraft or Model.State.isCurrentlyCrafting then continue end
+            local ok, inventoryData = pcall(function() return HttpService:JSONDecode(inventoryObj.Value) end)
+            if not ok or not inventoryData then continue end
+            local craftQueue = {}
+            local totalBatches = 0
+            for _, legFish in ipairs(LEGENDARY_FISHES) do
+                local fishCount = inventoryData[legFish] or 0
+                if fishCount >= 40 then
+                    local timesToCraft = math.floor(fishCount / 40)
+                    table.insert(craftQueue, { Name = legFish, Batches = timesToCraft })
+                    totalBatches += timesToCraft
                 end
-                Btn.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
-                UpdateTeleportMemory(false)
-            end)
+            end
+            if totalBatches > 0 then
+                Model.State.isCurrentlyCrafting = true
+                Model.ExecuteLegendaryCraft(craftQueue)
+                Model.State.isCurrentlyCrafting = false
+            end
         end
+    end)
 
-        CreateDestButton("Fish Hub", "fishHub", 0.35)
-        CreateDestButton("Trade Hub", "tradeHub", 0.50)
-        CreateDestButton("Second Sea", "Second Sea", 0.65)
+    task.spawn(function() while _running and task.wait(2) do if Model.State.autoBuy then Model.CheckInventory() end end end)
+    task.spawn(function() while _running and task.wait() do if Model.State.isFishing then Model.DoFishingCycle() end end end)
 
-        local TeleportBtn = Instance.new("TextButton")
-        TeleportBtn.Name = "TeleportButton"
-        TeleportBtn.Size = UDim2.new(0.9, 0, 0, 40)
-        TeleportBtn.Position = UDim2.new(0.05, 0, 0.80, 0)
-        TeleportBtn.Text = "🚀 TELEPORT NOW"
-        TeleportBtn.Font = Enum.Font.GothamBold
-        TeleportBtn.BackgroundColor3 = Color3.fromRGB(202, 150, 0)
-        TeleportBtn.TextColor3 = Color3.new(1, 1, 1)
-        TeleportBtn.Parent = MainFrame
+    addConn(RunService.Heartbeat:Connect(function(dt)
+        if _running and Model.State.isAutoTraveling then Model.HandleMovement(dt) end
+    end))
+    
+    local noclipCache = {}
+    local lastCharacter = nil
+    local descAddedConn = nil
 
-        TeleportBtn.MouseButton1Click:Connect(function()
-            if game.PlaceId == targetPlaceId and game.PrivateServerId == "" then
-                -- Already in Lobby, jump straight to PS
-                if GlobalMem.FishmanPSCode ~= "" then
-                    task.spawn(function()
-                        local events = ReplicatedStorage:WaitForChild("Events", 9e9)
-                        local reserved = events:WaitForChild("reserved", 9e9)
-                        pcall(function() reserved:InvokeServer(GlobalMem.FishmanPSCode) end)
+    addConn(RunService.Stepped:Connect(function()
+        if not _running then return end
+        if Model.State.isAutoTraveling and Model.State.travelStage == 1 then 
+            local character = LocalPlayer.Character
+            if character then
+                if character ~= lastCharacter then
+                    lastCharacter = character
+                    table.clear(noclipCache)
+                    if descAddedConn then descAddedConn:Disconnect() end
+                    for _, part in ipairs(character:GetDescendants()) do
+                        if part:IsA("BasePart") then table.insert(noclipCache, part) end
+                    end
+                    descAddedConn = character.DescendantAdded:Connect(function(part)
+                        if part:IsA("BasePart") then table.insert(noclipCache, part) end
                     end)
-                    task.wait(5) 
+                    addConn(descAddedConn)
                 end
-                
-                local confirmArgs = { [1] = GlobalMem.FishmanDestination }
-                pcall(function()
-                    local playerGui = LocalPlayer:WaitForChild("PlayerGui", 20)
-                    local chooseType = playerGui:WaitForChild("chooseType", 20)
-                    local frame = chooseType:WaitForChild("Frame", 20)
-                    local remoteEvent = frame:WaitForChild("RemoteEvent", 20)
-                    remoteEvent:FireServer(unpack(confirmArgs))
-                end)
-            else
-                -- Not in Lobby, jump to Lobby first
-                GlobalMem.FishmanAutoTeleport = true
-                UpdateTeleportMemory(true)
-                TeleportService:Teleport(targetPlaceId, LocalPlayer)
+                for _, part in ipairs(noclipCache) do if part.CanCollide then part.CanCollide = false end end
             end
-        end)
-    end
-
-    CreateMainUI()
-    UpdateTeleportMemory(GlobalMem.FishmanAutoTeleport)
-
-    -- ========================================== --
-    -- AUTO-ROUTING LOGIC
-    -- ========================================== --
-    if game.PlaceId == targetPlaceId and game.PrivateServerId == "" then
-        local destCode = GlobalMem.FishmanPSCode
-        local destPlace = GlobalMem.FishmanDestination
-
-        if GlobalMem.FishmanAutoTeleport then
-            print("[Fishman] Manual Teleport active - Routing to chosen destination in 3 seconds.")
-            GlobalMem.FishmanAutoTeleport = false
-            SaveConfig()
-        else
-            print("[Fishman] Default Teleport - Routing to Trade Hub in 3 seconds.")
-            destCode = "qj1ttW4JG1"
-            destPlace = "tradeHub"
         end
+    end))
+    
+    if inventoryObj then
+        addConn(inventoryObj:GetPropertyChangedSignal("Value"):Connect(function() Model.CheckInventory() end))
+    end
+end
 
+local function ShutdownEverything()
+    _running = false
+    disconnectAll()
+    if not isLobby then
+        Model.DisableFlight()
+        clearAnimationCache()
+    end
+    print("[Fishman] Successfully shut down.")
+end
+env.Fishman_StopPrevious = ShutdownEverything
+
+
+-- ======================================================================
+-- 🎨 FLUENT UI INTEGRATION
+-- ======================================================================
+local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
+local Window = Fluent:CreateWindow({
+    Title = "🐟 Fishman Hub",
+    SubTitle = "Unified Auto-Fisher",
+    TabWidth = 160,
+    Size = UDim2.fromOffset(500, 350),
+    Theme = "Darker"
+})
+
+local Tabs = {
+    Teleport = Window:AddTab({ Title = "Teleport", Icon = "plane" }),
+    Fishing = Window:AddTab({ Title = "Fishing", Icon = "anchor" }),
+    Settings = Window:AddTab({ Title = "Settings", Icon = "settings" })
+}
+
+-- [TELEPORT TAB]
+if isLobby then
+    Tabs.Teleport:AddInput("Input", {
+        Title = "Private Server Code",
+        Default = GlobalMem.FishmanPSCode,
+        Placeholder = "Enter PS Code",
+        Numeric = false,
+        Finished = true,
+        Callback = function(Value)
+            GlobalMem.FishmanPSCode = Value
+            UpdateTeleportMemory(false)
+        end
+    })
+
+    Tabs.Teleport:AddDropdown("Dropdown", {
+        Title = "Destination",
+        Values = {"fishHub", "tradeHub", "Second Sea"},
+        Multi = false,
+        Default = (table.find({"fishHub", "tradeHub", "Second Sea"}, GlobalMem.FishmanDestination) or 1),
+        Callback = function(Value)
+            GlobalMem.FishmanDestination = Value
+            UpdateTeleportMemory(false)
+        end
+    })
+
+    Tabs.Teleport:AddButton({
+        Title = "🚀 Teleport Now!",
+        Description = "Teleports you to the selected destination.",
+        Callback = function()
+            GlobalMem.FishmanAutoTeleport = true
+            UpdateTeleportMemory(true)
+            
+            if GlobalMem.FishmanPSCode ~= "" then
+                task.spawn(function()
+                    local events = ReplicatedStorage:WaitForChild("Events", 9e9)
+                    local reserved = events:WaitForChild("reserved", 9e9)
+                    pcall(function() reserved:InvokeServer(GlobalMem.FishmanPSCode) end)
+                end)
+                task.wait(5) 
+            end
+            
+            local confirmArgs = { [1] = GlobalMem.FishmanDestination }
+            pcall(function()
+                local playerGui = LocalPlayer:WaitForChild("PlayerGui", 20)
+                local chooseType = playerGui:WaitForChild("chooseType", 20)
+                local frame = chooseType:WaitForChild("Frame", 20)
+                local remoteEvent = frame:WaitForChild("RemoteEvent", 20)
+                remoteEvent:FireServer(unpack(confirmArgs))
+            end)
+        end
+    })
+
+    -- Check if we should automatically route
+    if GlobalMem.FishmanAutoTeleport then
+        Fluent:Notify({ Title = "Auto-Teleporting", Content = "Routing to destination...", Duration = 3 })
+        GlobalMem.FishmanAutoTeleport = false
+        SaveConfig()
+        
         task.spawn(function()
-            task.wait(3) 
+            task.wait(3)
+            local destCode = GlobalMem.FishmanPSCode
+            local destPlace = GlobalMem.FishmanDestination
             
             if destCode ~= "" then
-                print("[Fishman] Teleporting to Private Server:", destCode)
                 task.spawn(function()
                     local events = ReplicatedStorage:WaitForChild("Events", 9e9)
                     local reserved = events:WaitForChild("reserved", 9e9)
@@ -303,30 +767,65 @@ local function RunFishmanSetup()
                 remoteEvent:FireServer(unpack(confirmArgs))
             end)
         end)
-    else
-        if GlobalMem.FishmanPSCode == "qj1ttW4JG1" then
-            print("[Fishman] Detected server qj1ttW4JG1! Executing usedscriptopv2.lua in 3 seconds...")
-            task.spawn(function()
-                task.wait(3)
-                local success, err = pcall(function()
-                    if isfile and readfile and isfile("usedscriptopv2.lua") then
-                        loadstring(readfile("usedscriptopv2.lua"))()
-                    elseif loadfile then
-                        loadfile("usedscriptopv2.lua")()
-                    else
-                        warn("[Fishman] Could not find or execute usedscriptopv2.lua")
-                    end
-                end)
-                if not success then
-                    warn("[Fishman] Error executing usedscriptopv2.lua:", err)
+    end
+else
+    Tabs.Teleport:AddParagraph({ Title = "Unavailable", Content = "Teleport features are only available in the Lobby." })
+end
+
+-- [FISHING TAB]
+if not isLobby then
+    Tabs.Fishing:AddToggle("T_Fish", { Title = "Auto Fish", Default = false, Callback = function(Value) Model.State.isFishing = Value end })
+    Tabs.Fishing:AddToggle("T_Buy", { Title = "Auto Buy Bait", Default = false, Callback = function(Value) Model.State.autoBuy = Value; if Value then Model.CheckInventory() end end })
+    Tabs.Fishing:AddToggle("T_Sell", { Title = "Auto Sell Fish", Default = false, Callback = function(Value) Model.State.autoSell = Value; if Value then Model.CheckInventory() end end })
+    Tabs.Fishing:AddToggle("T_Travel", { Title = "Travel to Bait", Default = false, Callback = function(Value) 
+        if Value then Model.StartTraveling() else Model.State.isAutoTraveling = false; Model.DisableFlight(); Model.State.travelMessage = "" end 
+    end })
+    Tabs.Fishing:AddToggle("T_Craft", { Title = "Auto Craft Legendary Bait", Default = false, Callback = function(Value) Model.State.autoCraft = Value end })
+    Tabs.Fishing:AddToggle("T_AFK", { Title = "AFK Mode (Auto-start after 10s)", Default = false, Callback = function(Value) isAFKModeActive = Value; secondsSinceLastInput = 0 end })
+
+    -- Status Monitor
+    local StatusPara = Tabs.Fishing:AddParagraph({ Title = "Status", Content = "Idle" })
+    local statusParts = {}
+    task.spawn(function()
+        while _running and task.wait(1) do
+            table.clear(statusParts)
+            if Model.State.isFishing then table.insert(statusParts, "Fishing") end
+            if Model.State.autoBuy then table.insert(statusParts, "Buying") end
+            if Model.State.autoSell then table.insert(statusParts, "Selling") end
+            if Model.State.autoCraft then table.insert(statusParts, Model.State.isCurrentlyCrafting and "Crafting" or "Craft ON") end
+            if isAFKModeActive then table.insert(statusParts, "[AFK ON]") end
+
+            if Model.State.isAutoTraveling or Model.State.travelMessage ~= "" then
+                StatusPara:SetDesc("Status: " .. Model.State.travelMessage)
+                if Model.State.travelMessage == "Arrived at Bait" and Model.State.waitingForArrivalToFish then
+                    Model.State.waitingForArrivalToFish = false
+                    Tabs.Fishing:SetValue("T_Fish", true) -- Automatically turn on fishing toggle in UI
                 end
-            end)
+            else
+                StatusPara:SetDesc(#statusParts > 0 and ("Active: " .. table.concat(statusParts, " ")) or "Idle")
+            end
         end
+    end)
+else
+    Tabs.Fishing:AddParagraph({ Title = "Unavailable", Content = "Fishing features are only available in-game." })
+    
+    if GlobalMem.FishmanPSCode == "qj1ttW4JG1" then
+        Fluent:Notify({ Title = "Detection", Content = "Target Server qj1ttW4JG1 Detected. Awaiting Transfer...", Duration = 5 })
     end
 end
 
--- Run everything safely!
-local success, errorMessage = pcall(RunFishmanSetup)
-if not success then
-    warn("CRITICAL SCRIPT ERROR: " .. tostring(errorMessage))
-end
+-- [SETTINGS TAB]
+Tabs.Settings:AddButton({
+    Title = "Destroy UI & Shutdown",
+    Description = "Cleans up all loops, unloads the UI, and stops the script safely.",
+    Callback = function()
+        ShutdownEverything()
+        Fluent:Destroy()
+    end
+})
+
+Window:SelectTab(isLobby and 1 or 2)
+Fluent:Notify({ Title = "Fishman Unified", Content = "Script loaded successfully!", Duration = 5 })
+
+addConn(UserInputService.InputBegan:Connect(function() secondsSinceLastInput = 0 end))
+addConn(UserInputService.InputChanged:Connect(function() secondsSinceLastInput = 0 end))
