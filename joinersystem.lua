@@ -842,7 +842,9 @@ Tabs.Settings:AddButton({
     Description = "Cleans up all loops, unloads the UI, and stops the script safely.",
     Callback = function()
         ShutdownEverything()
-        Fluent:Destroy()
+        if Window and Window.Destroy then
+            Window:Destroy()
+        end
     end
 })
 
