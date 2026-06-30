@@ -14,6 +14,7 @@ end
 
 local _running = true
 local _connections = {}
+local Tabs
 
 local function addConn(conn)
     table.insert(_connections, conn)
@@ -588,10 +589,17 @@ if not isLobby then
             if isAFKModeActive then
                 secondsSinceLastInput += 1
                 if secondsSinceLastInput == 10 then
-                    Model.State.autoBuy = true
-                    Model.State.autoSell = true
-                    Model.State.autoCraft = true
-                    Model.StartTraveling()
+                    if Tabs and Tabs.Fishing then
+                        Tabs.Fishing:SetValue("T_Buy", true)
+                        Tabs.Fishing:SetValue("T_Sell", true)
+                        Tabs.Fishing:SetValue("T_Craft", true)
+                        Tabs.Fishing:SetValue("T_Travel", true)
+                    else
+                        Model.State.autoBuy = true
+                        Model.State.autoSell = true
+                        Model.State.autoCraft = true
+                        Model.StartTraveling()
+                    end
                     Model.State.waitingForArrivalToFish = true
                 end
             end
@@ -700,7 +708,7 @@ pcall(function()
     game:GetService("ContextActionService"):UnbindAction("FluentMinimize")
 end)
 
-local Tabs = {
+Tabs = {
     Teleport = Window:AddTab({ Title = "Teleport", Icon = "plane" }),
     Fishing = Window:AddTab({ Title = "Fishing", Icon = "anchor" }),
     Settings = Window:AddTab({ Title = "Settings", Icon = "settings" })
