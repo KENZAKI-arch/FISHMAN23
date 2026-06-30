@@ -127,17 +127,6 @@ local secondsSinceLastInput = 0
 local craftHeartbeatConn = nil
 local craftFlyTarget = nil
 
-if not isLobby then
-    shopEvent      = ReplicatedStorage:WaitForChild("Events", 9e9):WaitForChild("Shop", 9e9)
-    buyableItems   = workspace:WaitForChild("BuyableItems", 9e9)
-    sellEvent      = ReplicatedStorage:WaitForChild("FishingShopRemote", 9e9)
-    questEvent     = ReplicatedStorage:WaitForChild("Events", 9e9):WaitForChild("Quest", 9e9)
-    craftingRemote = ReplicatedStorage:WaitForChild("CraftingRemote", 9e9)
-    Remote         = ReplicatedStorage:WaitForChild("Fishing", 9e9):WaitForChild("Remotes", 9e9):WaitForChild("Action", 9e9)
-    statsFolder    = ReplicatedStorage:WaitForChild("Stats" .. LocalPlayer.Name, 9e9)
-    inventoryObj   = statsFolder:WaitForChild("Inventory", 9e9):WaitForChild("Inventory", 9e9)
-    peliObject     = statsFolder:WaitForChild("Stats", 9e9):WaitForChild("Peli", 9e9)
-    
     Model.State = {
         isFishing             = false,
         autoBuy               = false,
@@ -154,6 +143,17 @@ if not isLobby then
         waitingForArrivalToFish = false,
         isCraftFlying         = false,
     }
+
+if not isLobby then
+    shopEvent      = ReplicatedStorage:WaitForChild("Events", 9e9):WaitForChild("Shop", 9e9)
+    buyableItems   = workspace:WaitForChild("BuyableItems", 9e9)
+    sellEvent      = ReplicatedStorage:WaitForChild("FishingShopRemote", 9e9)
+    questEvent     = ReplicatedStorage:WaitForChild("Events", 9e9):WaitForChild("Quest", 9e9)
+    craftingRemote = ReplicatedStorage:WaitForChild("CraftingRemote", 9e9)
+    Remote         = ReplicatedStorage:WaitForChild("Fishing", 9e9):WaitForChild("Remotes", 9e9):WaitForChild("Action", 9e9)
+    statsFolder    = ReplicatedStorage:WaitForChild("Stats" .. LocalPlayer.Name, 9e9)
+    inventoryObj   = statsFolder:WaitForChild("Inventory", 9e9):WaitForChild("Inventory", 9e9)
+    peliObject     = statsFolder:WaitForChild("Stats", 9e9):WaitForChild("Peli", 9e9)
     
     local LEGENDARY_FISHES  = { "Anglerfish", "Golden Ribbon Angelfish", "Golden Polka Puffer", "Golden Tigerfin" }
     local MAX_PELI            = 1000000
@@ -690,7 +690,6 @@ local Tabs = {
 }
 
 -- [TELEPORT TAB]
-if isLobby then
     Tabs.Teleport:AddInput("Input", {
         Title = "Private Server Code",
         Default = GlobalMem.FishmanPSCode,
@@ -721,23 +720,27 @@ if isLobby then
             GlobalMem.FishmanAutoTeleport = true
             UpdateTeleportMemory(true)
             
-            if GlobalMem.FishmanPSCode ~= "" then
-                task.spawn(function()
-                    local events = ReplicatedStorage:WaitForChild("Events", 9e9)
-                    local reserved = events:WaitForChild("reserved", 9e9)
-                    pcall(function() reserved:InvokeServer(GlobalMem.FishmanPSCode) end)
+            if isLobby then
+                if GlobalMem.FishmanPSCode ~= "" then
+                    task.spawn(function()
+                        local events = ReplicatedStorage:WaitForChild("Events", 9e9)
+                        local reserved = events:WaitForChild("reserved", 9e9)
+                        pcall(function() reserved:InvokeServer(GlobalMem.FishmanPSCode) end)
+                    end)
+                    task.wait(5) 
+                end
+                
+                local confirmArgs = { [1] = GlobalMem.FishmanDestination }
+                pcall(function()
+                    local playerGui = LocalPlayer:WaitForChild("PlayerGui", 20)
+                    local chooseType = playerGui:WaitForChild("chooseType", 20)
+                    local frame = chooseType:WaitForChild("Frame", 20)
+                    local remoteEvent = frame:WaitForChild("RemoteEvent", 20)
+                    remoteEvent:FireServer(unpack(confirmArgs))
                 end)
-                task.wait(5) 
+            else
+                TeleportService:Teleport(targetPlaceId, LocalPlayer)
             end
-            
-            local confirmArgs = { [1] = GlobalMem.FishmanDestination }
-            pcall(function()
-                local playerGui = LocalPlayer:WaitForChild("PlayerGui", 20)
-                local chooseType = playerGui:WaitForChild("chooseType", 20)
-                local frame = chooseType:WaitForChild("Frame", 20)
-                local remoteEvent = frame:WaitForChild("RemoteEvent", 20)
-                remoteEvent:FireServer(unpack(confirmArgs))
-            end)
         end
     })
 
@@ -751,7 +754,7 @@ if isLobby then
     })
 
     -- Check if we should automatically route
-    if GlobalMem.FishmanAutoTeleport or (GlobalMem.FishmanAutoJoin and GlobalMem.FishmanPSCode ~= "") then
+    if isLobby and (GlobalMem.FishmanAutoTeleport or (GlobalMem.FishmanAutoJoin and GlobalMem.FishmanPSCode ~= "")) then
         Fluent:Notify({ Title = "Auto-Teleporting", Content = "Routing to destination...", Duration = 3 })
         GlobalMem.FishmanAutoTeleport = false
         SaveConfig()
@@ -780,20 +783,32 @@ if isLobby then
             end)
         end)
     end
-else
-    Tabs.Teleport:AddParagraph({ Title = "Unavailable", Content = "Teleport features are only available in the Lobby." })
-end
 
 -- [FISHING TAB]
-if not isLobby then
-    Tabs.Fishing:AddToggle("T_Fish", { Title = "Auto Fish", Default = false, Callback = function(Value) Model.State.isFishing = Value end })
-    Tabs.Fishing:AddToggle("T_Buy", { Title = "Auto Buy Bait", Default = false, Callback = function(Value) Model.State.autoBuy = Value; if Value then Model.CheckInventory() end end })
-    Tabs.Fishing:AddToggle("T_Sell", { Title = "Auto Sell Fish", Default = false, Callback = function(Value) Model.State.autoSell = Value; if Value then Model.CheckInventory() end end })
+    Tabs.Fishing:AddToggle("T_Fish", { Title = "Auto Fish", Default = false, Callback = function(Value) 
+        if isLobby and Value then Fluent:Notify({ Title = "Error", Content = "Cannot fish in Lobby!", Duration = 3 }); Tabs.Fishing:SetValue("T_Fish", false); return end
+        Model.State.isFishing = Value 
+    end })
+    Tabs.Fishing:AddToggle("T_Buy", { Title = "Auto Buy Bait", Default = false, Callback = function(Value) 
+        if isLobby and Value then Fluent:Notify({ Title = "Error", Content = "Cannot buy in Lobby!", Duration = 3 }); Tabs.Fishing:SetValue("T_Buy", false); return end
+        Model.State.autoBuy = Value; if Value then Model.CheckInventory() end 
+    end })
+    Tabs.Fishing:AddToggle("T_Sell", { Title = "Auto Sell Fish", Default = false, Callback = function(Value) 
+        if isLobby and Value then Fluent:Notify({ Title = "Error", Content = "Cannot sell in Lobby!", Duration = 3 }); Tabs.Fishing:SetValue("T_Sell", false); return end
+        Model.State.autoSell = Value; if Value then Model.CheckInventory() end 
+    end })
     Tabs.Fishing:AddToggle("T_Travel", { Title = "Travel to Bait", Default = false, Callback = function(Value) 
+        if isLobby and Value then Fluent:Notify({ Title = "Error", Content = "Cannot travel in Lobby!", Duration = 3 }); Tabs.Fishing:SetValue("T_Travel", false); return end
         if Value then Model.StartTraveling() else Model.State.isAutoTraveling = false; Model.DisableFlight(); Model.State.travelMessage = "" end 
     end })
-    Tabs.Fishing:AddToggle("T_Craft", { Title = "Auto Craft Legendary Bait", Default = false, Callback = function(Value) Model.State.autoCraft = Value end })
-    Tabs.Fishing:AddToggle("T_AFK", { Title = "AFK Mode (Auto-start after 10s)", Default = false, Callback = function(Value) isAFKModeActive = Value; secondsSinceLastInput = 0 end })
+    Tabs.Fishing:AddToggle("T_Craft", { Title = "Auto Craft Legendary Bait", Default = false, Callback = function(Value) 
+        if isLobby and Value then Fluent:Notify({ Title = "Error", Content = "Cannot craft in Lobby!", Duration = 3 }); Tabs.Fishing:SetValue("T_Craft", false); return end
+        Model.State.autoCraft = Value 
+    end })
+    Tabs.Fishing:AddToggle("T_AFK", { Title = "AFK Mode (Auto-start after 10s)", Default = false, Callback = function(Value) 
+        if isLobby and Value then Fluent:Notify({ Title = "Error", Content = "AFK Mode requires Fishing server!", Duration = 3 }); Tabs.Fishing:SetValue("T_AFK", false); return end
+        isAFKModeActive = Value; secondsSinceLastInput = 0 
+    end })
 
     -- Status Monitor
     local StatusPara = Tabs.Fishing:AddParagraph({ Title = "Status", Content = "Idle" })
@@ -818,13 +833,10 @@ if not isLobby then
             end
         end
     end)
-else
-    Tabs.Fishing:AddParagraph({ Title = "Unavailable", Content = "Fishing features are only available in-game." })
     
-    if GlobalMem.FishmanPSCode == "qj1ttW4JG1" then
-        Fluent:Notify({ Title = "Detection", Content = "Target Server qj1ttW4JG1 Detected. Awaiting Transfer...", Duration = 5 })
+    if GlobalMem.FishmanPSCode == "qj1ttW4JG1" and not isLobby then
+        Fluent:Notify({ Title = "Detection", Content = "Target Server qj1ttW4JG1 Detected.", Duration = 5 })
     end
-end
 
 -- [SETTINGS TAB]
 Tabs.Settings:AddButton({
