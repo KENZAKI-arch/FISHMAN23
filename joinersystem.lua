@@ -725,7 +725,7 @@ Tabs = {
         Finished = true,
         Callback = function(Value)
             GlobalMem.FishmanPSCode = Value
-            UpdateTeleportMemory(false)
+            SaveConfig()
         end
     })
 
@@ -736,7 +736,7 @@ Tabs = {
         Default = (table.find({"fishHub", "tradeHub", "Second Sea"}, GlobalMem.FishmanDestination) or 1),
         Callback = function(Value)
             GlobalMem.FishmanDestination = Value
-            UpdateTeleportMemory(false)
+            SaveConfig()
         end
     })
 
@@ -745,7 +745,7 @@ Tabs = {
         Description = "Teleports you to the selected destination.",
         Callback = function()
             GlobalMem.FishmanAutoTeleport = true
-            UpdateTeleportMemory(true)
+            SaveConfig()
             
             if isLobby then
                 if GlobalMem.FishmanPSCode ~= "" then
