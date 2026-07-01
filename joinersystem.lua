@@ -39,6 +39,7 @@ local HttpService = game:GetService("HttpService")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
+local GuiService = game:GetService("GuiService")
 local LocalPlayer = Players.LocalPlayer
 
 while not LocalPlayer do 
@@ -63,6 +64,7 @@ pcall(function()
             if GlobalMem.FishmanDestination == nil then GlobalMem.FishmanDestination = data.FishmanDestination end
             if GlobalMem.FishmanAutoTeleport == nil then GlobalMem.FishmanAutoTeleport = data.FishmanAutoTeleport end
             if GlobalMem.FishmanAutoJoin == nil then GlobalMem.FishmanAutoJoin = data.FishmanAutoJoin end
+            if GlobalMem.FishmanAutoReconnect == nil then GlobalMem.FishmanAutoReconnect = data.FishmanAutoReconnect end
             print("[Fishman] Loaded Config from file.")
         end
     end
@@ -72,6 +74,7 @@ GlobalMem.FishmanPSCode = GlobalMem.FishmanPSCode or "qj1ttW4JG1"
 GlobalMem.FishmanDestination = GlobalMem.FishmanDestination or "fishHub" 
 GlobalMem.FishmanAutoTeleport = GlobalMem.FishmanAutoTeleport or false 
 GlobalMem.FishmanAutoJoin = GlobalMem.FishmanAutoJoin or false
+if GlobalMem.FishmanAutoReconnect == nil then GlobalMem.FishmanAutoReconnect = true end
 
 local function SaveConfig()
     pcall(function()
@@ -80,12 +83,28 @@ local function SaveConfig()
                 FishmanPSCode = GlobalMem.FishmanPSCode,
                 FishmanDestination = GlobalMem.FishmanDestination,
                 FishmanAutoTeleport = GlobalMem.FishmanAutoTeleport,
-                FishmanAutoJoin = GlobalMem.FishmanAutoJoin
+                FishmanAutoJoin = GlobalMem.FishmanAutoJoin,
+                FishmanAutoReconnect = GlobalMem.FishmanAutoReconnect
             }
             writefile(configFileName, HttpService:JSONEncode(data))
         end
     end)
 end
+
+-- ======================================================================
+-- 🔄 AUTO RECONNECT ENGINE
+-- ======================================================================
+addConn(GuiService.ErrorMessageChanged:Connect(function()
+    if GlobalMem.FishmanAutoReconnect then
+        task.spawn(function()
+            while _running and task.wait(5) do
+                pcall(function()
+                    TeleportService:Teleport(targetPlaceId, LocalPlayer)
+                end)
+            end
+        end)
+    end
+end))
 
 -- ======================================================================
 -- 🚀 TELEPORT MEMORY INJECTION
@@ -909,6 +928,15 @@ Tabs.Autofarm:AddButton({
 })
 
 -- [SETTINGS TAB]
+Tabs.Settings:AddToggle("T_AutoReconnect", { 
+    Title = "Auto Reconnect on Disconnect", 
+    Default = GlobalMem.FishmanAutoReconnect, 
+    Callback = function(Value)
+        GlobalMem.FishmanAutoReconnect = Value
+        SaveConfig()
+    end 
+})
+
 Tabs.Settings:AddButton({
     Title = "Destroy UI & Shutdown",
     Description = "Cleans up all loops, unloads the UI, and stops the script safely.",
