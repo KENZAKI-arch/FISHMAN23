@@ -38,7 +38,7 @@ View.Build(function(isFarming)
                 pcall(function()
                     statsEvent:FireServer(unpack(args))
                 end)
-                task.wait(0.5) 
+                task.wait(3) 
             end
         end)
     end

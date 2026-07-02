@@ -205,22 +205,6 @@ function Model.DoCombatCombo()
         if not character or not character:FindFirstChild("HumanoidRootPart") then break end
         
         local myCFrame = character.HumanoidRootPart.CFrame
-        local animName = "Punch" .. currentHit
-        local punchAnim = ReplicatedStorage:WaitForChild("CombatAnimations", 9e9):WaitForChild("Melee", 9e9):WaitForChild(animName, 9e9)
-        
-        local swingArgs = {
-            [1] = {
-                [1] = "swingsfx",
-                [2] = "Melee",
-                [3] = currentHit,
-                [4] = "Ground",
-                [5] = false,
-                [6] = punchAnim,
-                [7] = 2,
-                [8] = 1.5
-            }
-        }
-        task.spawn(function() pcall(function() combatRegister:InvokeServer(unpack(swingArgs)) end) end)
         
         task.wait(0.35) 
         
@@ -244,7 +228,7 @@ function Model.DoCombatCombo()
                     ["aircombo"] = "Ground"
                 }
             }
-            task.spawn(function() pcall(function() combatRegister:InvokeServer(unpack(damageArgs)) end) end)
+            pcall(function() combatRegister:InvokeServer(unpack(damageArgs)) end)
         end
         task.wait(0.2)
     end
