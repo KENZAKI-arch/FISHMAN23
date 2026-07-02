@@ -887,24 +887,12 @@ Tabs.Autofarm:AddButton({
     Title = "Load CombinedAutoLoad (Autofarm)",
     Description = "Executes the script and queues it for future teleports.",
     Callback = function()
-        local queue_on_teleport = queue_on_teleport or (syn and syn.queue_on_teleport) or (fluxus and fluxus.queue_on_teleport)
         local scriptURL = "https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/CombinedAutoLoad.lua"
-        local loadCommand = "loadstring(game:HttpGet('" .. scriptURL .. "'))()"
-
-        if queue_on_teleport then
-            local TeleportCheck = false
-            addConn(LocalPlayer.OnTeleport:Connect(function(State)
-                if not TeleportCheck then
-                    TeleportCheck = true
-                    queue_on_teleport(loadCommand)
-                end
-            end))
-            Fluent:Notify({ Title = "Autofarm Loaded", Content = "Auto-load on teleport enabled.", Duration = 3 })
-        else
-            Fluent:Notify({ Title = "Warning", Content = "Your exploit does not support queue_on_teleport. Script won't survive teleports.", Duration = 5 })
-        end
-
+        
+        -- Execute the script. It will automatically queue itself for future teleports.
         loadstring(game:HttpGet(scriptURL))()
+        
+        Fluent:Notify({ Title = "Autofarm Loaded", Content = "Auto-farm initialized and queued.", Duration = 3 })
     end
 })
 

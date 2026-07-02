@@ -62,21 +62,16 @@ end
 -- ========================================== --
 -- DISCONNECT WATCHER (Runs all the time)
 -- ========================================== --
-task.spawn(function()
-    local promptOverlay = CoreGui:WaitForChild("RobloxPromptGui"):WaitForChild("promptOverlay")
+local GuiService = game:GetService("GuiService")
+GuiService.ErrorMessageChanged:Connect(function()
+    print("[Watcher] Disconnected! Auto-rejoining in 5 seconds...")
+    task.wait(5) 
     
-    promptOverlay.ChildAdded:Connect(function(child)
-        if child.Name == "ErrorPrompt" then
-            print("[Watcher] Disconnected! Auto-rejoining in 5 seconds...")
-            task.wait(5) 
-            
-            -- Clear the flag BEFORE teleporting
-            getgenv().FishmanAutoFarmRunning = false
-            
-            pcall(function()
-                TeleportService:Teleport(targetPlaceId, LocalPlayer)
-            end)
-        end
+    -- Clear the flag BEFORE teleporting
+    getgenv().FishmanAutoFarmRunning = false
+    
+    pcall(function()
+        TeleportService:Teleport(targetPlaceId, LocalPlayer)
     end)
 end)
 
