@@ -400,7 +400,7 @@ if not isLobby then
         Model.State.isCraftFlying = true
         local waited = 0 
         while Model.State.isCraftFlying and waited < 20 do
-            if not Model.State.autoCraft then break end
+            if not Model.State.isCurrentlyCrafting then break end
             task.wait(0.1); waited += 0.1
         end
         Model.State.isCraftFlying = false
@@ -417,8 +417,9 @@ if not isLobby then
     end
     
     function Model.ExecuteLegendaryCraft(craftQueue)
+        Model.State.isCurrentlyCrafting = true
         local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-        if not hrp then return end
+        if not hrp then Model.State.isCurrentlyCrafting = false return end
         local originalPos = hrp.Position
         
         Model.State.isFishing = false
@@ -430,18 +431,18 @@ if not isLobby then
         Model.DisableFlight()
         Model.UnequipRod()
         task.wait(3)
-        if not Model.State.autoCraft then return end
+        if not Model.State.isCurrentlyCrafting then return end
 
         Model.EnableFlight()
         CraftFlyPath({ Vector3.new(162.85, originalPos.Y, -55.34) })
-        if not Model.State.autoCraft then Model.DisableFlight(); return end
+        if not Model.State.isCurrentlyCrafting then Model.DisableFlight(); return end
         
         task.wait(0.5)
         SafeInvokeQuest(true)
         task.wait(0.5)
         
         for _, craftItem in ipairs(craftQueue) do
-            if not Model.State.autoCraft then break end
+            if not Model.State.isCurrentlyCrafting then break end
             pcall(function()
                 craftingRemote:InvokeServer({ 
                     Count = craftItem.Batches, 
@@ -455,7 +456,7 @@ if not isLobby then
         SafeInvokeQuest(false)
         task.wait(0.3)
         
-        if not Model.State.autoCraft then Model.DisableFlight(); return end
+        if not Model.State.isCurrentlyCrafting then Model.DisableFlight(); return end
         CraftFlyPath({ originalPos })
         Model.DisableFlight()
         
@@ -463,6 +464,7 @@ if not isLobby then
         Model.StartTraveling()
         Model.State.autoSell = true
         Model.State.waitingForArrivalToFish = true 
+        Model.State.isCurrentlyCrafting = false
     end
     
     -- INVENTORY & FISHING --
@@ -847,10 +849,48 @@ Tabs = {
         if isLobby then if Value then Fluent:Notify({ Title = "Error", Content = "Cannot travel in Lobby!", Duration = 3 }); Fluent.Options.T_Travel:SetValue(false) end return end
         if Value then Model.StartTraveling() else Model.State.isAutoTraveling = false; if Model.DisableFlight then Model.DisableFlight() end; Model.State.travelMessage = "" end 
     end })
-    Tabs.Fishing:AddToggle("T_Craft", { Title = "Auto Craft Legendary Bait", Default = false, Callback = function(Value) 
-        if isLobby then if Value then Fluent:Notify({ Title = "Error", Content = "Cannot craft in Lobby!", Duration = 3 }); Fluent.Options.T_Craft:SetValue(false) end return end
-        Model.State.autoCraft = Value 
-    end })
+    Tabs.Fishing:AddToggle("T_Craft", { Title = "Auto Craft Legendary Bait", Default = false }):OnChanged(function(Value)
+        Model.State.autoCraft = Value
+        if not Value then Model.State.isCurrentlyCrafting = false end
+    end)
+
+    Tabs.Fishing:AddButton({
+        Title = "Craft All Legendary Fish Now",
+        Description = "Instantly crafts all legendary fish in your inventory into baits.",
+        Callback = function()
+            if Model.State.isCurrentlyCrafting then
+                Fluent:Notify({ Title = "Warning", Content = "Already crafting!", Duration = 3 })
+                return
+            end
+
+            local LEGENDARY_FISHES = { "Anglerfish", "Golden Ribbon Angelfish", "Golden Polka Puffer", "Golden Tigerfin" }
+            local ok, inventoryData = pcall(function() return HttpService:JSONDecode(inventoryObj.Value) end)
+            if not ok or not inventoryData then
+                Fluent:Notify({ Title = "Error", Content = "Failed to parse inventory!", Duration = 3 })
+                return
+            end
+
+            local craftQueue = {}
+            for _, fishName in ipairs(LEGENDARY_FISHES) do
+                local amount = inventoryData[fishName] or 0
+                if amount > 0 then
+                    table.insert(craftQueue, { Name = fishName, Batches = amount })
+                end
+            end
+
+            if #craftQueue == 0 then
+                Fluent:Notify({ Title = "Notice", Content = "You have 0 Legendary Fishes to craft.", Duration = 3 })
+                return
+            end
+
+            Fluent:Notify({ Title = "Crafting Started", Content = "Initiating autonomous sequence...", Duration = 3 })
+            task.spawn(function()
+                Model.ExecuteLegendaryCraft(craftQueue)
+                Fluent:Notify({ Title = "Success", Content = "Sequence Complete! Fully stocked.", Duration = 4 })
+            end)
+        end
+    })
+
     Tabs.Fishing:AddToggle("T_AFK", { Title = "AFK Mode (Auto-start after 10s)", Default = not isLobby, Callback = function(Value) 
         if isLobby then if Value then Fluent:Notify({ Title = "Error", Content = "AFK Mode requires Fishing server!", Duration = 3 }); Fluent.Options.T_AFK:SetValue(false) end return end
         isAFKModeActive = Value; secondsSinceLastInput = 0 
