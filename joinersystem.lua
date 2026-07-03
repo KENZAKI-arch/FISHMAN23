@@ -906,12 +906,16 @@ end))
         if not Value then Model.State.isCurrentlyCrafting = false end
     end)
 
-    Tabs.Fishing:AddButton({
-        Title = "Craft All Legendary Fish Now",
-        Description = "Instantly crafts all legendary fish in your inventory into baits.",
-        Callback = function()
+    local ManualCraftToggle = Tabs.Fishing:AddToggle("T_ManualCraft", { 
+        Title = "Craft All Legendary Fish Now", 
+        Default = false 
+    })
+    
+    ManualCraftToggle:OnChanged(function(Value)
+        if Value then
             if Model.State.isCurrentlyCrafting then
                 Fluent:Notify({ Title = "Warning", Content = "Already crafting!", Duration = 3 })
+                ManualCraftToggle:SetValue(false)
                 return
             end
 
@@ -919,6 +923,7 @@ end))
             local ok, inventoryData = pcall(function() return HttpService:JSONDecode(inventoryObj.Value) end)
             if not ok or not inventoryData then
                 Fluent:Notify({ Title = "Error", Content = "Failed to parse inventory!", Duration = 3 })
+                ManualCraftToggle:SetValue(false)
                 return
             end
 
@@ -932,16 +937,22 @@ end))
 
             if #craftQueue == 0 then
                 Fluent:Notify({ Title = "Notice", Content = "You have 0 Legendary Fishes to craft.", Duration = 3 })
+                ManualCraftToggle:SetValue(false)
                 return
             end
 
             Fluent:Notify({ Title = "Crafting Started", Content = "Initiating autonomous sequence...", Duration = 3 })
             task.spawn(function()
                 Model.ExecuteLegendaryCraft(craftQueue)
-                Fluent:Notify({ Title = "Success", Content = "Sequence Complete! Fully stocked.", Duration = 4 })
+                if ManualCraftToggle.Value then
+                    ManualCraftToggle:SetValue(false)
+                    Fluent:Notify({ Title = "Crafting Finished", Content = "Sequence Complete or Aborted.", Duration = 4 })
+                end
             end)
+        else
+            Model.State.isCurrentlyCrafting = false
         end
-    })
+    end)
 
     Tabs.Fishing:AddToggle("T_AFK", { Title = "AFK Mode (Auto-start after 10s)", Default = not isLobby, Callback = function(Value) 
         if isLobby then if Value then Fluent:Notify({ Title = "Error", Content = "AFK Mode requires Fishing server!", Duration = 3 }); Fluent.Options.T_AFK:SetValue(false) end return end
