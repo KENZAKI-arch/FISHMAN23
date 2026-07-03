@@ -19,31 +19,54 @@ screenGui.ResetOnSpawn = false
 local success = pcall(function() screenGui.Parent = game:GetService("CoreGui") end)
 if not success then screenGui.Parent = LocalPlayer:WaitForChild("PlayerGui") end
 
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 160, 0, 75)
+frame.Position = UDim2.new(0.5, -80, 0.85, 0)
+frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+frame.Parent = screenGui
+Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
+
 local stopBtn = Instance.new("TextButton")
-stopBtn.Size = UDim2.new(0, 150, 0, 40)
-stopBtn.Position = UDim2.new(0.5, -75, 0.85, 0)
+stopBtn.Size = UDim2.new(1, -10, 0, 30)
+stopBtn.Position = UDim2.new(0, 5, 0, 5)
 stopBtn.BackgroundColor3 = Color3.fromRGB(255, 85, 85)
 stopBtn.Text = "STOP CRAFTING"
 stopBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 stopBtn.Font = Enum.Font.GothamBold
-stopBtn.TextSize = 14
-stopBtn.Parent = screenGui
+stopBtn.TextSize = 12
+stopBtn.Parent = frame
+Instance.new("UICorner", stopBtn).CornerRadius = UDim.new(0, 6)
 
-Instance.new("UICorner", stopBtn).CornerRadius = UDim.new(0, 8)
+local closeBtn = Instance.new("TextButton")
+closeBtn.Size = UDim2.new(1, -10, 0, 25)
+closeBtn.Position = UDim2.new(0, 5, 0, 42)
+closeBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+closeBtn.Text = "CLOSE UI"
+closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+closeBtn.Font = Enum.Font.GothamBold
+closeBtn.TextSize = 12
+closeBtn.Parent = frame
+Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, 6)
 
 local stopConn
-local function Cleanup()
+local function StopScript()
     isRunning = false
-    if screenGui then screenGui:Destroy() end
-    if stopConn then stopConn:Disconnect() end
-    warn("[CraftAllLegends] Script stopped and UI cleaned up.")
+    stopBtn.Text = "STOPPED!"
+    stopBtn.BackgroundColor3 = Color3.fromRGB(150, 50, 50)
+    warn("[CraftAllLegends] Script stopped. UI is kept open.")
 end
 
-stopBtn.MouseButton1Click:Connect(Cleanup)
+local function CloseUI()
+    if screenGui then screenGui:Destroy() end
+    if stopConn then stopConn:Disconnect() end
+end
+
+stopBtn.MouseButton1Click:Connect(StopScript)
+closeBtn.MouseButton1Click:Connect(CloseUI)
 
 stopConn = UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if not gameProcessed and input.KeyCode == Enum.KeyCode.RightBracket then
-        Cleanup()
+        StopScript()
     end
 end)
 
@@ -142,4 +165,5 @@ print("[CraftAllLegends] Returning to original position...")
 FlyTo(originalPos)
 
 print("[CraftAllLegends] Sequence Complete! You are fully stocked.")
-Cleanup()
+print("[CraftAllLegends] Sequence Complete! You are fully stocked.")
+StopScript()
