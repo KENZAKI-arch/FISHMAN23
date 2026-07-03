@@ -742,7 +742,7 @@ Tabs = {
     Settings = Window:AddTab({ Title = "Settings", Icon = "settings" })
 }
 
--- [EMERGENCY UI NUDGE HOTKEY]
+-- [DYNAMIC RECENTER HOTKEY]
 addConn(UserInputService.InputBegan:Connect(function(input, gpe)
     if input.KeyCode == Enum.KeyCode.RightAlt then
         local coreGui = game:GetService("CoreGui")
@@ -753,27 +753,38 @@ addConn(UserInputService.InputBegan:Connect(function(input, gpe)
         
         for _, gui in ipairs(guis) do
             if gui:IsA("ScreenGui") then
-                local isFluent = false
+                local fluentFrame = nil
                 for _, desc in ipairs(gui:GetDescendants()) do
                     if desc:IsA("Frame") and (desc.Size == UDim2.fromOffset(500, 350) or desc.Size == UDim2.new(0, 500, 0, 350)) then
-                        isFluent = true
+                        fluentFrame = desc
                         break
                     end
                 end
                 
-                if isFluent then
-                    local pad = gui:FindFirstChild("EmergencyNudgePadding")
-                    if pad then
-                        pad:Destroy()
-                        Fluent:Notify({ Title = "Nudge Removed", Content = "The emergency UI padding was removed.", Duration = 3 })
-                    else
+                if fluentFrame then
+                    local pad = gui:FindFirstChild("DynamicRecenterPadding")
+                    if not pad then
                         pad = Instance.new("UIPadding")
-                        pad.Name = "EmergencyNudgePadding"
-                        pad.PaddingTop = UDim.new(0, 150)
-                        pad.PaddingLeft = UDim.new(0, 150)
+                        pad.Name = "DynamicRecenterPadding"
+                        pad.PaddingTop = UDim.new(0, 0)
+                        pad.PaddingLeft = UDim.new(0, 0)
                         pad.Parent = gui
-                        Fluent:Notify({ Title = "UI Nudged", Content = "The UI was nudged so you can drag it. Press RightAlt again to remove this nudge.", Duration = 5 })
                     end
+                    
+                    local viewport = workspace.CurrentCamera.ViewportSize
+                    local targetX = (viewport.X / 2) - 250
+                    local targetY = (viewport.Y / 2) - 175
+                    
+                    local currentX = fluentFrame.AbsolutePosition.X
+                    local currentY = fluentFrame.AbsolutePosition.Y
+                    
+                    local diffX = targetX - currentX
+                    local diffY = targetY - currentY
+                    
+                    pad.PaddingLeft = UDim.new(0, pad.PaddingLeft.Offset + diffX)
+                    pad.PaddingTop = UDim.new(0, pad.PaddingTop.Offset + diffY)
+                    
+                    Fluent:Notify({ Title = "UI Recentered", Content = "The UI was perfectly centered! You can now drag it without any snapping glitches.", Duration = 4 })
                 end
             end
         end
