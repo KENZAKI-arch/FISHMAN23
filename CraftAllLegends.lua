@@ -12,12 +12,38 @@ local LocalPlayer = Players.LocalPlayer
 
 -- Global Kill Switch
 local isRunning = true
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "CraftAllLegendsUI"
+screenGui.ResetOnSpawn = false
+
+local success = pcall(function() screenGui.Parent = game:GetService("CoreGui") end)
+if not success then screenGui.Parent = LocalPlayer:WaitForChild("PlayerGui") end
+
+local stopBtn = Instance.new("TextButton")
+stopBtn.Size = UDim2.new(0, 150, 0, 40)
+stopBtn.Position = UDim2.new(0.5, -75, 0.85, 0)
+stopBtn.BackgroundColor3 = Color3.fromRGB(255, 85, 85)
+stopBtn.Text = "STOP CRAFTING"
+stopBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+stopBtn.Font = Enum.Font.GothamBold
+stopBtn.TextSize = 14
+stopBtn.Parent = screenGui
+
+Instance.new("UICorner", stopBtn).CornerRadius = UDim.new(0, 8)
+
 local stopConn
+local function Cleanup()
+    isRunning = false
+    if screenGui then screenGui:Destroy() end
+    if stopConn then stopConn:Disconnect() end
+    warn("[CraftAllLegends] Script stopped and UI cleaned up.")
+end
+
+stopBtn.MouseButton1Click:Connect(Cleanup)
+
 stopConn = UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if not gameProcessed and input.KeyCode == Enum.KeyCode.RightBracket then
-        isRunning = false
-        warn("[CraftAllLegends] EMERGENCY STOP INITIATED (Right Bracket Pressed)")
-        if stopConn then stopConn:Disconnect() end
+        Cleanup()
     end
 end)
 
@@ -116,3 +142,4 @@ print("[CraftAllLegends] Returning to original position...")
 FlyTo(originalPos)
 
 print("[CraftAllLegends] Sequence Complete! You are fully stocked.")
+Cleanup()
