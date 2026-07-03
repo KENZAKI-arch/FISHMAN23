@@ -7,7 +7,19 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
 local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
 local LocalPlayer = Players.LocalPlayer
+
+-- Global Kill Switch
+local isRunning = true
+local stopConn
+stopConn = UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if not gameProcessed and input.KeyCode == Enum.KeyCode.RightBracket then
+        isRunning = false
+        warn("[CraftAllLegends] EMERGENCY STOP INITIATED (Right Bracket Pressed)")
+        if stopConn then stopConn:Disconnect() end
+    end
+end)
 
 -- Wait for character
 local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
@@ -65,21 +77,25 @@ local function FlyTo(target)
         hrp.AssemblyAngularVelocity = Vector3.zero
     end)
     
-    while conn.Connected do task.wait(0.1) end
+    while conn.Connected and isRunning do task.wait(0.1) end
     if bv then bv:Destroy() end
+    if not isRunning and conn.Connected then conn:Disconnect() end
 end
 
 print("[CraftAllLegends] Flying to Blacksmith...")
 FlyTo(targetPos)
 task.wait(0.5)
+if not isRunning then return end
 
 print("[CraftAllLegends] Initiating Ghost Conversation...")
 pcall(function() questEvent:InvokeServer({ [1] = "npcChat", [2] = true }) end)
 task.wait(0.5)
 
 for _, craftItem in ipairs(craftQueue) do
+    if not isRunning then break end
     print("[CraftAllLegends] Crafting " .. craftItem.Batches .. " batches of " .. craftItem.Name .. "...")
     for i = 1, craftItem.Batches do
+        if not isRunning then break end
         pcall(function()
             craftingRemote:InvokeServer({ 
                 Count = 40, 
