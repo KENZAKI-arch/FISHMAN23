@@ -742,7 +742,7 @@ Tabs = {
     Settings = Window:AddTab({ Title = "Settings", Icon = "settings" })
 }
 
--- [RECENTER HOTKEY]
+-- [EMERGENCY UI NUDGE HOTKEY]
 addConn(UserInputService.InputBegan:Connect(function(input, gpe)
     if input.KeyCode == Enum.KeyCode.RightAlt then
         local coreGui = game:GetService("CoreGui")
@@ -753,10 +753,26 @@ addConn(UserInputService.InputBegan:Connect(function(input, gpe)
         
         for _, gui in ipairs(guis) do
             if gui:IsA("ScreenGui") then
+                local isFluent = false
                 for _, desc in ipairs(gui:GetDescendants()) do
                     if desc:IsA("Frame") and (desc.Size == UDim2.fromOffset(500, 350) or desc.Size == UDim2.new(0, 500, 0, 350)) then
-                        desc.Position = UDim2.new(0.5, -250, 0.5, -175)
-                        Fluent:Notify({ Title = "UI Recentered", Content = "The UI was moved back to the center of the screen.", Duration = 3 })
+                        isFluent = true
+                        break
+                    end
+                end
+                
+                if isFluent then
+                    local pad = gui:FindFirstChild("EmergencyNudgePadding")
+                    if pad then
+                        pad:Destroy()
+                        Fluent:Notify({ Title = "Nudge Removed", Content = "The emergency UI padding was removed.", Duration = 3 })
+                    else
+                        pad = Instance.new("UIPadding")
+                        pad.Name = "EmergencyNudgePadding"
+                        pad.PaddingTop = UDim.new(0, 150)
+                        pad.PaddingLeft = UDim.new(0, 150)
+                        pad.Parent = gui
+                        Fluent:Notify({ Title = "UI Nudged", Content = "The UI was nudged so you can drag it. Press RightAlt again to remove this nudge.", Duration = 5 })
                     end
                 end
             end
