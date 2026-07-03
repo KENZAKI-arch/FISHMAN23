@@ -635,6 +635,17 @@ if not isLobby then
             if not Model.State.autoCraft or Model.State.isCurrentlyCrafting then continue end
             local ok, inventoryData = pcall(function() return HttpService:JSONDecode(inventoryObj.Value) end)
             if not ok or not inventoryData then continue end
+            
+            local currentLegendaryBait = inventoryData["Legendary Fish Bait"] or 0
+            if currentLegendaryBait >= 300 then
+                if Fluent and Fluent.Options and Fluent.Options.T_Craft then
+                    Fluent.Options.T_Craft:SetValue(false)
+                    Fluent:Notify({ Title = "Auto Craft Disabled", Content = "You reached 300 Legendary Fish Baits!", Duration = 5 })
+                else
+                    Model.State.autoCraft = false
+                end
+                continue
+            end
             local craftQueue = {}
             local totalBatches = 0
             for _, legFish in ipairs(LEGENDARY_FISHES) do
