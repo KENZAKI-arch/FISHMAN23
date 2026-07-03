@@ -127,19 +127,16 @@ local function RunCraftingSequence()
 
     for _, craftItem in ipairs(craftQueue) do
         if not isRunning then break end
-        print("[CraftAllLegends] Crafting " .. craftItem.Batches .. " batches of " .. craftItem.Name .. "...")
-        for i = 1, craftItem.Batches do
-            if not isRunning then break end
-            pcall(function()
-                craftingRemote:InvokeServer({ 
-                    Count = 40, 
-                    ExtraData = { ["Legendary Fish"] = craftItem.Name }, 
-                    Method = "Craft", 
-                    BlueprintItem = "Legendary Fish Bait" 
-                })
-            end)
-            task.wait(0.5)
-        end
+        print("[CraftAllLegends] Crafting " .. craftItem.Batches .. " of " .. craftItem.Name .. "...")
+        pcall(function()
+            craftingRemote:InvokeServer({ 
+                Count = craftItem.Batches, 
+                ExtraData = { ["Legendary Fish"] = craftItem.Name }, 
+                Method = "Craft", 
+                BlueprintItem = "Legendary Fish Bait" 
+            })
+        end)
+        task.wait(1)
     end
 
     print("[CraftAllLegends] Closing Conversation...")
