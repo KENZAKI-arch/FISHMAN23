@@ -739,6 +739,28 @@ Tabs = {
     Settings = Window:AddTab({ Title = "Settings", Icon = "settings" })
 }
 
+-- [RECENTER HOTKEY]
+addConn(UserInputService.InputBegan:Connect(function(input, gpe)
+    if input.KeyCode == Enum.KeyCode.RightAlt then
+        local coreGui = game:GetService("CoreGui")
+        local pGui = LocalPlayer:FindFirstChild("PlayerGui")
+        local guis = {}
+        if coreGui then for _, g in ipairs(coreGui:GetChildren()) do table.insert(guis, g) end end
+        if pGui then for _, g in ipairs(pGui:GetChildren()) do table.insert(guis, g) end end
+        
+        for _, gui in ipairs(guis) do
+            if gui:IsA("ScreenGui") then
+                for _, desc in ipairs(gui:GetDescendants()) do
+                    if desc:IsA("Frame") and (desc.Size == UDim2.fromOffset(500, 350) or desc.Size == UDim2.new(0, 500, 0, 350)) then
+                        desc.Position = UDim2.new(0.5, -250, 0.5, -175)
+                        Fluent:Notify({ Title = "UI Recentered", Content = "The UI was moved back to the center of the screen.", Duration = 3 })
+                    end
+                end
+            end
+        end
+    end
+end))
+
 -- [TELEPORT TAB]
     Tabs.Teleport:AddInput("Input", {
         Title = "Private Server Code",
