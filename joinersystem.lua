@@ -695,7 +695,10 @@ local function ShutdownEverything()
     _running = false
     disconnectAll()
     if not isLobby then
-        Model.DisableFlight()
+        if Model and Model.DisableFlight then pcall(Model.DisableFlight) end
+    end
+    if Window and type(Window.Destroy) == "function" then
+        pcall(function() Window:Destroy() end)
     end
     env.FishmanScriptServer = nil
     print("[Fishman] Successfully shut down.")
