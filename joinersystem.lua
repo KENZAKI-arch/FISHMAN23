@@ -821,7 +821,7 @@ addConn(UserInputService.InputBegan:Connect(function(input, gpe)
                 
                 local fluentFrame = nil
                 
-                -- 2. Find the main Fluent UI
+                -- 2. Find the main Fluent UI or any internal frame matching the size
                 for _, desc in ipairs(gui:GetDescendants()) do
                     if desc:IsA("Frame") and (desc.Size == UDim2.fromOffset(500, 350) or desc.Size == UDim2.new(0, 500, 0, 350)) then
                         fluentFrame = desc
@@ -836,26 +836,40 @@ addConn(UserInputService.InputBegan:Connect(function(input, gpe)
                     wrapper:Destroy()
                 end
                 
-                -- 4. Apply AnchorPoint Translation
+                -- 4. Apply AnchorPoint Translation to the ROOT frame
                 if fluentFrame then
-                    local viewport = workspace.CurrentCamera.ViewportSize
-                    local targetX = (viewport.X / 2) - (fluentFrame.AbsoluteSize.X / 2)
-                    local targetY = (viewport.Y / 2) - (fluentFrame.AbsoluteSize.Y / 2)
+                    -- Navigate up to the absolute root frame inside the ScreenGui
+                    local rootFrame = fluentFrame
+                    while rootFrame.Parent and not rootFrame.Parent:IsA("ScreenGui") do
+                        if rootFrame.Parent:IsA("GuiObject") then
+                            rootFrame = rootFrame.Parent
+                        else
+                            break
+                        end
+                    end
                     
-                    local currentX = fluentFrame.AbsolutePosition.X
-                    local currentY = fluentFrame.AbsolutePosition.Y
+                    local viewport = workspace.CurrentCamera.ViewportSize
+                    local targetX = (viewport.X / 2) - (rootFrame.AbsoluteSize.X / 2)
+                    local targetY = (viewport.Y / 2) - (rootFrame.AbsoluteSize.Y / 2)
+                    
+                    local currentX = rootFrame.AbsolutePosition.X
+                    local currentY = rootFrame.AbsolutePosition.Y
                     
                     local diffX = targetX - currentX
                     local diffY = targetY - currentY
                     
-                    local currentAnchor = fluentFrame.AnchorPoint
-                    local newAnchorX = currentAnchor.X - (diffX / fluentFrame.AbsoluteSize.X)
-                    local newAnchorY = currentAnchor.Y - (diffY / fluentFrame.AbsoluteSize.Y)
+                    -- Avoid division by zero
+                    local sizeX = math.max(rootFrame.AbsoluteSize.X, 1)
+                    local sizeY = math.max(rootFrame.AbsoluteSize.Y, 1)
                     
-                    fluentFrame.AnchorPoint = Vector2.new(newAnchorX, newAnchorY)
+                    local currentAnchor = rootFrame.AnchorPoint
+                    local newAnchorX = currentAnchor.X - (diffX / sizeX)
+                    local newAnchorY = currentAnchor.Y - (diffY / sizeY)
+                    
+                    rootFrame.AnchorPoint = Vector2.new(newAnchorX, newAnchorY)
                     
                     if Fluent then
-                        Fluent:Notify({ Title = "UI Flawlessly Centered", Content = "The UI was centered using AnchorPoint translation. Dropdowns & Dragging are now perfect!", Duration = 5 })
+                        Fluent:Notify({ Title = "UI Flawlessly Centered", Content = "The Root UI was perfectly centered! Dropdowns & Dragging are intact.", Duration = 5 })
                     end
                 end
             end
