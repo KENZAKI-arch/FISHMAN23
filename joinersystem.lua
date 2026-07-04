@@ -753,7 +753,7 @@ Tabs = {
     Settings = Window:AddTab({ Title = "Settings", Icon = "settings" })
 }
 
--- [DYNAMIC RECENTER HOTKEY]
+-- [PERFECT RECENTER HOTKEY]
 addConn(UserInputService.InputBegan:Connect(function(input, gpe)
     if input.KeyCode == Enum.KeyCode.RightAlt then
         local coreGui = game:GetService("CoreGui")
@@ -764,27 +764,47 @@ addConn(UserInputService.InputBegan:Connect(function(input, gpe)
         
         for _, gui in ipairs(guis) do
             if gui:IsA("ScreenGui") then
+                -- 1. Clean up old bugged padding solutions
+                local oldPad = gui:FindFirstChild("DynamicRecenterPadding") or gui:FindFirstChild("EmergencyNudgePadding")
+                if oldPad then oldPad:Destroy() end
+                
                 local fluentFrame = nil
+                local wrapper = nil
+                
+                -- 2. Check if we already wrapped the UI
                 for _, desc in ipairs(gui:GetDescendants()) do
-                    if desc:IsA("Frame") and (desc.Size == UDim2.fromOffset(500, 350) or desc.Size == UDim2.new(0, 500, 0, 350)) then
-                        fluentFrame = desc
+                    if desc:IsA("Frame") and desc.Name == "EmergencyWrapper" then
+                        wrapper = desc
+                        fluentFrame = wrapper:FindFirstChildWhichIsA("Frame")
                         break
                     end
                 end
                 
+                -- 3. If not wrapped, find the original Fluent UI
+                if not fluentFrame then
+                    for _, desc in ipairs(gui:GetDescendants()) do
+                        if desc:IsA("Frame") and (desc.Size == UDim2.fromOffset(500, 350) or desc.Size == UDim2.new(0, 500, 0, 350)) then
+                            fluentFrame = desc
+                            break
+                        end
+                    end
+                end
+                
+                -- 4. Apply Wrapper and Center
                 if fluentFrame then
-                    local pad = gui:FindFirstChild("DynamicRecenterPadding")
-                    if not pad then
-                        pad = Instance.new("UIPadding")
-                        pad.Name = "DynamicRecenterPadding"
-                        pad.PaddingTop = UDim.new(0, 0)
-                        pad.PaddingLeft = UDim.new(0, 0)
-                        pad.Parent = gui
+                    if not wrapper then
+                        wrapper = Instance.new("Frame")
+                        wrapper.Name = "EmergencyWrapper"
+                        wrapper.BackgroundTransparency = 1
+                        wrapper.Size = UDim2.new(0, 0, 0, 0)
+                        wrapper.Position = UDim2.new(0, 0, 0, 0)
+                        wrapper.Parent = fluentFrame.Parent
+                        fluentFrame.Parent = wrapper
                     end
                     
                     local viewport = workspace.CurrentCamera.ViewportSize
-                    local targetX = (viewport.X / 2) - 250
-                    local targetY = (viewport.Y / 2) - 175
+                    local targetX = (viewport.X / 2) - (fluentFrame.AbsoluteSize.X / 2)
+                    local targetY = (viewport.Y / 2) - (fluentFrame.AbsoluteSize.Y / 2)
                     
                     local currentX = fluentFrame.AbsolutePosition.X
                     local currentY = fluentFrame.AbsolutePosition.Y
@@ -792,10 +812,11 @@ addConn(UserInputService.InputBegan:Connect(function(input, gpe)
                     local diffX = targetX - currentX
                     local diffY = targetY - currentY
                     
-                    pad.PaddingLeft = UDim.new(0, pad.PaddingLeft.Offset + diffX)
-                    pad.PaddingTop = UDim.new(0, pad.PaddingTop.Offset + diffY)
+                    wrapper.Position = UDim2.new(0, wrapper.Position.X.Offset + diffX, 0, wrapper.Position.Y.Offset + diffY)
                     
-                    Fluent:Notify({ Title = "UI Recentered", Content = "The UI was perfectly centered! You can now drag it without any snapping glitches.", Duration = 4 })
+                    if Fluent then
+                        Fluent:Notify({ Title = "UI Flawlessly Centered", Content = "The UI wrapper was centered. Dropdowns now work perfectly!", Duration = 5 })
+                    end
                 end
             end
         end
