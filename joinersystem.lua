@@ -798,6 +798,7 @@ addConn(UserInputService.InputBegan:Connect(function(input, gpe)
                         wrapper.BackgroundTransparency = 1
                         wrapper.Size = UDim2.new(0, 0, 0, 0)
                         wrapper.Position = UDim2.new(0, 0, 0, 0)
+                        wrapper.ZIndex = -100
                         wrapper.Parent = fluentFrame.Parent
                         fluentFrame.Parent = wrapper
                     end
