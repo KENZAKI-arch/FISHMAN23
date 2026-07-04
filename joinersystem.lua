@@ -880,7 +880,7 @@ end))
         Title = "Destination",
         Values = {"fishHub", "tradeHub", "Second Sea"},
         Multi = false,
-        Default = (table.find({"fishHub", "tradeHub", "Second Sea"}, GlobalMem.FishmanDestination) or 1),
+        Default = (table.find({"fishHub", "tradeHub", "Second Sea"}, GlobalMem.FishmanDestination) or 2),
         Callback = function(Value)
             GlobalMem.FishmanDestination = Value
             SaveConfig()
@@ -1026,7 +1026,7 @@ end))
         end
     end)
 
-    Tabs.Fishing:AddToggle("T_AFK", { Title = "AFK Mode (Auto-start after 10s)", Default = not isLobby, Callback = function(Value) 
+    Tabs.Fishing:AddToggle("T_AFK", { Title = "AFK Mode (Auto-start after 10s)", Default = (not isLobby and game.PrivateServerId ~= ""), Callback = function(Value) 
         if isLobby then if Value then Fluent:Notify({ Title = "Error", Content = "AFK Mode requires Fishing server!", Duration = 3 }); Fluent.Options.T_AFK:SetValue(false) end return end
         isAFKModeActive = Value; secondsSinceLastInput = 0 
     end })
