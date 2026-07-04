@@ -127,7 +127,7 @@ local function UpdateTeleportMemory(willAutoTeleport)
             task.spawn(function()
                 task.wait(15)
                 if getgenv().FishmanScriptServer ~= game.JobId then
-                    loadstring(game:HttpGet("]] .. myScriptURL .. [["))()
+                    loadstring(game:HttpGet("]] .. myScriptURL .. [[?v=" .. tostring(math.random())))()
                 end
             end)
         end)
@@ -1085,7 +1085,7 @@ Tabs.Autofarm:AddButton({
         local scriptURL = "https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/CombinedAutoLoad.lua"
         
         -- Execute the script. It will automatically queue itself for future teleports.
-        loadstring(game:HttpGet(scriptURL))()
+        loadstring(game:HttpGet(scriptURL .. "?v=" .. tostring(math.random())))()
         
         Fluent:Notify({ Title = "Autofarm Loaded", Content = "Auto-farm initialized and queued.", Duration = 3 })
     end

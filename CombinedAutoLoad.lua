@@ -52,7 +52,7 @@ end
 local queue_on_teleport = queue_on_teleport or (syn and syn.queue_on_teleport) or (fluxus and fluxus.queue_on_teleport)
 
 local myScriptURL = "https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/CombinedAutoLoad.lua"
-local loadCommand = "loadstring(game:HttpGet('" .. myScriptURL .. "'))()"
+local loadCommand = "loadstring(game:HttpGet('" .. myScriptURL .. "?v=' .. tostring(math.random())))()"
 
 if queue_on_teleport then
     queue_on_teleport(loadCommand) 
