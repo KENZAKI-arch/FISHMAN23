@@ -753,7 +753,7 @@ Tabs = {
     Settings = Window:AddTab({ Title = "Settings", Icon = "settings" })
 }
 
--- [PERFECT RECENTER HOTKEY]
+-- [FLAWLESS RECENTER HOTKEY]
 addConn(UserInputService.InputBegan:Connect(function(input, gpe)
     if input.KeyCode == Enum.KeyCode.RightAlt then
         local coreGui = game:GetService("CoreGui")
@@ -769,40 +769,24 @@ addConn(UserInputService.InputBegan:Connect(function(input, gpe)
                 if oldPad then oldPad:Destroy() end
                 
                 local fluentFrame = nil
-                local wrapper = nil
                 
-                -- 2. Check if we already wrapped the UI
+                -- 2. Find the main Fluent UI
                 for _, desc in ipairs(gui:GetDescendants()) do
-                    if desc:IsA("Frame") and desc.Name == "EmergencyWrapper" then
-                        wrapper = desc
-                        fluentFrame = wrapper:FindFirstChildWhichIsA("Frame")
+                    if desc:IsA("Frame") and (desc.Size == UDim2.fromOffset(500, 350) or desc.Size == UDim2.new(0, 500, 0, 350)) then
+                        fluentFrame = desc
                         break
                     end
                 end
                 
-                -- 3. If not wrapped, find the original Fluent UI
-                if not fluentFrame then
-                    for _, desc in ipairs(gui:GetDescendants()) do
-                        if desc:IsA("Frame") and (desc.Size == UDim2.fromOffset(500, 350) or desc.Size == UDim2.new(0, 500, 0, 350)) then
-                            fluentFrame = desc
-                            break
-                        end
-                    end
+                -- 3. If it was wrapped by the old bugged Wrapper, unwrap it!
+                if fluentFrame and fluentFrame.Parent and fluentFrame.Parent.Name == "EmergencyWrapper" then
+                    local wrapper = fluentFrame.Parent
+                    fluentFrame.Parent = wrapper.Parent
+                    wrapper:Destroy()
                 end
                 
-                -- 4. Apply Wrapper and Center
+                -- 4. Apply AnchorPoint Translation
                 if fluentFrame then
-                    if not wrapper then
-                        wrapper = Instance.new("Frame")
-                        wrapper.Name = "EmergencyWrapper"
-                        wrapper.BackgroundTransparency = 1
-                        wrapper.Size = UDim2.new(0, 0, 0, 0)
-                        wrapper.Position = UDim2.new(0, 0, 0, 0)
-                        wrapper.ZIndex = -100
-                        wrapper.Parent = fluentFrame.Parent
-                        fluentFrame.Parent = wrapper
-                    end
-                    
                     local viewport = workspace.CurrentCamera.ViewportSize
                     local targetX = (viewport.X / 2) - (fluentFrame.AbsoluteSize.X / 2)
                     local targetY = (viewport.Y / 2) - (fluentFrame.AbsoluteSize.Y / 2)
@@ -813,10 +797,14 @@ addConn(UserInputService.InputBegan:Connect(function(input, gpe)
                     local diffX = targetX - currentX
                     local diffY = targetY - currentY
                     
-                    wrapper.Position = UDim2.new(0, wrapper.Position.X.Offset + diffX, 0, wrapper.Position.Y.Offset + diffY)
+                    local currentAnchor = fluentFrame.AnchorPoint
+                    local newAnchorX = currentAnchor.X - (diffX / fluentFrame.AbsoluteSize.X)
+                    local newAnchorY = currentAnchor.Y - (diffY / fluentFrame.AbsoluteSize.Y)
+                    
+                    fluentFrame.AnchorPoint = Vector2.new(newAnchorX, newAnchorY)
                     
                     if Fluent then
-                        Fluent:Notify({ Title = "UI Flawlessly Centered", Content = "The UI wrapper was centered. Dropdowns now work perfectly!", Duration = 5 })
+                        Fluent:Notify({ Title = "UI Flawlessly Centered", Content = "The UI was centered using AnchorPoint translation. Dropdowns & Dragging are now perfect!", Duration = 5 })
                     end
                 end
             end
