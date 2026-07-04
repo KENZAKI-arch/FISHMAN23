@@ -606,13 +606,67 @@ if not isLobby then
         pcall(function() Remote:InvokeServer({ Action = "Cancel" }) end)
         task.wait()
     end
-    
+    function Model.ActivateAntiLag()
+        if Model.State.isAntiLagActive then return end
+        Model.State.isAntiLagActive = true
+        
+        if Fluent then Fluent:Notify({ Title = "Anti-Lag", Content = "Activating potato graphics...", Duration = 3 }) end
+        task.spawn(function()
+            local Terrain = workspace:FindFirstChildWhichIsA("Terrain")
+            if Terrain then
+                Terrain.WaterWaveSize = 0
+                Terrain.WaterWaveSpeed = 0
+                Terrain.WaterReflectance = 0
+                Terrain.WaterTransparency = 1
+            end
+
+            game:GetService("Lighting").GlobalShadows = false
+            game:GetService("Lighting").FogEnd = 9e9
+            game:GetService("Lighting").FogStart = 9e9
+
+            settings().Rendering.QualityLevel = 1
+
+            for _, v in pairs(game:GetDescendants()) do
+                if v:IsA("BasePart") then
+                    v.CastShadow = false
+                    v.Material = Enum.Material.Plastic
+                    v.Reflectance = 0
+                elseif v:IsA("Decal") then
+                    v.Transparency = 1
+                    v.Texture = ""
+                elseif v:IsA("ParticleEmitter") or v:IsA("Trail") then
+                    v.Lifetime = NumberRange.new(0)
+                end
+            end
+
+            for _, v in pairs(game:GetService("Lighting"):GetDescendants()) do
+                if v:IsA("PostEffect") then
+                    v.Enabled = false
+                end
+            end
+
+            addConn(workspace.DescendantAdded:Connect(function(child)
+                task.spawn(function()
+                    if child:IsA("ForceField") or child:IsA("Sparkles") or child:IsA("Smoke") or child:IsA("Fire") or child:IsA("Beam") then
+                        game:GetService("RunService").Heartbeat:Wait()
+                        child:Destroy()
+                    elseif child:IsA("BasePart") then
+                        child.CastShadow = false
+                    end
+                end)
+            end))
+
+            print("Anti-Lag: Active")
+        end)
+    end
+
     -- BACKGROUND LOOPS --
     task.spawn(function()
         while _running and task.wait(1) do
             if isAFKModeActive then
                 secondsSinceLastInput += 1
                 if secondsSinceLastInput == 10 then
+                    Model.ActivateAntiLag()
                     if Fluent and Fluent.Options then
                         if Fluent.Options.T_Buy then Fluent.Options.T_Buy:SetValue(true) end
                         if Fluent.Options.T_Sell then Fluent.Options.T_Sell:SetValue(true) end
@@ -998,54 +1052,7 @@ end))
         Title = "Activate Anti-Lag (Potato Graphics)",
         Description = "Removes textures, shadows, and water to heavily boost FPS.",
         Callback = function()
-            Fluent:Notify({ Title = "Anti-Lag", Content = "Activating potato graphics...", Duration = 3 })
-            task.spawn(function()
-                local Terrain = workspace:FindFirstChildWhichIsA("Terrain")
-                if Terrain then
-                    Terrain.WaterWaveSize = 0
-                    Terrain.WaterWaveSpeed = 0
-                    Terrain.WaterReflectance = 0
-                    Terrain.WaterTransparency = 1
-                end
-
-                game:GetService("Lighting").GlobalShadows = false
-                game:GetService("Lighting").FogEnd = 9e9
-                game:GetService("Lighting").FogStart = 9e9
-
-                settings().Rendering.QualityLevel = 1
-
-                for _, v in pairs(game:GetDescendants()) do
-                    if v:IsA("BasePart") then
-                        v.CastShadow = false
-                        v.Material = Enum.Material.Plastic
-                        v.Reflectance = 0
-                    elseif v:IsA("Decal") then
-                        v.Transparency = 1
-                        v.Texture = ""
-                    elseif v:IsA("ParticleEmitter") or v:IsA("Trail") then
-                        v.Lifetime = NumberRange.new(0)
-                    end
-                end
-
-                for _, v in pairs(game:GetService("Lighting"):GetDescendants()) do
-                    if v:IsA("PostEffect") then
-                        v.Enabled = false
-                    end
-                end
-
-                addConn(workspace.DescendantAdded:Connect(function(child)
-                    task.spawn(function()
-                        if child:IsA("ForceField") or child:IsA("Sparkles") or child:IsA("Smoke") or child:IsA("Fire") or child:IsA("Beam") then
-                            game:GetService("RunService").Heartbeat:Wait()
-                            child:Destroy()
-                        elseif child:IsA("BasePart") then
-                            child.CastShadow = false
-                        end
-                    end)
-                end))
-
-                print("Anti-Lag: Active")
-            end)
+            Model.ActivateAntiLag()
         end
     })
 
