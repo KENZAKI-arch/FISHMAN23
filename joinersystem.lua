@@ -944,6 +944,41 @@ end))
         end
     })
 
+    Tabs.Teleport:AddButton({
+        Title = "🏠 Return to Base of Operations",
+        Description = "Instantly teleports you to tradeHub in qj1ttW4JG1.",
+        Callback = function()
+            GlobalMem.FishmanPSCode = "qj1ttW4JG1"
+            GlobalMem.FishmanDestination = "tradeHub"
+            GlobalMem.FishmanAutoTeleport = true
+            SaveConfig()
+            
+            if Fluent.Options.Input then Fluent.Options.Input:SetValue("qj1ttW4JG1") end
+            if Fluent.Options.Dropdown then Fluent.Options.Dropdown:SetValue("tradeHub") end
+            
+            Fluent:Notify({ Title = "Routing to Base", Content = "Initiating emergency warp...", Duration = 3 })
+            
+            if isLobby then
+                task.spawn(function()
+                    local events = ReplicatedStorage:WaitForChild("Events", 9e9)
+                    local reserved = events:WaitForChild("reserved", 9e9)
+                    pcall(function() reserved:InvokeServer("qj1ttW4JG1") end)
+                end)
+                task.wait(5)
+                local confirmArgs = { [1] = "tradeHub" }
+                pcall(function()
+                    local playerGui = LocalPlayer:WaitForChild("PlayerGui", 20)
+                    local chooseType = playerGui:WaitForChild("chooseType", 20)
+                    local frame = chooseType:WaitForChild("Frame", 20)
+                    local remoteEvent = frame:WaitForChild("RemoteEvent", 20)
+                    remoteEvent:FireServer(unpack(confirmArgs))
+                end)
+            else
+                TeleportService:Teleport(targetPlaceId, LocalPlayer)
+            end
+        end
+    })
+
     -- Check if we should automatically route
     if isLobby then
         local destCode = GlobalMem.FishmanPSCode
