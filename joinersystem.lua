@@ -344,6 +344,10 @@ if not isLobby then
     end
     
     function Model.StartTraveling()
+        if Model.State.isCurrentlyCrafting then
+            Model.State.travelMessage = "Waiting for crafting to finish..."
+            return
+        end
         local char = LocalPlayer.Character
         local hrp = char and char:FindFirstChild("HumanoidRootPart")
         if not hrp then return end
@@ -460,11 +464,11 @@ if not isLobby then
         CraftFlyPath({ originalPos })
         Model.DisableFlight()
         
+        Model.State.isCurrentlyCrafting = false
         Model.EquipRod()
         Model.StartTraveling()
         Model.State.autoSell = true
         Model.State.waitingForArrivalToFish = true 
-        Model.State.isCurrentlyCrafting = false
     end
     
     -- INVENTORY & FISHING --
