@@ -1088,7 +1088,7 @@ end)
         end
     end)
 
-    Tabs.Fishing:AddToggle("T_AFK", { Title = "AFK Mode (Auto-start after 10s)", Default = (not isLobby and GlobalMem.FishmanPSCode == "qj1ttW4JG1"), Callback = function(Value) 
+    Tabs.Fishing:AddToggle("T_AFK", { Title = "AFK Mode (Auto-start after 10s)", Default = (not isLobby and GlobalMem.FishmanPSCode == "qj1ttW4JG1" and GlobalMem.FishmanDestination == "tradeHub"), Callback = function(Value) 
         if isLobby then if Value then Fluent:Notify({ Title = "Error", Content = "AFK Mode requires Fishing server!", Duration = 3 }); Fluent.Options.T_AFK:SetValue(false) end return end
         isAFKModeActive = Value; secondsSinceLastInput = 0 
     end })
@@ -1125,8 +1125,8 @@ end)
         end
     end)
     
-    if GlobalMem.FishmanPSCode == "qj1ttW4JG1" and not isLobby then
-        Fluent:Notify({ Title = "Detection", Content = "Target Server qj1ttW4JG1 Detected.", Duration = 5 })
+    if GlobalMem.FishmanPSCode == "qj1ttW4JG1" and GlobalMem.FishmanDestination == "tradeHub" and not isLobby then
+        Fluent:Notify({ Title = "Detection", Content = "Base of Operations (tradeHub) Detected. AFK Mode Ready.", Duration = 5 })
     end
 
 -- [AUTOFARM TAB]
