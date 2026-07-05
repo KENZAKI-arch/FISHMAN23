@@ -125,11 +125,11 @@ Tabs.Main:AddButton({
         end
 
         local travelSpeed = currentTravelSpeed
-        -- Travel Y first to avoid mountains
-        local travelHeight = math.max(rootPart.Position.Y, targetPosition.Y) + 500
+        -- Travel Y first to exactly match the island's Y requirement
+        local travelHeight = targetPosition.Y + 20
         local waypoint1 = Vector3.new(rootPart.Position.X, travelHeight, rootPart.Position.Z)
         local waypoint2 = Vector3.new(targetPosition.X, travelHeight, targetPosition.Z)
-        local finalTarget = Vector3.new(targetPosition.X, targetPosition.Y + 20, targetPosition.Z)
+        local finalTarget = Vector3.new(targetPosition.X, targetPosition.Y + 5, targetPosition.Z)
 
         Fluent:Notify({ Title = "Flight Started", Content = "Traveling to " .. selectedIsland, Duration = 3 })
 
