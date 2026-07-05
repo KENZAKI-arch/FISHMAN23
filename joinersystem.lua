@@ -813,78 +813,69 @@ Tabs = {
     Settings = Window:AddTab({ Title = "Settings", Icon = "settings" })
 }
 
--- [FLAWLESS RECENTER HOTKEY]
-addConn(UserInputService.InputBegan:Connect(function(input, gpe)
-    if input.KeyCode == Enum.KeyCode.RightAlt then
-        local coreGui = game:GetService("CoreGui")
-        local pGui = LocalPlayer:FindFirstChild("PlayerGui")
+-- [MAKE ENTIRE UI DRAGGABLE]
+task.spawn(function()
+    local coreGui = game:GetService("CoreGui")
+    local pGui = LocalPlayer:FindFirstChild("PlayerGui")
+    local rootFrame = nil
+    
+    -- Wait until the Fluent UI is fully constructed
+    while _running and task.wait(1) do
         local guis = {}
         if coreGui then for _, g in ipairs(coreGui:GetChildren()) do table.insert(guis, g) end end
         if pGui then for _, g in ipairs(pGui:GetChildren()) do table.insert(guis, g) end end
         
         for _, gui in ipairs(guis) do
             if gui:IsA("ScreenGui") then
-                -- 1. Clean up old bugged padding solutions
-                local oldPad = gui:FindFirstChild("DynamicRecenterPadding") or gui:FindFirstChild("EmergencyNudgePadding")
-                if oldPad then oldPad:Destroy() end
-                
-                local fluentFrame = nil
-                
-                -- 2. Find the main Fluent UI or any internal frame matching the size
                 for _, desc in ipairs(gui:GetDescendants()) do
                     if desc:IsA("Frame") and (desc.Size == UDim2.fromOffset(500, 350) or desc.Size == UDim2.new(0, 500, 0, 350)) then
-                        fluentFrame = desc
+                        rootFrame = desc
+                        while rootFrame.Parent and not rootFrame.Parent:IsA("ScreenGui") do
+                            if rootFrame.Parent:IsA("GuiObject") then rootFrame = rootFrame.Parent else break end
+                        end
                         break
                     end
                 end
-                
-                -- 3. If it was wrapped by the old bugged Wrapper, unwrap it!
-                if fluentFrame and fluentFrame.Parent and fluentFrame.Parent.Name == "EmergencyWrapper" then
-                    local wrapper = fluentFrame.Parent
-                    fluentFrame.Parent = wrapper.Parent
-                    wrapper:Destroy()
-                end
-                
-                -- 4. Apply AnchorPoint Translation to the ROOT frame
-                if fluentFrame then
-                    -- Navigate up to the absolute root frame inside the ScreenGui
-                    local rootFrame = fluentFrame
-                    while rootFrame.Parent and not rootFrame.Parent:IsA("ScreenGui") do
-                        if rootFrame.Parent:IsA("GuiObject") then
-                            rootFrame = rootFrame.Parent
-                        else
-                            break
-                        end
-                    end
-                    
-                    local viewport = workspace.CurrentCamera.ViewportSize
-                    local targetX = (viewport.X / 2) - (rootFrame.AbsoluteSize.X / 2)
-                    local targetY = (viewport.Y / 2) - (rootFrame.AbsoluteSize.Y / 2)
-                    
-                    local currentX = rootFrame.AbsolutePosition.X
-                    local currentY = rootFrame.AbsolutePosition.Y
-                    
-                    local diffX = targetX - currentX
-                    local diffY = targetY - currentY
-                    
-                    -- Avoid division by zero
-                    local sizeX = math.max(rootFrame.AbsoluteSize.X, 1)
-                    local sizeY = math.max(rootFrame.AbsoluteSize.Y, 1)
-                    
-                    local currentAnchor = rootFrame.AnchorPoint
-                    local newAnchorX = currentAnchor.X - (diffX / sizeX)
-                    local newAnchorY = currentAnchor.Y - (diffY / sizeY)
-                    
-                    rootFrame.AnchorPoint = Vector2.new(newAnchorX, newAnchorY)
-                    
-                    if Fluent then
-                        Fluent:Notify({ Title = "UI Flawlessly Centered", Content = "The Root UI was perfectly centered! Dropdowns & Dragging are intact.", Duration = 5 })
-                    end
-                end
             end
+            if rootFrame then break end
         end
+        if rootFrame then break end
     end
-end))
+    
+    if rootFrame and _running then
+        local dragging = false
+        local dragInput, dragStart, startPos
+        
+        addConn(rootFrame.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                dragging = true
+                dragStart = input.Position
+                startPos = rootFrame.Position
+                
+                local endConn
+                endConn = input.Changed:Connect(function()
+                    if input.UserInputState == Enum.UserInputState.End then
+                        dragging = false
+                        if endConn then endConn:Disconnect() end
+                    end
+                end)
+            end
+        end))
+
+        addConn(rootFrame.InputChanged:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+                dragInput = input
+            end
+        end))
+
+        addConn(UserInputService.InputChanged:Connect(function(input)
+            if input == dragInput and dragging then
+                local delta = input.Position - dragStart
+                rootFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+            end
+        end))
+    end
+end)
 
 -- [TELEPORT TAB]
     Tabs.Teleport:AddInput("Input", {
