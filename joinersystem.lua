@@ -671,11 +671,13 @@ if not isLobby then
                 secondsSinceLastInput += 1
                 if secondsSinceLastInput == 10 then
                     Model.ActivateAntiLag()
+                    pcall(function() game:GetService("RunService"):Set3dRenderingEnabled(false) end)
                     if Fluent and Fluent.Options then
                         if Fluent.Options.T_Buy then Fluent.Options.T_Buy:SetValue(true) end
                         if Fluent.Options.T_Sell then Fluent.Options.T_Sell:SetValue(true) end
                         if Fluent.Options.T_Craft then Fluent.Options.T_Craft:SetValue(true) end
                         if Fluent.Options.T_Travel then Fluent.Options.T_Travel:SetValue(true) end
+                        if Fluent.Options.T_3DRender then Fluent.Options.T_3DRender:SetValue(true) end
                     else
                         Model.State.autoBuy = true
                         Model.State.autoSell = true
@@ -1041,6 +1043,10 @@ end))
     Tabs.Fishing:AddToggle("T_Craft", { Title = "Auto Craft Legendary Bait", Default = false }):OnChanged(function(Value)
         Model.State.autoCraft = Value
         if not Value then Model.State.isCurrentlyCrafting = false end
+    end)
+
+    Tabs.Fishing:AddToggle("T_3DRender", { Title = "Disable 3D Rendering (Black Screen)", Default = false }):OnChanged(function(Value)
+        pcall(function() game:GetService("RunService"):Set3dRenderingEnabled(not Value) end)
     end)
 
     local ManualCraftToggle = Tabs.Fishing:AddToggle("T_ManualCraft", { 
