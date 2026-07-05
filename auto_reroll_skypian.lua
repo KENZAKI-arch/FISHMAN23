@@ -52,25 +52,10 @@ task.spawn(function()
             break
         end
         
-        -- If not Skypian, fire the Reroll Button
-        if getconnections then
-            local connections = getconnections(RerollButton.MouseButton1Click)
-            if connections and #connections > 0 then
-                for _, conn in ipairs(connections) do
-                    conn:Fire()
-                end
-            elseif getconnections(RerollButton.Activated) and #getconnections(RerollButton.Activated) > 0 then
-                for _, conn in ipairs(getconnections(RerollButton.Activated)) do
-                    conn:Fire()
-                end
-            else
-                warn("[Auto Reroll] No click connections found on the RerollButton. The script might not work for this executor.")
-            end
-        else
-            warn("[Auto Reroll] Your executor does not support getconnections(). Cannot auto-click the UI button.")
-            isRunning = false
-            break
-        end
+        -- If not Skypian, fire the Reroll RemoteEvent
+        pcall(function()
+            game:GetService("ReplicatedStorage"):WaitForChild("Events", 5):WaitForChild("reroll", 5):InvokeServer()
+        end)
         
         -- Wait a moment before rerolling again to allow the server to process and UI to update
         task.wait(1.5)
