@@ -47,12 +47,36 @@ Fluent.Options.IslandDropdown:OnChanged(function(Value)
     selectedIsland = Value
 end)
 
-local travelConn = nil
+local currentTravelSpeed = 50
+
+Tabs.Main:AddSlider("TravelSpeed", {
+    Title = "Flight Speed",
+    Description = "Keep this low (e.g. 50-60) to avoid Anti-Cheat kicks on long flights.",
+    Default = 50,
+    Min = 20,
+    Max = 120,
+    Rounding = 0,
+    Callback = function(Value)
+        currentTravelSpeed = Value
+    end
+})
+
+local travelThread = nil
+local stateConn = nil
+local currentTween = nil
 
 local function StopTravel()
-    if travelConn then
-        travelConn:Disconnect()
-        travelConn = nil
+    if travelThread then
+        task.cancel(travelThread)
+        travelThread = nil
+    end
+    if currentTween then
+        currentTween:Cancel()
+        currentTween = nil
+    end
+    if stateConn then
+        stateConn:Disconnect()
+        stateConn = nil
     end
     
     local character = LocalPlayer.Character
@@ -100,7 +124,7 @@ Tabs.Main:AddButton({
             targetPosition = targetIsland.Position
         end
 
-        local travelSpeed = 90
+        local travelSpeed = currentTravelSpeed
         -- Travel Y first to avoid mountains
         local travelHeight = math.max(rootPart.Position.Y, targetPosition.Y) + 500
         local waypoint1 = Vector3.new(rootPart.Position.X, travelHeight, rootPart.Position.Z)
@@ -109,8 +133,10 @@ Tabs.Main:AddButton({
 
         Fluent:Notify({ Title = "Flight Started", Content = "Traveling to " .. selectedIsland, Duration = 3 })
 
-        -- 1. Preparation (Enable Flight Physics)
-        humanoid.PlatformStand = true
+        -- 1. Preparation (Unanchored Bypass Physics)
+        humanoid.PlatformStand = false -- Important for falling animation
+        rootPart.Anchored = false 
+
         local bg = rootPart:FindFirstChild("AutoTravel_Gyro") or Instance.new("BodyGyro")
         bg.Name = "AutoTravel_Gyro"
         bg.P = 9e4
@@ -124,92 +150,42 @@ Tabs.Main:AddButton({
         bv.MaxForce = Vector3.new(9e9, 9e9, 9e9)
         bv.Parent = rootPart
 
-        -- 2. Movement Logic (Heartbeat + Lerp)
-        local travelStage = 1
-        travelConn = RunService.Heartbeat:Connect(function(deltaTime)
-            if not character or not character.Parent or humanoid.Health <= 0 then
-                StopTravel()
-                return
+        -- Force falling animation constantly to trick anti-cheat
+        stateConn = RunService.Heartbeat:Connect(function()
+            if humanoid then
+                humanoid:ChangeState(Enum.HumanoidStateType.Freefall)
             end
+        end)
 
-            local cur = rootPart.Position
-            local tgt
-            if travelStage == 1 then tgt = waypoint1
-            elseif travelStage == 2 then tgt = waypoint2
-            else tgt = finalTarget end
-
-            local goingUp = (tgt.Y > cur.Y)
-            local nextPoint
-
-            if goingUp and math.abs(cur.Y - tgt.Y) > 1 then nextPoint = Vector3.new(cur.X, tgt.Y, cur.Z)
-            elseif math.abs(cur.X - tgt.X) > 1 then nextPoint = Vector3.new(tgt.X, cur.Y, cur.Z)
-            elseif math.abs(cur.Z - tgt.Z) > 1 then nextPoint = Vector3.new(tgt.X, cur.Y, tgt.Z)
-            elseif not goingUp and math.abs(cur.Y - tgt.Y) > 1 then nextPoint = Vector3.new(tgt.X, tgt.Y, tgt.Z)
-            else
-                -- Stage Transition
-                if travelStage == 1 then travelStage = 2 return
-                elseif travelStage == 2 then travelStage = 3 return end
-                
-                -- Arrived
-                StopTravel()
-                Fluent:Notify({ Title = "Arrived", Content = "Safely landed at " .. selectedIsland, Duration = 4 })
-                return
-            end
-
-            local newX, newZ = cur.X, cur.Z
-            local horizNext = Vector3.new(nextPoint.X, cur.Y, nextPoint.Z)
-            local horizDist = (Vector3.new(cur.X, 0, cur.Z) - Vector3.new(nextPoint.X, 0, nextPoint.Z)).Magnitude
+        local TweenService = game:GetService("TweenService")
+        local function PlayTween(targetVec)
+            local dist = (rootPart.Position - targetVec).Magnitude
+            if dist < 1 then return end
             
-            if horizDist > 0 then
-                local alpha = math.clamp((travelSpeed * deltaTime) / horizDist, 0, 1)
-                local hLerp = cur:Lerp(horizNext, alpha)
-                newX, newZ = hLerp.X, hLerp.Z
-            end
+            local tInfo = TweenInfo.new(dist / travelSpeed, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut)
+            currentTween = TweenService:Create(rootPart, tInfo, { CFrame = CFrame.new(targetVec) })
+            
+            local bgCFrame = CFrame.new(rootPart.Position, Vector3.new(targetVec.X, rootPart.Position.Y, targetVec.Z))
+            if bgCFrame.LookVector.Magnitude > 0 then bg.CFrame = bgCFrame end
+            
+            currentTween:Play()
+            currentTween.Completed:Wait()
+        end
 
-            local newY = cur.Y
-            if travelStage > 1 and not goingUp then
-                local params = RaycastParams.new()
-                params.FilterDescendantsInstances = {LocalPlayer.Character}
-                params.FilterType = Enum.RaycastFilterType.Exclude
-
-                local floorY = tgt.Y
-                local rayStart = Vector3.new(newX, cur.Y + 10, newZ)
-                local remainingDist = 500
-                
-                while remainingDist > 0 do
-                    local res = workspace:Raycast(rayStart, Vector3.new(0, -remainingDist, 0), params)
-                    if res then
-                        if res.Instance.CanCollide and res.Instance.Anchored then
-                            floorY = math.max(tgt.Y, res.Position.Y + 3.5)
-                            break
-                        else
-                            local advance = (rayStart - res.Position).Magnitude + 0.1
-                            rayStart = res.Position - Vector3.new(0, 0.1, 0)
-                            remainingDist = remainingDist - advance
-                        end
-                    else
-                        break
-                    end
-                end
-
-                if cur.Y > floorY then
-                    newY = cur.Y - (150 * deltaTime)
-                    if newY < floorY then newY = floorY end
-                else
-                    newY = floorY
-                end
-            else
-                local yDist = math.abs(nextPoint.Y - cur.Y)
-                if yDist > 0 then
-                    local alpha = math.clamp((travelSpeed * deltaTime) / yDist, 0, 1)
-                    newY = cur.Y + (nextPoint.Y - cur.Y) * alpha
-                end
-            end
-
-            -- Apply Physics Bypass
-            rootPart.CFrame = CFrame.new(newX, newY, newZ)
-            bv.Velocity = Vector3.new(0, 0, 0)
-            bg.CFrame = CFrame.new(rootPart.Position, Vector3.new(tgt.X, rootPart.Position.Y, tgt.Z))
+        travelThread = task.spawn(function()
+            -- Stage 1: Go Up
+            PlayTween(waypoint1)
+            task.wait(0.1)
+            
+            -- Stage 2: Go Across
+            PlayTween(waypoint2)
+            task.wait(0.1)
+            
+            -- Stage 3: Go Down
+            PlayTween(finalTarget)
+            
+            StopTravel()
+            Fluent:Notify({ Title = "Arrived", Content = "Safely landed at " .. selectedIsland, Duration = 4 })
         end)
     end
 })
