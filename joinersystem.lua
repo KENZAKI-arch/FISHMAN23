@@ -899,9 +899,9 @@ end))
 
     Tabs.Teleport:AddDropdown("Dropdown", {
         Title = "Destination",
-        Values = {"fishHub", "tradeHub", "Second Sea"},
+        Values = {"fishHub", "tradeHub", "Second Sea", "Lobby"},
         Multi = false,
-        Default = (table.find({"fishHub", "tradeHub", "Second Sea"}, GlobalMem.FishmanDestination) or 2),
+        Default = (table.find({"fishHub", "tradeHub", "Second Sea", "Lobby"}, GlobalMem.FishmanDestination) or 2),
         Callback = function(Value)
             GlobalMem.FishmanDestination = Value
             SaveConfig()
@@ -912,6 +912,11 @@ end))
         Title = "🚀 Teleport Now!",
         Description = "Teleports you to the selected destination.",
         Callback = function()
+            if isLobby and GlobalMem.FishmanDestination == "Lobby" then
+                Fluent:Notify({ Title = "Notice", Content = "You are already in the Lobby!", Duration = 3 })
+                return
+            end
+            
             GlobalMem.FishmanAutoTeleport = true
             SaveConfig()
             
@@ -944,37 +949,41 @@ end))
         local destCode = GlobalMem.FishmanPSCode
         local destPlace = GlobalMem.FishmanDestination
         
-        if GlobalMem.FishmanAutoTeleport then
-            Fluent:Notify({ Title = "Auto-Teleporting", Content = "Routing to chosen destination in 3s...", Duration = 3 })
-            GlobalMem.FishmanAutoTeleport = false
-            SaveConfig()
+        if destPlace == "Lobby" then
+            Fluent:Notify({ Title = "Lobby Mode", Content = "Staying in Lobby. Auto-routing disabled.", Duration = 5 })
         else
-            Fluent:Notify({ Title = "Base of Operations", Content = "Routing to Trade Hub in 3s...", Duration = 3 })
-            destCode = "qj1ttW4JG1"
-            destPlace = "tradeHub"
-        end
-        
-        task.spawn(function()
-            task.wait(3)
-            
-            if destCode ~= "" then
-                task.spawn(function()
-                    local events = ReplicatedStorage:WaitForChild("Events", 9e9)
-                    local reserved = events:WaitForChild("reserved", 9e9)
-                    pcall(function() reserved:InvokeServer(destCode) end)
-                end)
-                task.wait(5) 
+            if GlobalMem.FishmanAutoTeleport then
+                Fluent:Notify({ Title = "Auto-Teleporting", Content = "Routing to chosen destination in 3s...", Duration = 3 })
+                GlobalMem.FishmanAutoTeleport = false
+                SaveConfig()
+            else
+                Fluent:Notify({ Title = "Base of Operations", Content = "Routing to Trade Hub in 3s...", Duration = 3 })
+                destCode = "qj1ttW4JG1"
+                destPlace = "tradeHub"
             end
             
-            local confirmArgs = { [1] = destPlace }
-            pcall(function()
-                local playerGui = LocalPlayer:WaitForChild("PlayerGui", 20)
-                local chooseType = playerGui:WaitForChild("chooseType", 20)
-                local frame = chooseType:WaitForChild("Frame", 20)
-                local remoteEvent = frame:WaitForChild("RemoteEvent", 20)
-                remoteEvent:FireServer(unpack(confirmArgs))
+            task.spawn(function()
+                task.wait(3)
+                
+                if destCode ~= "" then
+                    task.spawn(function()
+                        local events = ReplicatedStorage:WaitForChild("Events", 9e9)
+                        local reserved = events:WaitForChild("reserved", 9e9)
+                        pcall(function() reserved:InvokeServer(destCode) end)
+                    end)
+                    task.wait(5) 
+                end
+                
+                local confirmArgs = { [1] = destPlace }
+                pcall(function()
+                    local playerGui = LocalPlayer:WaitForChild("PlayerGui", 20)
+                    local chooseType = playerGui:WaitForChild("chooseType", 20)
+                    local frame = chooseType:WaitForChild("Frame", 20)
+                    local remoteEvent = frame:WaitForChild("RemoteEvent", 20)
+                    remoteEvent:FireServer(unpack(confirmArgs))
+                end)
             end)
-        end)
+        end
     end
 
 -- [FISHING TAB]
