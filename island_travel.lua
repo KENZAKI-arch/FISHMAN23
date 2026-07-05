@@ -167,12 +167,43 @@ Tabs.Main:AddButton({
             end
 
             local newY = cur.Y
-            local vertDist = math.abs(nextPoint.Y - cur.Y)
-            if vertDist > 0 then
-                local dir = (nextPoint.Y > cur.Y) and 1 or -1
-                local moveY = travelSpeed * deltaTime
-                if moveY > vertDist then moveY = vertDist end
-                newY = cur.Y + (moveY * dir)
+            if travelStage > 1 and not goingUp then
+                local params = RaycastParams.new()
+                params.FilterDescendantsInstances = {LocalPlayer.Character}
+                params.FilterType = Enum.RaycastFilterType.Exclude
+
+                local floorY = tgt.Y
+                local rayStart = Vector3.new(newX, cur.Y + 10, newZ)
+                local remainingDist = 500
+                
+                while remainingDist > 0 do
+                    local res = workspace:Raycast(rayStart, Vector3.new(0, -remainingDist, 0), params)
+                    if res then
+                        if res.Instance.CanCollide and res.Instance.Anchored then
+                            floorY = math.max(tgt.Y, res.Position.Y + 3.5)
+                            break
+                        else
+                            local advance = (rayStart - res.Position).Magnitude + 0.1
+                            rayStart = res.Position - Vector3.new(0, 0.1, 0)
+                            remainingDist = remainingDist - advance
+                        end
+                    else
+                        break
+                    end
+                end
+
+                if cur.Y > floorY then
+                    newY = cur.Y - (150 * deltaTime)
+                    if newY < floorY then newY = floorY end
+                else
+                    newY = floorY
+                end
+            else
+                local yDist = math.abs(nextPoint.Y - cur.Y)
+                if yDist > 0 then
+                    local alpha = math.clamp((travelSpeed * deltaTime) / yDist, 0, 1)
+                    newY = cur.Y + (nextPoint.Y - cur.Y) * alpha
+                end
             end
 
             -- Apply Physics Bypass
