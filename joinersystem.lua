@@ -449,13 +449,13 @@ if not isLobby then
             if not Model.State.isCurrentlyCrafting then break end
             pcall(function()
                 craftingRemote:InvokeServer({
-                    Count         = 40,
+                    Count         = craftItem.Count or craftItem.Batches,
                     ExtraData     = { ["Legendary Fish"] = craftItem.Name },
                     Method        = "Craft",
                     BlueprintItem = "Legendary Fish Bait",
                 })
             end)
-            task.wait(0.5)
+            task.wait(craftItem.Wait or 1)
         end
         SafeInvokeQuest(false)
         task.wait(0.3)
@@ -712,7 +712,7 @@ if not isLobby then
                 local fishCount = inventoryData[legFish] or 0
                 if fishCount >= 40 then
                     local timesToCraft = math.floor(fishCount / 40)
-                    table.insert(craftQueue, { Name = legFish, Batches = timesToCraft })
+                    table.insert(craftQueue, { Name = legFish, Batches = timesToCraft, Count = 40, Wait = 0.5 })
                     totalBatches += timesToCraft
                 end
             end
