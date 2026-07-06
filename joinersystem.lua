@@ -446,18 +446,16 @@ if not isLobby then
         task.wait(0.5)
         
         for _, craftItem in ipairs(craftQueue) do
-            for i = 1, craftItem.Batches do
-                if not Model.State.isCurrentlyCrafting then break end
-                pcall(function()
-                    craftingRemote:InvokeServer({ 
-                        Count = 1, 
-                        ExtraData = { ["Legendary Fish"] = craftItem.Name }, 
-                        Method = "Craft", 
-                        BlueprintItem = "Legendary Fish Bait" 
-                    })
-                end)
-                task.wait(0.2)
-            end
+            if not Model.State.isCurrentlyCrafting then break end
+            pcall(function()
+                craftingRemote:InvokeServer({ 
+                    Count = craftItem.Batches, 
+                    ExtraData = { ["Legendary Fish"] = craftItem.Name }, 
+                    Method = "Craft", 
+                    BlueprintItem = "Legendary Fish Bait" 
+                })
+            end)
+            task.wait(1)
         end
         SafeInvokeQuest(false)
         task.wait(0.3)
