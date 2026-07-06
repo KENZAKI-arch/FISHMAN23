@@ -447,15 +447,22 @@ if not isLobby then
         
         for _, craftItem in ipairs(craftQueue) do
             if not Model.State.isCurrentlyCrafting then break end
-            pcall(function()
-                craftingRemote:InvokeServer({
-                    Count         = craftItem.Count or craftItem.Batches,
-                    ExtraData     = { ["Legendary Fish"] = craftItem.Name },
-                    Method        = "Craft",
-                    BlueprintItem = "Legendary Fish Bait",
-                })
-            end)
-            task.wait(craftItem.Wait or 1)
+            
+            -- If auto-crafting, we loop 'Batches' times sending 40. 
+            -- If manual crafting, we loop once and send the total amount.
+            local loops = craftItem.IsAuto and craftItem.Batches or 1
+            for i = 1, loops do
+                if not Model.State.isCurrentlyCrafting then break end
+                pcall(function()
+                    craftingRemote:InvokeServer({
+                        Count         = craftItem.Count or craftItem.Batches,
+                        ExtraData     = { ["Legendary Fish"] = craftItem.Name },
+                        Method        = "Craft",
+                        BlueprintItem = "Legendary Fish Bait",
+                    })
+                end)
+                task.wait(craftItem.Wait or 1)
+            end
         end
         SafeInvokeQuest(false)
         task.wait(0.3)
@@ -712,7 +719,7 @@ if not isLobby then
                 local fishCount = inventoryData[legFish] or 0
                 if fishCount >= 40 then
                     local timesToCraft = math.floor(fishCount / 40)
-                    table.insert(craftQueue, { Name = legFish, Batches = timesToCraft, Count = 40, Wait = 0.5 })
+                    table.insert(craftQueue, { Name = legFish, Batches = timesToCraft, Count = 40, Wait = 0.5, IsAuto = true })
                     totalBatches += timesToCraft
                 end
             end
