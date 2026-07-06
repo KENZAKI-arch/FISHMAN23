@@ -449,7 +449,7 @@ if not isLobby then
             if not Model.State.isCurrentlyCrafting then break end
             pcall(function()
                 craftingRemote:InvokeServer({ 
-                    Count = craftItem.Batches, 
+                    Count = craftItem.Batches * 40, 
                     ExtraData = { ["Legendary Fish"] = craftItem.Name }, 
                     Method = "Craft", 
                     BlueprintItem = "Legendary Fish Bait" 
