@@ -1213,5 +1213,67 @@ Tabs.Settings:AddButton({
 Window:SelectTab(isLobby and 1 or 2)
 Fluent:Notify({ Title = "Fishman Unified", Content = "Script loaded successfully!", Duration = 5 })
 
-addConn(UserInputService.InputBegan:Connect(function() secondsSinceLastInput = 0 end))
+local isPaused = false
+local savedState = {}
+
+addConn(UserInputService.InputBegan:Connect(function(input, gpe)
+    secondsSinceLastInput = 0
+    
+    if not gpe and input.KeyCode == Enum.KeyCode.F then
+        isPaused = not isPaused
+        if isPaused then
+            Fluent:Notify({ Title = "🛑 Emergency Stop", Content = "Script paused! Press F again to resume.", Duration = 5 })
+            
+            if Model and Model.State then
+                -- Save current task states
+                savedState = {
+                    isFishing = Model.State.isFishing,
+                    autoBuy = Model.State.autoBuy,
+                    autoSell = Model.State.autoSell,
+                    isAutoTraveling = Model.State.isAutoTraveling,
+                    autoCraft = Model.State.autoCraft,
+                    isCurrentlyCrafting = Model.State.isCurrentlyCrafting
+                }
+                
+                -- Force stop everything instantly
+                Model.State.isFishing = false
+                Model.State.autoBuy = false
+                Model.State.autoSell = false
+                Model.State.isAutoTraveling = false
+                Model.State.autoCraft = false
+                Model.State.isCurrentlyCrafting = false
+                Model.State.isCraftFlying = false
+                Model.State.isBuying = false
+                
+                -- Abort actions
+                if Model.DisableFlight then pcall(Model.DisableFlight) end
+                if Model.UnequipRod then pcall(Model.UnequipRod) end
+                
+                -- Close any dialogue
+                pcall(function() 
+                    local events = ReplicatedStorage:FindFirstChild("Events")
+                    local quest = events and events:FindFirstChild("Quest")
+                    if quest then quest:InvokeServer({ [1] = "npcChat", [2] = false }) end
+                end)
+            end
+        else
+            Fluent:Notify({ Title = "▶️ Resumed", Content = "Script restored to previous tasks.", Duration = 5 })
+            
+            if Model and Model.State then
+                -- Restore previously active tasks
+                Model.State.isFishing = savedState.isFishing or false
+                Model.State.autoBuy = savedState.autoBuy or false
+                Model.State.autoSell = savedState.autoSell or false
+                Model.State.isAutoTraveling = savedState.isAutoTraveling or false
+                Model.State.autoCraft = savedState.autoCraft or false
+                
+                -- Resume traveling if needed
+                if Model.State.isAutoTraveling and Model.StartTraveling then
+                    pcall(Model.StartTraveling)
+                end
+            end
+        end
+    end
+end))
+
 addConn(UserInputService.InputChanged:Connect(function() secondsSinceLastInput = 0 end))
