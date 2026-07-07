@@ -783,7 +783,31 @@ env.Fishman_StopPrevious = ShutdownEverything
 -- ======================================================================
 -- 🎨 FLUENT UI INTEGRATION
 -- ======================================================================
-Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
+local fluentUrl = "https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"
+local fluentCacheFile = "FluentLibraryCache.lua"
+local FluentSource = nil
+
+pcall(function()
+    if isfile and readfile and isfile(fluentCacheFile) then
+        FluentSource = readfile(fluentCacheFile)
+    end
+end)
+
+if not FluentSource or FluentSource == "" then
+    pcall(function() FluentSource = game:HttpGet(fluentUrl) end)
+    pcall(function()
+        if writefile and FluentSource then 
+            writefile(fluentCacheFile, FluentSource) 
+        end
+    end)
+end
+
+if not FluentSource then
+    warn("[Fishman] Failed to load UI Library!")
+    return
+end
+
+Fluent = loadstring(FluentSource)()
 local Window = Fluent:CreateWindow({
     Title = "🐟 Fishman Hub",
     SubTitle = "Unified Auto-Fisher",
