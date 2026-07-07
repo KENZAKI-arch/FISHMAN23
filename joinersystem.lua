@@ -565,6 +565,7 @@ if not isLobby then
                 for _, fishName in ipairs(fishToSell) do
                     if (inventoryData[fishName] or 0) >= 1 then
                         pcall(function() sellEvent:InvokeServer({ Fish = fishName, All = true, Method = "SellFish" }) end)
+                        task.wait(0.1)
                     end
                 end
             end
@@ -657,14 +658,11 @@ if not isLobby then
             end
 
             addConn(workspace.DescendantAdded:Connect(function(child)
-                task.spawn(function()
-                    if child:IsA("ForceField") or child:IsA("Sparkles") or child:IsA("Smoke") or child:IsA("Fire") or child:IsA("Beam") then
-                        game:GetService("RunService").Heartbeat:Wait()
-                        child:Destroy()
-                    elseif child:IsA("BasePart") then
-                        child.CastShadow = false
-                    end
-                end)
+                if child:IsA("ForceField") or child:IsA("Sparkles") or child:IsA("Smoke") or child:IsA("Fire") or child:IsA("Beam") then
+                    pcall(function() game:GetService("Debris"):AddItem(child, 0) end)
+                elseif child:IsA("BasePart") then
+                    child.CastShadow = false
+                end
             end))
 
             print("Anti-Lag: Active")
@@ -731,7 +729,7 @@ if not isLobby then
         end
     end)
 
-    task.spawn(function() while _running and task.wait(2) do if Model.State.autoBuy then Model.CheckInventory() end end end)
+    task.spawn(function() while _running and task.wait(2) do if Model.State.autoBuy or Model.State.autoSell then Model.CheckInventory() end end end)
     task.spawn(function() while _running and task.wait() do if Model.State.isFishing then Model.DoFishingCycle() end end end)
 
     addConn(RunService.Heartbeat:Connect(function(dt)
@@ -764,9 +762,7 @@ if not isLobby then
         end
     end))
     
-    if inventoryObj then
-        addConn(inventoryObj:GetPropertyChangedSignal("Value"):Connect(function() Model.CheckInventory() end))
-    end
+    -- Removed GetPropertyChangedSignal for inventory to prevent infinite remote spam loops
 end
 
 local function ShutdownEverything()
