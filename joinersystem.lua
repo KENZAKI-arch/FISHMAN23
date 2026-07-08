@@ -916,12 +916,31 @@ Tabs = {
 
     Tabs.Teleport:AddButton({
         Title = "🏠 Return to Base of Operations",
-        Description = "Teleports you back to the lobby (Base of Operations).",
+        Description = "Teleports you back to the Trade Hub (Base of Operations).",
         Callback = function()
+            GlobalMem.FishmanPSCode = "qj1ttW4JG1"
+            GlobalMem.FishmanDestination = "tradeHub"
+            GlobalMem.FishmanAutoTeleport = true
+            SaveConfig()
+            
             if not isLobby then
                 TeleportService:Teleport(targetPlaceId, LocalPlayer)
             else
-                Fluent:Notify({ Title = "Teleport", Content = "You are already in the Base of Operations!", Duration = 3 })
+                task.spawn(function()
+                    Fluent:Notify({ Title = "Base of Operations", Content = "Routing to Trade Hub...", Duration = 3 })
+                    local events = ReplicatedStorage:WaitForChild("Events", 9e9)
+                    local reserved = events:WaitForChild("reserved", 9e9)
+                    pcall(function() reserved:InvokeServer("qj1ttW4JG1") end)
+                    task.wait(5)
+                    local confirmArgs = { [1] = "tradeHub" }
+                    pcall(function()
+                        local playerGui = LocalPlayer:WaitForChild("PlayerGui", 20)
+                        local chooseType = playerGui:WaitForChild("chooseType", 20)
+                        local frame = chooseType:WaitForChild("Frame", 20)
+                        local remoteEvent = frame:WaitForChild("RemoteEvent", 20)
+                        remoteEvent:FireServer(unpack(confirmArgs))
+                    end)
+                end)
             end
         end
     })
