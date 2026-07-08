@@ -447,22 +447,15 @@ if not isLobby then
         
         for _, craftItem in ipairs(craftQueue) do
             if not Model.State.isCurrentlyCrafting then break end
-            
-            -- If auto-crafting, we loop 'Batches' times sending 40. 
-            -- If manual crafting, we loop once and send the total amount.
-            local loops = craftItem.IsAuto and craftItem.Batches or 1
-            for i = 1, loops do
-                if not Model.State.isCurrentlyCrafting then break end
-                pcall(function()
-                    craftingRemote:InvokeServer({
-                        Count         = craftItem.Count or craftItem.Batches,
-                        ExtraData     = { ["Legendary Fish"] = craftItem.Name },
-                        Method        = "Craft",
-                        BlueprintItem = "Legendary Fish Bait",
-                    })
-                end)
-                task.wait(craftItem.Wait or 1)
-            end
+            pcall(function()
+                craftingRemote:InvokeServer({ 
+                    Count = craftItem.Batches, 
+                    ExtraData = { ["Legendary Fish"] = craftItem.Name }, 
+                    Method = "Craft", 
+                    BlueprintItem = "Legendary Fish Bait" 
+                })
+            end)
+            task.wait(1)
         end
         SafeInvokeQuest(false)
         task.wait(0.3)
@@ -565,7 +558,6 @@ if not isLobby then
                 for _, fishName in ipairs(fishToSell) do
                     if (inventoryData[fishName] or 0) >= 1 then
                         pcall(function() sellEvent:InvokeServer({ Fish = fishName, All = true, Method = "SellFish" }) end)
-                        task.wait(0.1)
                     end
                 end
             end
@@ -658,11 +650,14 @@ if not isLobby then
             end
 
             addConn(workspace.DescendantAdded:Connect(function(child)
-                if child:IsA("ForceField") or child:IsA("Sparkles") or child:IsA("Smoke") or child:IsA("Fire") or child:IsA("Beam") then
-                    pcall(function() game:GetService("Debris"):AddItem(child, 0) end)
-                elseif child:IsA("BasePart") then
-                    child.CastShadow = false
-                end
+                task.spawn(function()
+                    if child:IsA("ForceField") or child:IsA("Sparkles") or child:IsA("Smoke") or child:IsA("Fire") or child:IsA("Beam") then
+                        game:GetService("RunService").Heartbeat:Wait()
+                        child:Destroy()
+                    elseif child:IsA("BasePart") then
+                        child.CastShadow = false
+                    end
+                end)
             end))
 
             print("Anti-Lag: Active")
@@ -717,7 +712,7 @@ if not isLobby then
                 local fishCount = inventoryData[legFish] or 0
                 if fishCount >= 40 then
                     local timesToCraft = math.floor(fishCount / 40)
-                    table.insert(craftQueue, { Name = legFish, Batches = timesToCraft, Count = 40, Wait = 0.5, IsAuto = true })
+                    table.insert(craftQueue, { Name = legFish, Batches = timesToCraft })
                     totalBatches += timesToCraft
                 end
             end
@@ -729,7 +724,7 @@ if not isLobby then
         end
     end)
 
-    task.spawn(function() while _running and task.wait(2) do if Model.State.autoBuy or Model.State.autoSell then Model.CheckInventory() end end end)
+    task.spawn(function() while _running and task.wait(2) do if Model.State.autoBuy then Model.CheckInventory() end end end)
     task.spawn(function() while _running and task.wait() do if Model.State.isFishing then Model.DoFishingCycle() end end end)
 
     addConn(RunService.Heartbeat:Connect(function(dt)
@@ -762,7 +757,9 @@ if not isLobby then
         end
     end))
     
-    -- Removed GetPropertyChangedSignal for inventory to prevent infinite remote spam loops
+    if inventoryObj then
+        addConn(inventoryObj:GetPropertyChangedSignal("Value"):Connect(function() Model.CheckInventory() end))
+    end
 end
 
 local function ShutdownEverything()
@@ -783,31 +780,7 @@ env.Fishman_StopPrevious = ShutdownEverything
 -- ======================================================================
 -- 🎨 FLUENT UI INTEGRATION
 -- ======================================================================
-local fluentUrl = "https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"
-local fluentCacheFile = "FluentLibraryCache.lua"
-local FluentSource = nil
-
-pcall(function()
-    if isfile and readfile and isfile(fluentCacheFile) then
-        FluentSource = readfile(fluentCacheFile)
-    end
-end)
-
-if not FluentSource or FluentSource == "" then
-    pcall(function() FluentSource = game:HttpGet(fluentUrl) end)
-    pcall(function()
-        if writefile and FluentSource then 
-            writefile(fluentCacheFile, FluentSource) 
-        end
-    end)
-end
-
-if not FluentSource then
-    warn("[Fishman] Failed to load UI Library!")
-    return
-end
-
-Fluent = loadstring(FluentSource)()
+Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
 local Window = Fluent:CreateWindow({
     Title = "🐟 Fishman Hub",
     SubTitle = "Unified Auto-Fisher",
@@ -1213,67 +1186,5 @@ Tabs.Settings:AddButton({
 Window:SelectTab(isLobby and 1 or 2)
 Fluent:Notify({ Title = "Fishman Unified", Content = "Script loaded successfully!", Duration = 5 })
 
-local isPaused = false
-local savedState = {}
-
-addConn(UserInputService.InputBegan:Connect(function(input, gpe)
-    secondsSinceLastInput = 0
-    
-    if not gpe and input.KeyCode == Enum.KeyCode.F then
-        isPaused = not isPaused
-        if isPaused then
-            Fluent:Notify({ Title = "🛑 Emergency Stop", Content = "Script paused! Press F again to resume.", Duration = 5 })
-            
-            if Model and Model.State then
-                -- Save current task states
-                savedState = {
-                    isFishing = Model.State.isFishing,
-                    autoBuy = Model.State.autoBuy,
-                    autoSell = Model.State.autoSell,
-                    isAutoTraveling = Model.State.isAutoTraveling,
-                    autoCraft = Model.State.autoCraft,
-                    isCurrentlyCrafting = Model.State.isCurrentlyCrafting
-                }
-                
-                -- Force stop everything instantly
-                Model.State.isFishing = false
-                Model.State.autoBuy = false
-                Model.State.autoSell = false
-                Model.State.isAutoTraveling = false
-                Model.State.autoCraft = false
-                Model.State.isCurrentlyCrafting = false
-                Model.State.isCraftFlying = false
-                Model.State.isBuying = false
-                
-                -- Abort actions
-                if Model.DisableFlight then pcall(Model.DisableFlight) end
-                if Model.UnequipRod then pcall(Model.UnequipRod) end
-                
-                -- Close any dialogue
-                pcall(function() 
-                    local events = ReplicatedStorage:FindFirstChild("Events")
-                    local quest = events and events:FindFirstChild("Quest")
-                    if quest then quest:InvokeServer({ [1] = "npcChat", [2] = false }) end
-                end)
-            end
-        else
-            Fluent:Notify({ Title = "▶️ Resumed", Content = "Script restored to previous tasks.", Duration = 5 })
-            
-            if Model and Model.State then
-                -- Restore previously active tasks
-                Model.State.isFishing = savedState.isFishing or false
-                Model.State.autoBuy = savedState.autoBuy or false
-                Model.State.autoSell = savedState.autoSell or false
-                Model.State.isAutoTraveling = savedState.isAutoTraveling or false
-                Model.State.autoCraft = savedState.autoCraft or false
-                
-                -- Resume traveling if needed
-                if Model.State.isAutoTraveling and Model.StartTraveling then
-                    pcall(Model.StartTraveling)
-                end
-            end
-        end
-    end
-end))
-
+addConn(UserInputService.InputBegan:Connect(function() secondsSinceLastInput = 0 end))
 addConn(UserInputService.InputChanged:Connect(function() secondsSinceLastInput = 0 end))
