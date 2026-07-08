@@ -135,6 +135,65 @@ local function UpdateTeleportMemory(willAutoTeleport)
     pcall(function() qot(command) end)
 end
 
+local function ActivatePotatoGraphics()
+    if _G.PotatoGraphicsActive then return end
+    _G.PotatoGraphicsActive = true
+    
+    local Lighting = game:GetService("Lighting")
+    local Terrain = workspace:FindFirstChildWhichIsA("Terrain")
+    if Terrain then
+        Terrain.WaterWaveSize = 0
+        Terrain.WaterWaveSpeed = 0
+        Terrain.WaterReflectance = 0
+        Terrain.WaterTransparency = 1
+    end
+
+    Lighting.GlobalShadows = false
+    Lighting.FogEnd = 9e9
+    Lighting.FogStart = 9e9
+
+    settings().Rendering.QualityLevel = 1
+
+    for _, v in pairs(game:GetDescendants()) do
+        if v:IsA("BasePart") then
+            v.CastShadow = false
+            v.Material = Enum.Material.Plastic
+            v.Reflectance = 0
+            pcall(function() v.BackSurface = "SmoothNoOutlines" end)
+            pcall(function() v.BottomSurface = "SmoothNoOutlines" end)
+            pcall(function() v.FrontSurface = "SmoothNoOutlines" end)
+            pcall(function() v.LeftSurface = "SmoothNoOutlines" end)
+            pcall(function() v.RightSurface = "SmoothNoOutlines" end)
+            pcall(function() v.TopSurface = "SmoothNoOutlines" end)
+        elseif v:IsA("Decal") then
+            v.Transparency = 1
+            v.Texture = ""
+        elseif v:IsA("ParticleEmitter") or v:IsA("Trail") then
+            v.Lifetime = NumberRange.new(0)
+        end
+    end
+
+    for _, v in pairs(Lighting:GetDescendants()) do
+        if v:IsA("PostEffect") then
+            v.Enabled = false
+        end
+    end
+
+    workspace.DescendantAdded:Connect(function(child)
+        task.spawn(function()
+            if child:IsA("ForceField") or child:IsA("Sparkles") or child:IsA("Smoke") or child:IsA("Fire") or child:IsA("Beam") then
+                RunService.Heartbeat:Wait()
+                child:Destroy()
+            elseif child:IsA("BasePart") then
+                child.CastShadow = false
+            end
+        end)
+    end)
+    
+    if Fluent then Fluent:Notify({ Title = "Anti-Lag", Content = "Potato Graphics Active!", Duration = 3 }) end
+    print("Anti-Lag: Active")
+end
+
 -- ======================================================================
 -- 🎣 FISHING ENGINE CORE (Only initialized if NOT in lobby)
 -- ======================================================================
@@ -689,14 +748,17 @@ if not isLobby then
                     if Fluent and Fluent.Options then
                         if Fluent.Options.T_Buy then Fluent.Options.T_Buy:SetValue(true) end
                         if Fluent.Options.T_Sell then Fluent.Options.T_Sell:SetValue(true) end
-                        if Fluent.Options.T_Craft then Fluent.Options.T_Craft:SetValue(true) end
                         if Fluent.Options.T_Travel then Fluent.Options.T_Travel:SetValue(true) end
+                        
+                        -- Anti-Lag
+                        if Fluent.Options.T_AntiLag then Fluent.Options.T_AntiLag:SetValue(true) else RunService:Set3dRenderingEnabled(false) end
                     else
                         Model.State.autoBuy = true
                         Model.State.autoSell = true
-                        Model.State.autoCraft = true
                         Model.StartTraveling()
+                        RunService:Set3dRenderingEnabled(false)
                     end
+                    ActivatePotatoGraphics()
                     Model.State.waitingForArrivalToFish = true
                 end
             end
@@ -1126,63 +1188,10 @@ Tabs.Settings:AddButton({
     Title = "🥔 Potato Graphics",
     Description = "Reduces all game graphics to the absolute minimum for maximum FPS.",
     Callback = function()
-        -- ANTI LAG (from Infinite Yield)
-        local Lighting = game:GetService("Lighting")
-
-        local Terrain = workspace:FindFirstChildWhichIsA("Terrain")
-        if Terrain then
-            Terrain.WaterWaveSize = 0
-            Terrain.WaterWaveSpeed = 0
-            Terrain.WaterReflectance = 0
-            Terrain.WaterTransparency = 1
-        end
-
-        Lighting.GlobalShadows = false
-        Lighting.FogEnd = 9e9
-        Lighting.FogStart = 9e9
-
-        settings().Rendering.QualityLevel = 1
-
-        for _, v in pairs(game:GetDescendants()) do
-            if v:IsA("BasePart") then
-                v.CastShadow = false
-                v.Material = "Plastic"
-                v.Reflectance = 0
-                pcall(function() v.BackSurface = "SmoothNoOutlines" end)
-                pcall(function() v.BottomSurface = "SmoothNoOutlines" end)
-                pcall(function() v.FrontSurface = "SmoothNoOutlines" end)
-                pcall(function() v.LeftSurface = "SmoothNoOutlines" end)
-                pcall(function() v.RightSurface = "SmoothNoOutlines" end)
-                pcall(function() v.TopSurface = "SmoothNoOutlines" end)
-            elseif v:IsA("Decal") then
-                v.Transparency = 1
-                v.Texture = ""
-            elseif v:IsA("ParticleEmitter") or v:IsA("Trail") then
-                v.Lifetime = NumberRange.new(0)
-            end
-        end
-
-        for _, v in pairs(Lighting:GetDescendants()) do
-            if v:IsA("PostEffect") then
-                v.Enabled = false
-            end
-        end
-
-        workspace.DescendantAdded:Connect(function(child)
-            task.spawn(function()
-                if child:IsA("ForceField") or child:IsA("Sparkles") or child:IsA("Smoke") or child:IsA("Fire") or child:IsA("Beam") then
-                    RunService.Heartbeat:Wait()
-                    child:Destroy()
-                elseif child:IsA("BasePart") then
-                    child.CastShadow = false
-                end
-            end)
-        end)
-
-        Fluent:Notify({ Title = "Anti-Lag", Content = "Potato Graphics Active!", Duration = 3 })
-        print("Anti-Lag: Active")
+        ActivatePotatoGraphics()
     end
 })
+
 
 Tabs.Settings:AddButton({
     Title = "Destroy UI & Shutdown",
