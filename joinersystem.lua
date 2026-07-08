@@ -2,15 +2,14 @@
 -- 🛑 GLOBAL SETUP & DUPLICATE PREVENTION
 -- ======================================================================
 local env = getgenv and getgenv() or shared
-if env.FishmanScriptServer == game.JobId then 
-    print("[Fishman] Script is already running in this server!")
-    return 
-end
-env.FishmanScriptServer = game.JobId
-
 if env.Fishman_StopPrevious then
     pcall(env.Fishman_StopPrevious)
 end
+if env.Fishman_DestroyUI then
+    pcall(env.Fishman_DestroyUI)
+end
+
+env.FishmanScriptServer = game.JobId
 
 local _running = true
 local _connections = {}
@@ -870,6 +869,12 @@ local Window = Fluent:CreateWindow({
     Theme = "Darker",
     MinimizeKey = Enum.KeyCode.RightShift
 })
+
+env.Fishman_DestroyUI = function()
+    pcall(function()
+        if Window and Window.Destroy then Window:Destroy() end
+    end)
+end
 
 -- Make the entire UI draggable by clicking anywhere
 task.spawn(function()
