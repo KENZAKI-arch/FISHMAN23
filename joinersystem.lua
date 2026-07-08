@@ -71,7 +71,7 @@ pcall(function()
 end)
 
 GlobalMem.FishmanPSCode = GlobalMem.FishmanPSCode or "qj1ttW4JG1"
-GlobalMem.FishmanDestination = GlobalMem.FishmanDestination or "fishHub" 
+GlobalMem.FishmanDestination = GlobalMem.FishmanDestination or "tradeHub" 
 GlobalMem.FishmanAutoTeleport = GlobalMem.FishmanAutoTeleport or false 
 GlobalMem.FishmanAutoJoin = GlobalMem.FishmanAutoJoin or false
 if GlobalMem.FishmanAutoReconnect == nil then GlobalMem.FishmanAutoReconnect = true end
@@ -964,7 +964,7 @@ Tabs = {
         Title = "Destination",
         Values = {"fishHub", "tradeHub", "Second Sea", "Lobby"},
         Multi = false,
-        Default = (table.find({"fishHub", "tradeHub", "Second Sea", "Lobby"}, GlobalMem.FishmanDestination) or 1),
+        Default = (table.find({"fishHub", "tradeHub", "Second Sea", "Lobby"}, GlobalMem.FishmanDestination) or 2),
         Callback = function(Value)
             GlobalMem.FishmanDestination = Value
             SaveConfig()
