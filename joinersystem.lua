@@ -144,7 +144,7 @@ local function GetCurrentPSCode()
             local main = settingsGui:FindFirstChild("Main")
             if main then
                 local codeLabel = main:FindFirstChild("Code")
-              if codeLabel and (codeLabel:IsA("TextLabel") or codeLabel:IsA("TextBox")) then
+                if codeLabel and (codeLabel:IsA("TextLabel") or codeLabel:IsA("TextBox")) then
                     return codeLabel.Text
                 end
             end
