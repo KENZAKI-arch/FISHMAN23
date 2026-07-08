@@ -135,6 +135,24 @@ local function UpdateTeleportMemory(willAutoTeleport)
     pcall(function() qot(command) end)
 end
 
+local function GetCurrentPSCode()
+    local LocalPlayer = game:GetService("Players").LocalPlayer
+    local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
+    if playerGui then
+        local settingsGui = playerGui:FindFirstChild("Settings")
+        if settingsGui then
+            local main = settingsGui:FindFirstChild("Main")
+            if main then
+                local codeLabel = main:FindFirstChild("Code")
+                if codeLabel and codeLabel:IsA("TextLabel") or codeLabel:IsA("TextBox") then
+                    return codeLabel.Text
+                end
+            end
+        end
+    end
+    return ""
+end
+
 local function ActivatePotatoGraphics()
     if _G.PotatoGraphicsActive then return end
     _G.PotatoGraphicsActive = true
@@ -1098,7 +1116,7 @@ Tabs = {
             task.spawn(Model.ForceCraftAll)
         end
     })
-    Tabs.Fishing:AddToggle("T_AFK", { Title = "AFK Mode (Auto-start after 10s)", Default = (not isLobby and GlobalMem.FishmanPSCode ~= "qj1ttW4JG1"), Callback = function(Value) 
+    Tabs.Fishing:AddToggle("T_AFK", { Title = "AFK Mode (Auto-start after 10s)", Default = (not isLobby and GetCurrentPSCode() ~= "qj1ttW4JG1"), Callback = function(Value) 
         if isLobby then if Value then Fluent:Notify({ Title = "Error", Content = "AFK Mode requires Fishing server!", Duration = 3 }); Fluent.Options.T_AFK:SetValue(false) end return end
         isAFKModeActive = Value; secondsSinceLastInput = 0 
     end })
@@ -1127,7 +1145,7 @@ Tabs = {
         end
     end)
     
-    if GlobalMem.FishmanPSCode == "qj1ttW4JG1" and not isLobby then
+    if GetCurrentPSCode() == "qj1ttW4JG1" and not isLobby then
         Fluent:Notify({ Title = "Detection", Content = "Target Server qj1ttW4JG1 Detected.", Duration = 5 })
     end
 
