@@ -217,7 +217,9 @@ if not isLobby then
         return track
     end
     
-    -- FLIGHT & MOVEMENT --
+    -- ======================================================================
+    -- 🚀 FLIGHT & MOVEMENT SUBSYSTEM
+    -- ======================================================================
     function Model.EnableFlight()
         local character = LocalPlayer.Character
         if not character then return end
@@ -362,7 +364,9 @@ if not isLobby then
         Model.EnableFlight()
     end
     
-    -- CRAFTING --
+    -- ======================================================================
+    -- 🔨 CRAFTING SUBSYSTEM
+    -- ======================================================================
     local function StartCraftFlight()
         if craftHeartbeatConn then craftHeartbeatConn:Disconnect() end
         craftHeartbeatConn = RunService.Heartbeat:Connect(function(dt)
@@ -532,7 +536,9 @@ if not isLobby then
         Fluent:Notify({ Title = "Craft All", Content = "Finished crafting all legendary fishes!", Duration = 3 })
     end
     
-    -- INVENTORY & FISHING --
+    -- ======================================================================
+    -- 🎣 FISHING & INVENTORY MANAGEMENT
+    -- ======================================================================
     function Model.EquipRod()
         local character = LocalPlayer.Character
         local humanoid  = character and character:FindFirstChildOfClass("Humanoid")
@@ -672,7 +678,9 @@ if not isLobby then
         task.wait()
     end
     
-    -- BACKGROUND LOOPS --
+    -- ======================================================================
+    -- ⏱️ BACKGROUND LOOPS
+    -- ======================================================================
     task.spawn(function()
         while _running and task.wait(1) do
             if isAFKModeActive then
@@ -855,7 +863,9 @@ Tabs = {
     Settings = Window:AddTab({ Title = "Settings", Icon = "settings" })
 }
 
--- [TELEPORT TAB]
+-- ======================================================================
+-- 🗺️ TELEPORT TAB UI
+-- ======================================================================
     Tabs.Teleport:AddInput("Input", {
         Title = "Private Server Code",
         Default = GlobalMem.FishmanPSCode,
@@ -990,7 +1000,9 @@ Tabs = {
         end)
     end
 
--- [FISHING TAB]
+-- ======================================================================
+-- 🎣 FISHING TAB UI
+-- ======================================================================
     Tabs.Fishing:AddToggle("T_Fish", { Title = "Auto Fish", Default = false, Callback = function(Value) 
         if isLobby then if Value then Fluent:Notify({ Title = "Error", Content = "Cannot fish in Lobby!", Duration = 3 }); Fluent.Options.T_Fish:SetValue(false) end return end
         Model.State.isFishing = Value 
@@ -1055,7 +1067,9 @@ Tabs = {
         Fluent:Notify({ Title = "Detection", Content = "Target Server qj1ttW4JG1 Detected.", Duration = 5 })
     end
 
--- [AUTOFARM TAB]
+-- ======================================================================
+-- 🤖 AUTOFARM TAB UI
+-- ======================================================================
 Tabs.Autofarm:AddButton({
     Title = "Load CombinedAutoLoad (Autofarm)",
     Description = "Executes the script and queues it for future teleports.",
@@ -1088,7 +1102,9 @@ Tabs.Autofarm:AddButton({
     end
 })
 
--- [SETTINGS TAB]
+-- ======================================================================
+-- ⚙️ SETTINGS TAB UI
+-- ======================================================================
 Tabs.Settings:AddToggle("T_AutoReconnect", { 
     Title = "Auto Reconnect on Disconnect", 
     Default = GlobalMem.FishmanAutoReconnect, 
