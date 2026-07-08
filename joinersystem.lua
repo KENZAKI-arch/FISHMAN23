@@ -1253,7 +1253,8 @@ addConn(UserInputService.InputBegan:Connect(function(input, gameProcessed)
                     autoSell = Model.State.autoSell,
                     isAutoTraveling = Model.State.isAutoTraveling,
                     autoCraft = Model.State.autoCraft,
-                    isCurrentlyCrafting = Model.State.isCurrentlyCrafting
+                    isCurrentlyCrafting = Model.State.isCurrentlyCrafting,
+                    antiLag = (Fluent.Options and Fluent.Options.T_AntiLag) and Fluent.Options.T_AntiLag.Value or false
                 }
 
                 -- Force stop everything instantly
@@ -1273,6 +1274,7 @@ addConn(UserInputService.InputBegan:Connect(function(input, gameProcessed)
                     if Fluent.Options.T_Sell then Fluent.Options.T_Sell:SetValue(false) end
                     if Fluent.Options.T_Travel then Fluent.Options.T_Travel:SetValue(false) end
                     if Fluent.Options.T_Craft then Fluent.Options.T_Craft:SetValue(false) end
+                    if Fluent.Options.T_AntiLag then Fluent.Options.T_AntiLag:SetValue(false) end
                 end
 
                 -- Abort actions
@@ -1304,6 +1306,7 @@ addConn(UserInputService.InputBegan:Connect(function(input, gameProcessed)
                     if Fluent.Options.T_Sell then Fluent.Options.T_Sell:SetValue(Model.State.autoSell) end
                     if Fluent.Options.T_Travel then Fluent.Options.T_Travel:SetValue(Model.State.isAutoTraveling) end
                     if Fluent.Options.T_Craft then Fluent.Options.T_Craft:SetValue(Model.State.autoCraft) end
+                    if Fluent.Options.T_AntiLag and savedState.antiLag then Fluent.Options.T_AntiLag:SetValue(true) end
                 end
 
                 -- Resume traveling if needed
