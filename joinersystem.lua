@@ -748,6 +748,7 @@ if not isLobby then
                     if Fluent and Fluent.Options then
                         if Fluent.Options.T_Buy then Fluent.Options.T_Buy:SetValue(true) end
                         if Fluent.Options.T_Sell then Fluent.Options.T_Sell:SetValue(true) end
+                        if Fluent.Options.T_Craft then Fluent.Options.T_Craft:SetValue(true) end
                         if Fluent.Options.T_Travel then Fluent.Options.T_Travel:SetValue(true) end
                         
                         -- Anti-Lag
@@ -755,6 +756,7 @@ if not isLobby then
                     else
                         Model.State.autoBuy = true
                         Model.State.autoSell = true
+                        Model.State.autoCraft = true
                         Model.StartTraveling()
                         RunService:Set3dRenderingEnabled(false)
                     end
