@@ -462,6 +462,75 @@ if not isLobby then
         Model.State.autoSell = true
         Model.State.waitingForArrivalToFish = true 
     end
+
+    function Model.ForceCraftAll()
+        if Model.State.isCurrentlyCrafting then return end
+        
+        local inventoryObj = LocalPlayer:FindFirstChild("PlayerGui") and LocalPlayer.PlayerGui:FindFirstChild("ui") and LocalPlayer.PlayerGui.ui:FindFirstChild("inventoryObj")
+        if not inventoryObj then return end
+        
+        local ok, inventoryData = pcall(function() return HttpService:JSONDecode(inventoryObj.Value) end)
+        if not ok or not inventoryData then return end
+        
+        local craftQueue = {}
+        for _, legFish in ipairs(LEGENDARY_FISHES) do
+            local fishCount = inventoryData[legFish] or 0
+            if fishCount > 0 then
+                table.insert(craftQueue, { Name = legFish, Count = fishCount })
+            end
+        end
+        
+        if #craftQueue == 0 then
+            Fluent:Notify({ Title = "Craft All", Content = "No Legendary Fish to craft!", Duration = 3 })
+            return
+        end
+        
+        Model.State.isCurrentlyCrafting = true
+        local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if not hrp then Model.State.isCurrentlyCrafting = false; return end
+        local originalPos = hrp.Position
+        
+        Model.State.travelMessage = "Force Crafting..."
+        
+        Model.DisableFlight()
+        Model.UnequipRod()
+        task.wait(1)
+        
+        Model.EnableFlight()
+        
+        -- Temporarily hook `craftFlyTarget` check bypass for ForceCraftAll since we don't rely on `autoCraft` variable
+        local wasAutoCraft = Model.State.autoCraft
+        Model.State.autoCraft = true 
+        
+        CraftFlyPath({ Vector3.new(162.85, originalPos.Y, -55.34) })
+        task.wait(0.5)
+        SafeInvokeQuest(true)
+        task.wait(0.5)
+        
+        for _, craftItem in ipairs(craftQueue) do
+            local remaining = craftItem.Count
+            while remaining > 0 do
+                local batch = math.min(remaining, 40)
+                pcall(function()
+                    craftingRemote:InvokeServer({ Count = batch, ExtraData = { ["Legendary Fish"] = craftItem.Name }, Method = "Craft", BlueprintItem = "Legendary Fish Bait" })
+                end)
+                remaining = remaining - batch
+                task.wait(0.5)
+            end
+        end
+        
+        SafeInvokeQuest(false)
+        task.wait(0.3)
+        CraftFlyPath({ originalPos })
+        
+        Model.State.autoCraft = wasAutoCraft
+        
+        Model.DisableFlight()
+        Model.EquipRod()
+        Model.State.isCurrentlyCrafting = false
+        Model.State.travelMessage = ""
+        Fluent:Notify({ Title = "Craft All", Content = "Finished crafting all legendary fishes!", Duration = 3 })
+    end
     
     -- INVENTORY & FISHING --
     function Model.EquipRod()
@@ -712,6 +781,57 @@ local Window = Fluent:CreateWindow({
     MinimizeKey = Enum.KeyCode.RightShift
 })
 
+-- Make the entire UI draggable by clicking anywhere
+task.spawn(function()
+    pcall(function()
+        task.wait(1)
+        local coreGui = game:GetService("CoreGui")
+        local mainFrame
+        
+        for _, gui in pairs(coreGui:GetDescendants()) do
+            if gui:IsA("Frame") and gui.Size == UDim2.fromOffset(500, 350) then
+                mainFrame = gui
+                break
+            end
+        end
+
+        if mainFrame then
+            local dragging, dragInput, dragStart, startPos
+
+            local function update(input)
+                local delta = input.Position - dragStart
+                mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+            end
+
+            mainFrame.InputBegan:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                    dragging = true
+                    dragStart = input.Position
+                    startPos = mainFrame.Position
+
+                    input.Changed:Connect(function()
+                        if input.UserInputState == Enum.UserInputState.End then
+                            dragging = false
+                        end
+                    end)
+                end
+            end)
+
+            mainFrame.InputChanged:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+                    dragInput = input
+                end
+            end)
+
+            addConn(UserInputService.InputChanged:Connect(function(input)
+                if input == dragInput and dragging then
+                    update(input)
+                end
+            end))
+        end
+    end)
+end)
+
 -- Prevent game from detecting UI actions or internal UI errors (Anti-Cheat bypass)
 pcall(function()
     if getconnections then
@@ -750,9 +870,9 @@ Tabs = {
 
     Tabs.Teleport:AddDropdown("Dropdown", {
         Title = "Destination",
-        Values = {"fishHub", "tradeHub", "Second Sea"},
+        Values = {"fishHub", "tradeHub", "Second Sea", "Lobby"},
         Multi = false,
-        Default = (table.find({"fishHub", "tradeHub", "Second Sea"}, GlobalMem.FishmanDestination) or 1),
+        Default = (table.find({"fishHub", "tradeHub", "Second Sea", "Lobby"}, GlobalMem.FishmanDestination) or 1),
         Callback = function(Value)
             GlobalMem.FishmanDestination = Value
             SaveConfig()
@@ -778,14 +898,30 @@ Tabs = {
                 
                 local confirmArgs = { [1] = GlobalMem.FishmanDestination }
                 pcall(function()
-                    local playerGui = LocalPlayer:WaitForChild("PlayerGui", 20)
-                    local chooseType = playerGui:WaitForChild("chooseType", 20)
-                    local frame = chooseType:WaitForChild("Frame", 20)
-                    local remoteEvent = frame:WaitForChild("RemoteEvent", 20)
-                    remoteEvent:FireServer(unpack(confirmArgs))
+                    if GlobalMem.FishmanDestination == "Lobby" then
+                        TeleportService:Teleport(targetPlaceId, LocalPlayer)
+                    else
+                        local playerGui = LocalPlayer:WaitForChild("PlayerGui", 20)
+                        local chooseType = playerGui:WaitForChild("chooseType", 20)
+                        local frame = chooseType:WaitForChild("Frame", 20)
+                        local remoteEvent = frame:WaitForChild("RemoteEvent", 20)
+                        remoteEvent:FireServer(unpack(confirmArgs))
+                    end
                 end)
             else
                 TeleportService:Teleport(targetPlaceId, LocalPlayer)
+            end
+        end
+    })
+
+    Tabs.Teleport:AddButton({
+        Title = "🏠 Return to Base of Operations",
+        Description = "Teleports you back to the lobby (Base of Operations).",
+        Callback = function()
+            if not isLobby then
+                TeleportService:Teleport(targetPlaceId, LocalPlayer)
+            else
+                Fluent:Notify({ Title = "Teleport", Content = "You are already in the Base of Operations!", Duration = 3 })
             end
         end
     })
@@ -849,6 +985,17 @@ Tabs = {
         if isLobby then if Value then Fluent:Notify({ Title = "Error", Content = "Cannot craft in Lobby!", Duration = 3 }); Fluent.Options.T_Craft:SetValue(false) end return end
         Model.State.autoCraft = Value 
     end })
+    Tabs.Fishing:AddButton({
+        Title = "🔨 Craft All Legendary Fish Now",
+        Description = "Instantly crafts all legendary fishes in your inventory into bait.",
+        Callback = function()
+            if isLobby then
+                Fluent:Notify({ Title = "Error", Content = "Cannot craft in Lobby!", Duration = 3 })
+                return
+            end
+            task.spawn(Model.ForceCraftAll)
+        end
+    })
     Tabs.Fishing:AddToggle("T_AFK", { Title = "AFK Mode (Auto-start after 10s)", Default = not isLobby, Callback = function(Value) 
         if isLobby then if Value then Fluent:Notify({ Title = "Error", Content = "AFK Mode requires Fishing server!", Duration = 3 }); Fluent.Options.T_AFK:SetValue(false) end return end
         isAFKModeActive = Value; secondsSinceLastInput = 0 
@@ -922,6 +1069,14 @@ Tabs.Settings:AddToggle("T_AutoReconnect", {
     Callback = function(Value)
         GlobalMem.FishmanAutoReconnect = Value
         SaveConfig()
+    end 
+})
+
+Tabs.Settings:AddToggle("T_AntiLag", { 
+    Title = "Disable 3D Rendering (Anti-Lag)", 
+    Default = false, 
+    Callback = function(Value)
+        RunService:Set3dRenderingEnabled(not Value)
     end 
 })
 
