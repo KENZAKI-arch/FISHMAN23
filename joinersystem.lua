@@ -447,15 +447,22 @@ if not isLobby then
         
         for _, craftItem in ipairs(craftQueue) do
             if not Model.State.isCurrentlyCrafting then break end
-            pcall(function()
-                craftingRemote:InvokeServer({ 
-                    Count = craftItem.Batches, 
-                    ExtraData = { ["Legendary Fish"] = craftItem.Name }, 
-                    Method = "Craft", 
-                    BlueprintItem = "Legendary Fish Bait" 
-                })
-            end)
-            task.wait(1)
+            
+            -- If auto-crafting, we loop 'Batches' times sending 40. 
+            -- If manual crafting, we loop once and send the total amount.
+            local loops = craftItem.IsAuto and craftItem.Batches or 1
+            for i = 1, loops do
+                if not Model.State.isCurrentlyCrafting then break end
+                pcall(function()
+                    craftingRemote:InvokeServer({
+                        Count         = craftItem.Count or craftItem.Batches,
+                        ExtraData     = { ["Legendary Fish"] = craftItem.Name },
+                        Method        = "Craft",
+                        BlueprintItem = "Legendary Fish Bait",
+                    })
+                end)
+                task.wait(craftItem.Wait or 1)
+            end
         end
         SafeInvokeQuest(false)
         task.wait(0.3)
@@ -558,6 +565,7 @@ if not isLobby then
                 for _, fishName in ipairs(fishToSell) do
                     if (inventoryData[fishName] or 0) >= 1 then
                         pcall(function() sellEvent:InvokeServer({ Fish = fishName, All = true, Method = "SellFish" }) end)
+                        task.wait(0.1)
                     end
                 end
             end
@@ -650,14 +658,11 @@ if not isLobby then
             end
 
             addConn(workspace.DescendantAdded:Connect(function(child)
-                task.spawn(function()
-                    if child:IsA("ForceField") or child:IsA("Sparkles") or child:IsA("Smoke") or child:IsA("Fire") or child:IsA("Beam") then
-                        game:GetService("RunService").Heartbeat:Wait()
-                        child:Destroy()
-                    elseif child:IsA("BasePart") then
-                        child.CastShadow = false
-                    end
-                end)
+                if child:IsA("ForceField") or child:IsA("Sparkles") or child:IsA("Smoke") or child:IsA("Fire") or child:IsA("Beam") then
+                    pcall(function() game:GetService("Debris"):AddItem(child, 0) end)
+                elseif child:IsA("BasePart") then
+                    child.CastShadow = false
+                end
             end))
 
             print("Anti-Lag: Active")
@@ -712,7 +717,7 @@ if not isLobby then
                 local fishCount = inventoryData[legFish] or 0
                 if fishCount >= 40 then
                     local timesToCraft = math.floor(fishCount / 40)
-                    table.insert(craftQueue, { Name = legFish, Batches = timesToCraft })
+                    table.insert(craftQueue, { Name = legFish, Batches = timesToCraft, Count = 40, Wait = 0.5, IsAuto = true })
                     totalBatches += timesToCraft
                 end
             end
@@ -724,7 +729,7 @@ if not isLobby then
         end
     end)
 
-    task.spawn(function() while _running and task.wait(2) do if Model.State.autoBuy then Model.CheckInventory() end end end)
+    task.spawn(function() while _running and task.wait(2) do if Model.State.autoBuy or Model.State.autoSell then Model.CheckInventory() end end end)
     task.spawn(function() while _running and task.wait() do if Model.State.isFishing then Model.DoFishingCycle() end end end)
 
     addConn(RunService.Heartbeat:Connect(function(dt)
@@ -757,9 +762,7 @@ if not isLobby then
         end
     end))
     
-    if inventoryObj then
-        addConn(inventoryObj:GetPropertyChangedSignal("Value"):Connect(function() Model.CheckInventory() end))
-    end
+    -- Removed GetPropertyChangedSignal for inventory to prevent infinite remote spam loops
 end
 
 local function ShutdownEverything()
@@ -780,7 +783,31 @@ env.Fishman_StopPrevious = ShutdownEverything
 -- ======================================================================
 -- 🎨 FLUENT UI INTEGRATION
 -- ======================================================================
-Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
+local fluentUrl = "https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"
+local fluentCacheFile = "FluentLibraryCache.lua"
+local FluentSource = nil
+
+pcall(function()
+    if isfile and readfile and isfile(fluentCacheFile) then
+        FluentSource = readfile(fluentCacheFile)
+    end
+end)
+
+if not FluentSource or FluentSource == "" then
+    pcall(function() FluentSource = game:HttpGet(fluentUrl) end)
+    pcall(function()
+        if writefile and FluentSource then 
+            writefile(fluentCacheFile, FluentSource) 
+        end
+    end)
+end
+
+if not FluentSource then
+    warn("[Fishman] Failed to load UI Library!")
+    return
+end
+
+Fluent = loadstring(FluentSource)()
 local Window = Fluent:CreateWindow({
     Title = "🐟 Fishman Hub",
     SubTitle = "Unified Auto-Fisher",
