@@ -732,8 +732,19 @@ if not isLobby then
                 if not Model.State.isFishing then return end
                 if hook:GetAttribute("Caught") == true then
                     local diffMult = hook:GetAttribute("MoveMultiplier") or 1.0
+                    print("Fish caught! MoveMultiplier:", diffMult)
+                    for _, child in ipairs(hook:GetDescendants()) do
+                        if child:IsA("Sound") then
+                            print("Sound found from fish/hook:", child.Name, "| SoundId:", child.SoundId)
+                        end
+                    end
                     currentPeli = peliObject and peliObject.Value or 0
-                    local skipFish = (currentPeli >= MAX_PELI) and (diffMult < 1.2) or (diffMult < 0.9)
+                    local skipFish
+                    if Model.State.strictReel then
+                        skipFish = (diffMult <= 1.0)
+                    else
+                        skipFish = (currentPeli >= MAX_PELI) and (diffMult < 1.2) or (diffMult < 0.9)
+                    end
 
                     if skipFish then
                         pcall(function() Remote:InvokeServer({ Action = "Reel" }) end)
@@ -1093,6 +1104,9 @@ Tabs = {
     Tabs.Fishing:AddToggle("T_Fish", { Title = "Auto Fish", Default = false, Callback = function(Value) 
         if isLobby then if Value then Fluent:Notify({ Title = "Error", Content = "Cannot fish in Lobby!", Duration = 3 }); Fluent.Options.T_Fish:SetValue(false) end return end
         Model.State.isFishing = Value 
+    end })
+    Tabs.Fishing:AddToggle("T_StrictReel", { Title = "Only Reel > 1.0 Multiplier", Default = true, Callback = function(Value) 
+        Model.State.strictReel = Value 
     end })
     Tabs.Fishing:AddToggle("T_Buy", { Title = "Auto Buy Bait", Default = false, Callback = function(Value) 
         if isLobby then if Value then Fluent:Notify({ Title = "Error", Content = "Cannot buy in Lobby!", Duration = 3 }); Fluent.Options.T_Buy:SetValue(false) end return end
