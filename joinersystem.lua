@@ -443,53 +443,130 @@ if not isLobby then
     -- ======================================================================
     -- 🔨 CRAFTING SUBSYSTEM
     -- ======================================================================
-    local function StartCraftFlight()
-        if craftHeartbeatConn then craftHeartbeatConn:Disconnect() end
-        craftHeartbeatConn = RunService.Heartbeat:Connect(function(dt)
-            if not Model.State.isCraftFlying or not craftFlyTarget then return end
-            local rootPart = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-            if not rootPart then return end
-            
-            local cur = rootPart.Position
-            local tgt = craftFlyTarget
-            local nextPoint
-            local goingUp = (tgt.Y > cur.Y)
-            
-            if goingUp and math.abs(cur.Y - tgt.Y) > 1 then nextPoint = Vector3.new(cur.X, tgt.Y, cur.Z)
-            elseif math.abs(cur.X - tgt.X) > 1 then nextPoint = Vector3.new(tgt.X, cur.Y, cur.Z)
-            elseif math.abs(cur.Z - tgt.Z) > 1 then nextPoint = Vector3.new(tgt.X, cur.Y, tgt.Z)
-            elseif not goingUp and math.abs(cur.Y - tgt.Y) > 1 then nextPoint = Vector3.new(tgt.X, tgt.Y, tgt.Z)
-            else Model.State.isCraftFlying = false; return end
-            
-            local dist = (cur - nextPoint).Magnitude
-            if dist > 0 then
-                rootPart.CFrame = rootPart.CFrame:Lerp(CFrame.new(nextPoint) * rootPart.CFrame.Rotation, math.clamp((30 * dt) / dist, 0, 1))
-            end
-            rootPart.AssemblyLinearVelocity = Vector3.zero
-            rootPart.AssemblyAngularVelocity = Vector3.zero
-        end)
+    local lastGeppoEffectTick = 0
+    local lastGeppoRemoteTick = 0
+    local function PlayGeppoEffect(character, rootPart)
+        local currentTick = tick()
+        local cf = rootPart.CFrame * CFrame.new(0, -3, 0)
+        
+        if currentTick - lastGeppoEffectTick >= 0.2 then
+            lastGeppoEffectTick = currentTick
+            pcall(function()
+                if _G.PlayEffect then
+                    _G.PlayEffect("Geppo", nil, {char = character, cf = cf})
+                end
+            end)
+        end
+        
+        if currentTick - lastGeppoRemoteTick >= 2 then
+            lastGeppoRemoteTick = currentTick
+            pcall(function()
+                local stats = game.ReplicatedStorage:FindFirstChild("Stats" .. LocalPlayer.Name)
+                local fs = stats and stats:FindFirstChild("Stats") and stats.Stats:FindFirstChild("FightingStyle")
+                local skillName = "Sky Walk2"
+                if fs then
+                    if fs.Value == "Rokushiki" then skillName = "Geppo"
+                    elseif fs.Value == "BlackLeg" then skillName = "Sky Walk"
+                    elseif fs.Value == "Kamishiki" then skillName = "KamishikiGeppo"
+                    end
+                end
+                game.ReplicatedStorage.Events.Skill:InvokeServer(skillName, {char = character, cf = cf})
+            end)
+        end
     end
 
-    local function StopCraftFlight()
-        if craftHeartbeatConn then craftHeartbeatConn:Disconnect(); craftHeartbeatConn = nil end
+    local function CraftFlyToAndWait(targetVector)
+        local character = LocalPlayer.Character
+        local rootPart = character and character:FindFirstChild("HumanoidRootPart")
+        if not rootPart then return end
+        
+        Model.State.isCraftFlying = true
+        local speed = Model.State.shipSpeed or 300 
+        
+        local function TweenTo(point)
+            if not Model.State.isCraftFlying then return end
+            local dist = (rootPart.Position - point).Magnitude
+            if dist < 1 then return end
+            
+            local tweenInfo = TweenInfo.new(dist / speed, Enum.EasingStyle.Linear)
+            local tween = TweenService:Create(rootPart, tweenInfo, {CFrame = CFrame.new(point) * rootPart.CFrame.Rotation})
+            tween:Play()
+            
+            while tween.PlaybackState == Enum.PlaybackState.Playing do
+                if not Model.State.autoCraft and not Model.State.isRefillingMegBait then 
+                    tween:Cancel()
+                    Model.State.isCraftFlying = false
+                    break 
+                end
+                PlayGeppoEffect(character, rootPart)
+                task.wait(0.1)
+            end
+        end
+        
+        local cur = rootPart.Position
+        local upPoint = Vector3.new(cur.X, math.max(cur.Y, targetVector.Y) + 500, cur.Z)
+        local overPoint = Vector3.new(targetVector.X, upPoint.Y, targetVector.Z)
+        
+        TweenTo(upPoint)
+        TweenTo(overPoint)
+        TweenTo(targetVector)
+        
         Model.State.isCraftFlying = false
+    end
+
+    function Model.CraftFlyPath(pathTable)
+        for _, targetPos in ipairs(pathTable) do 
+            if not Model.State.autoCraft and not Model.State.isRefillingMegBait then break end
+            CraftFlyToAndWait(targetPos) 
+        end
     end
     
-    local function CraftFlyToAndWait(targetVector)
-        craftFlyTarget = targetVector
+    function Model.ReturnToShip()
+        local hoverboard = Model.FindHoverboard()
+        if not hoverboard then return false end
+        
+        local character = LocalPlayer.Character
+        local rootPart = character and character:FindFirstChild("HumanoidRootPart")
+        if not rootPart then return false end
+        
         Model.State.isCraftFlying = true
-        local waited = 0 
-        while Model.State.isCraftFlying and waited < 20 do
-            if not Model.State.autoCraft then break end
-            task.wait(0.1); waited += 0.1
+        Model.DisableFlight()
+        task.wait(0.1)
+        Model.EnableFlight()
+        
+        local targetVector = (hoverboard.CFrame * CFrame.new(0, 3, 4)).Position
+        local speed = Model.State.shipSpeed or 300 
+        
+        local function TweenTo(point)
+            if not Model.State.isCraftFlying then return end
+            local dist = (rootPart.Position - point).Magnitude
+            if dist < 1 then return end
+            
+            local tweenInfo = TweenInfo.new(dist / speed, Enum.EasingStyle.Linear)
+            local tween = TweenService:Create(rootPart, tweenInfo, {CFrame = CFrame.new(point) * rootPart.CFrame.Rotation})
+            tween:Play()
+            
+            while tween.PlaybackState == Enum.PlaybackState.Playing do
+                if not Model.State.isCraftFlying then 
+                    tween:Cancel()
+                    break 
+                end
+                PlayGeppoEffect(character, rootPart)
+                task.wait(0.1)
+            end
         end
-        Model.State.isCraftFlying = false
-    end
 
-    local function CraftFlyPath(pathTable)
-        StartCraftFlight()
-        for _, targetPos in ipairs(pathTable) do CraftFlyToAndWait(targetPos) end
-        StopCraftFlight()
+        local cur = rootPart.Position
+        local upPoint = Vector3.new(cur.X, math.max(cur.Y, targetVector.Y) + 500, cur.Z)
+        local overPoint = Vector3.new(targetVector.X, upPoint.Y, targetVector.Z)
+        
+        TweenTo(upPoint)
+        TweenTo(overPoint)
+        TweenTo(targetVector)
+        
+        Model.DisableFlight()
+        Model.State.isCraftFlying = false
+        return true
     end
     
     local function SafeInvokeQuest(chatState)
@@ -513,7 +590,7 @@ if not isLobby then
         if not Model.State.autoCraft then return end
 
         Model.EnableFlight()
-        CraftFlyPath({ Vector3.new(162.85, originalPos.Y, -55.34) })
+        Model.CraftFlyPath({ Vector3.new(162.85, originalPos.Y, -55.34) })
         if not Model.State.autoCraft then Model.DisableFlight(); return end
         
         task.wait(0.5)
@@ -534,7 +611,7 @@ if not isLobby then
         task.wait(0.3)
         
         if not Model.State.autoCraft then Model.DisableFlight(); return end
-        CraftFlyPath({ originalPos })
+        Model.CraftFlyPath({ originalPos })
         Model.DisableFlight()
         
         Model.EquipRod()
@@ -582,7 +659,7 @@ if not isLobby then
         local wasAutoCraft = Model.State.autoCraft
         Model.State.autoCraft = true 
         
-        CraftFlyPath({ Vector3.new(162.85, originalPos.Y, -55.34) })
+        Model.CraftFlyPath({ Vector3.new(162.85, originalPos.Y, -55.34) })
         task.wait(0.5)
         SafeInvokeQuest(true)
         task.wait(0.5)
@@ -601,7 +678,7 @@ if not isLobby then
         
         SafeInvokeQuest(false)
         task.wait(0.3)
-        CraftFlyPath({ originalPos })
+        Model.CraftFlyPath({ originalPos })
         
         Model.State.autoCraft = wasAutoCraft
         
@@ -687,9 +764,82 @@ if not isLobby then
         Model.State.isBuying = false
     end
 
+    function Model.FindHoverboard()
+        if getgenv().CachedHoverboard and getgenv().CachedHoverboard.Parent then
+            return getgenv().CachedHoverboard
+        end
+        local character = LocalPlayer.Character
+        local shipName = LocalPlayer.Name .. "Ship"
+        if character then
+            local hum = character:FindFirstChild("Humanoid")
+            if hum and hum.SeatPart and hum.SeatPart.Name == "VehicleSeat" and hum.SeatPart.Parent and hum.SeatPart.Parent.Name == shipName then
+                getgenv().CachedHoverboard = hum.SeatPart
+                return hum.SeatPart
+            end
+        end
+        local shipsFolder = workspace:FindFirstChild("Ships")
+        if shipsFolder then
+            local myShip = shipsFolder:FindFirstChild(shipName)
+            if myShip then
+                local seat = myShip:FindFirstChild("VehicleSeat", true) or myShip:FindFirstChildOfClass("VehicleSeat")
+                if seat then
+                    getgenv().CachedHoverboard = seat
+                    return seat
+                end
+            end
+        end
+        return nil
+    end
+
+    function Model.RefillMegBait()
+        if Model.State.isRefillingMegBait then return end
+        Model.State.isRefillingMegBait = true
+        
+        local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if not hrp then Model.State.isRefillingMegBait = false; return end
+        local originalPos = hrp.Position
+        
+        Model.State.isAutoTraveling = false
+        Model.DisableFlight()
+        Model.UnequipRod()
+        task.wait(1)
+        
+        Model.EnableFlight()
+        
+        local wasAutoCraft = Model.State.autoCraft
+        Model.State.autoCraft = true 
+        
+        print("🚀 [MegStackLoc] 0 Common Fish Bait detected! Flying to island (-6760, 27, 9191)...")
+        Model.CraftFlyPath({ Vector3.new(-6760, 27, 9191) })
+        
+        print("⏳ [MegStackLoc] Arrived! Waiting 5 seconds for your macro to buy baits...")
+        task.wait(5)
+        
+        print("🚀 [MegStackLoc] Flying back to fishing spot...")
+        local hoverboard = Model.FindHoverboard()
+        if hoverboard then
+            Model.CraftFlyPath({ (hoverboard.CFrame * CFrame.new(0, 3, 4)).Position })
+        else
+            Model.CraftFlyPath({ originalPos })
+        end
+        
+        Model.State.autoCraft = wasAutoCraft
+        Model.DisableFlight()
+        Model.EquipRod()
+        
+        print("✅ [MegStackLoc] Returned to fishing spot. Resuming operations.")
+        Model.State.isRefillingMegBait = false
+    end
+
     function Model.CheckInventory()
         local ok, inventoryData = pcall(function() return HttpService:JSONDecode(inventoryObj.Value) end)
         if not ok or not inventoryData then return end
+        
+        if Model.State.isMegStackLoc and not Model.State.isRefillingMegBait then
+            if (inventoryData["Common Fish Bait"] or 0) <= 0 then
+                task.spawn(Model.RefillMegBait)
+            end
+        end
 
         if Model.State.autoBuy and not Model.State.isBuying then
             if (inventoryData[BAIT_NAME] or 0) < MIN_BAIT then Model.BuyNearestBait() end
@@ -706,7 +856,7 @@ if not isLobby then
             end
         end
     end
-    local function countMegalodons()
+    function Model.countMegalodons()
         local count = 0
         local folders = {workspace:FindFirstChild("NPCs"), workspace:FindFirstChild("Env")}
         for _, folder in ipairs(folders) do
@@ -1227,19 +1377,22 @@ Tabs = {
         if isLobby then if Value then Fluent:Notify({ Title = "Error", Content = "Cannot stack in Lobby!", Duration = 3 }); Fluent.Options.T_MegStack:SetValue(false) end return end
         Model.State.isMegStacking = Value 
         if Value then
+            print("🌊 [MegStack] Meg stack starting now! Enabling deep sea catcher for 10 megalodons.")
             task.spawn(function()
                 while Model.State.isMegStacking do
-                    local megCount = countMegalodons()
+                    local megCount = Model.countMegalodons()
                     if megCount >= 10 then
+                        print("🔥 [MegStack] 10 Megalodons reached! Disabling fishing and unleashing Cyborg Autofarm...")
                         if Fluent.Options.T_DeepSea.Value == true then
                             Fluent.Options.T_DeepSea:SetValue(false)
                         end
                         if getgenv().ToggleCyborgAutofarm then
                             getgenv().ToggleCyborgAutofarm(true)
                         end
-                        while countMegalodons() > 0 and Model.State.isMegStacking do
+                        while Model.countMegalodons() > 0 and Model.State.isMegStacking do
                             task.wait(1)
                         end
+                        print("✅ [MegStack] Stack cleared! Turning off Cyborg and resuming fishing...")
                         if getgenv().ToggleCyborgAutofarm then
                             getgenv().ToggleCyborgAutofarm(false)
                         end
@@ -1255,11 +1408,138 @@ Tabs = {
                 end
             end)
         else
+            print("🛑 [MegStack] Stacking aborted. Shutting down deep sea catcher.")
             if Fluent.Options.T_DeepSea.Value == true then
                 Fluent.Options.T_DeepSea:SetValue(false)
             end
         end
     end })
+    
+    Tabs.Fishing:AddToggle("T_MegStackLoc", { Title = "Meg Stack Location (Auto Refill)", Default = false, Callback = function(Value) 
+        if isLobby then if Value then Fluent:Notify({ Title = "Error", Content = "Cannot use in Lobby!", Duration = 3 }); Fluent.Options.T_MegStackLoc:SetValue(false) end return end
+        Model.State.isMegStackLoc = Value 
+    end })
+    
+    Tabs.Fishing:AddToggle("T_HoverboardESP", { Title = "Ship ESP", Default = false, Callback = function(Value) 
+        Model.State.isHoverboardESP = Value 
+        if Value then
+            task.spawn(function()
+                while Model.State.isHoverboardESP do
+                    local shipsFolder = workspace:FindFirstChild("Ships")
+                    if shipsFolder then
+                        local myShip = shipsFolder:FindFirstChild(LocalPlayer.Name .. "Ship")
+                        if myShip and myShip:IsA("Model") then
+                            if not myShip:FindFirstChild("HoverESP_Highlight") then
+                                local hl = Instance.new("Highlight")
+                                hl.Name = "HoverESP_Highlight"
+                                hl.FillColor = Color3.fromRGB(0, 255, 0)
+                                hl.OutlineColor = Color3.fromRGB(255, 255, 255)
+                                hl.FillTransparency = 0.5
+                                hl.Parent = myShip
+                            end
+                        end
+                    end
+                    task.wait(1)
+                end
+                local shipsFolder = workspace:FindFirstChild("Ships")
+                if shipsFolder then
+                    local myShip = shipsFolder:FindFirstChild(LocalPlayer.Name .. "Ship")
+                    if myShip then
+                        local hl = myShip:FindFirstChild("HoverESP_Highlight")
+                        if hl then hl:Destroy() end
+                    end
+                end
+            end)
+        else
+            local shipsFolder = workspace:FindFirstChild("Ships")
+            if shipsFolder then
+                local myShip = shipsFolder:FindFirstChild(LocalPlayer.Name .. "Ship")
+                if myShip then
+                    local hl = myShip:FindFirstChild("HoverESP_Highlight")
+                    if hl then hl:Destroy() end
+                end
+            end
+        end
+    end })
+    
+    Tabs.Fishing:AddToggle("T_MegESP", { Title = "Megalodon ESP", Default = false, Callback = function(Value) 
+        Model.State.isMegESP = Value 
+        if Value then
+            task.spawn(function()
+                while Model.State.isMegESP do
+                    local folders = {workspace:FindFirstChild("NPCs"), workspace:FindFirstChild("Env")}
+                    for _, folder in ipairs(folders) do
+                        if folder then
+                            for _, child in ipairs(folder:GetChildren()) do
+                                if child.Name == "Megalodon" and child:FindFirstChild("HumanoidRootPart") then
+                                    if not child:FindFirstChild("MegESP_Highlight") then
+                                        local hl = Instance.new("Highlight")
+                                        hl.Name = "MegESP_Highlight"
+                                        hl.FillColor = Color3.fromRGB(255, 0, 0)
+                                        hl.OutlineColor = Color3.fromRGB(255, 255, 255)
+                                        hl.FillTransparency = 0.5
+                                        hl.Parent = child
+                                    end
+                                end
+                            end
+                        end
+                    end
+                    task.wait(1)
+                end
+                local folders = {workspace:FindFirstChild("NPCs"), workspace:FindFirstChild("Env")}
+                for _, folder in ipairs(folders) do
+                    if folder then
+                        for _, child in ipairs(folder:GetChildren()) do
+                            if child.Name == "Megalodon" then
+                                local hl = child:FindFirstChild("MegESP_Highlight")
+                                if hl then hl:Destroy() end
+                            end
+                        end
+                    end
+                end
+            end)
+        else
+            local folders = {workspace:FindFirstChild("NPCs"), workspace:FindFirstChild("Env")}
+            for _, folder in ipairs(folders) do
+                if folder then
+                    for _, child in ipairs(folder:GetChildren()) do
+                        if child.Name == "Megalodon" then
+                            local hl = child:FindFirstChild("MegESP_Highlight")
+                            if hl then hl:Destroy() end
+                        end
+                    end
+                end
+            end
+        end
+    end })
+    
+    Tabs.Fishing:AddButton({
+        Title = "Return to Hoverboard",
+        Description = "Uses Geppo + BV to manually fly back to your hoverboard",
+        Callback = function()
+            if isLobby then Fluent:Notify({ Title = "Error", Content = "Cannot travel in Lobby!", Duration = 3 }); return end
+            task.spawn(function()
+                local success = Model.ReturnToShip()
+                if success then
+                    print("🚀 [ReturnToShip] Successfully arrived at hoverboard!")
+                else
+                    Fluent:Notify({ Title = "Error", Content = "No Hoverboard detected in workspace!", Duration = 3 })
+                end
+            end)
+        end
+    })
+
+    Tabs.Fishing:AddSlider("S_ShipSpeed", {
+        Title = "Return To Ship Speed",
+        Description = "Adjusts flight speed (300 is recommended)",
+        Default = 300,
+        Min = 100,
+        Max = 1000,
+        Rounding = 0,
+        Callback = function(Value)
+            Model.State.shipSpeed = Value
+        end
+    })
 
     Tabs.Fishing:AddToggle("T_StrictReel", { Title = "Only Reel > 1.0 Multiplier", Default = true, Callback = function(Value) 
         Model.State.strictReel = Value 
