@@ -589,7 +589,7 @@ function View.Build(onToggleCallback)
             local delta = input.Position - dragStart
             toggleBtn.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
         end
-    end)
+    end))
 
     local isFarming = false
 
@@ -762,12 +762,12 @@ local steppedConn = addConn(RunService.Stepped:Connect(function()
     if Model.State.isAutoFarming and not Model.State.isWaitingAtSafeSpot then
         Model.ApplyNoclip()
     end
-end)
+end))
 
 local heartbeatConn = addConn(RunService.Heartbeat:Connect(function(deltaTime)
     if not Model.State.isAutoFarming then return end
     Model.UpdateTracking(deltaTime)
-end)
+end))
 
 getgenv().StopAutofarm = function()
     Model.State.isAutoFarming = false
@@ -833,9 +833,9 @@ do
                         -- Disarm the net until we sit down again
                         if dismountConnection then dismountConnection:Disconnect() end
                     end
-                end)
+                end))
             end
-        end)
+        end))
     end
 
     -- Hook the background system immediately, and every time you respawn!
@@ -910,7 +910,7 @@ do
             local delta = input.Position - dragStart
             mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
         end
-    end)
+    end))
 
     local heightInput = Instance.new("TextBox")
     heightInput.Size = UDim2.new(1, -20, 0, 30)
