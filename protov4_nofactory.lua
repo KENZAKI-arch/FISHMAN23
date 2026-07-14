@@ -11,6 +11,16 @@ local UserInputService = game:GetService("UserInputService")
 
 local LocalPlayer = Players.LocalPlayer
 
+if getgenv().StopAutofarm then
+    pcall(getgenv().StopAutofarm)
+end
+
+local _connections = {}
+local function addConn(conn)
+    table.insert(_connections, conn)
+    return conn
+end
+
 -- ==========================================
 -- CONFIGURATION
 -- ==========================================
@@ -574,7 +584,7 @@ function View.Build(onToggleCallback)
         end
     end)
 
-    UserInputService.InputChanged:Connect(function(input)
+    addConn(UserInputService.InputChanged:Connect(function(input)
         if input == dragInput and dragging then
             local delta = input.Position - dragStart
             toggleBtn.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
@@ -748,13 +758,13 @@ View.Build(function(isFarming)
     end
 end)
 
-local steppedConn = RunService.Stepped:Connect(function()
+local steppedConn = addConn(RunService.Stepped:Connect(function()
     if Model.State.isAutoFarming and not Model.State.isWaitingAtSafeSpot then
         Model.ApplyNoclip()
     end
 end)
 
-local heartbeatConn = RunService.Heartbeat:Connect(function(deltaTime)
+local heartbeatConn = addConn(RunService.Heartbeat:Connect(function(deltaTime)
     if not Model.State.isAutoFarming then return end
     Model.UpdateTracking(deltaTime)
 end)
@@ -763,8 +773,10 @@ getgenv().StopAutofarm = function()
     Model.State.isAutoFarming = false
     Model.ResetPhysics()
     
-    if steppedConn then steppedConn:Disconnect() end
-    if heartbeatConn then heartbeatConn:Disconnect() end
+    for _, c in ipairs(_connections) do
+        if c and c.Connected then c:Disconnect() end
+    end
+    table.clear(_connections)
     
     local coreGui = game:GetService("CoreGui"):FindFirstChild("AutoFarmGui")
     if coreGui then coreGui:Destroy() end
@@ -774,7 +786,10 @@ getgenv().StopAutofarm = function()
         pGui.AutoFarmGui:Destroy() 
     end
     
-    print("[Cyborg Autofarm] Autofarm forcefully stopped and UI destroyed.")
+    local hGui = game:GetService("CoreGui"):FindFirstChild("HoverboardFlightPanel")
+    if hGui then hGui:Destroy() end
+    
+    print("[Cyborg Autofarm] Autofarm forcefully stopped, memory cleared, and UI destroyed.")
 end
 
 -- ========================================================
@@ -797,7 +812,7 @@ do
             getgenv().CachedHoverboard = hum.SeatPart
         end
         
-        hum.Seated:Connect(function(isSeated, seat)
+        addConn(hum.Seated:Connect(function(isSeated, seat)
             -- The millisecond we sit in ANY vehicle seat, arm the safety net!
             if isSeated and seat and seat:IsA("VehicleSeat") then
                 
@@ -806,7 +821,7 @@ do
                 getgenv().CachedHoverboard = seat
                 
                 local dismountConnection
-                dismountConnection = seat:GetPropertyChangedSignal("Occupant"):Connect(function()
+                dismountConnection = addConn(seat:GetPropertyChangedSignal("Occupant"):Connect(function()
                     if not seat.Occupant then
                         -- We jumped out! Catch us instantly!
                         local hrp = char:FindFirstChild("HumanoidRootPart")
@@ -825,7 +840,7 @@ do
 
     -- Hook the background system immediately, and every time you respawn!
     if player.Character then setupAntiFling(player.Character) end
-    player.CharacterAdded:Connect(setupAntiFling)
+    addConn(player.CharacterAdded:Connect(setupAntiFling))
     -- ========================================================
 
 
@@ -890,7 +905,7 @@ do
     title.InputChanged:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseMovement then dragInput = input end
     end)
-    UserInputService.InputChanged:Connect(function(input)
+    addConn(UserInputService.InputChanged:Connect(function(input)
         if input == dragInput and dragging then
             local delta = input.Position - dragStart
             mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
