@@ -196,7 +196,7 @@ local function ActivatePotatoGraphics()
         end
     end
 
-    workspace.DescendantAdded:Connect(function(child)
+    addConn(workspace.DescendantAdded:Connect(function(child)
         task.spawn(function()
             if child:IsA("ForceField") or child:IsA("Sparkles") or child:IsA("Smoke") or child:IsA("Fire") or child:IsA("Beam") then
                 RunService.Heartbeat:Wait()
@@ -205,7 +205,7 @@ local function ActivatePotatoGraphics()
                 child.CastShadow = false
             end
         end)
-    end)
+    end))
     
     if Fluent then Fluent:Notify({ Title = "Anti-Lag", Content = "Potato Graphics Active!", Duration = 3 }) end
     print("Anti-Lag: Active")
@@ -1424,7 +1424,7 @@ Tabs = {
         Model.State.isHoverboardESP = Value 
         if Value then
             task.spawn(function()
-                while Model.State.isHoverboardESP do
+                while _running and Model.State.isHoverboardESP do
                     local shipsFolder = workspace:FindFirstChild("Ships")
                     if shipsFolder then
                         local myShip = shipsFolder:FindFirstChild(LocalPlayer.Name .. "Ship")
@@ -1466,7 +1466,7 @@ Tabs = {
         Model.State.isMegESP = Value 
         if Value then
             task.spawn(function()
-                while Model.State.isMegESP do
+                while _running and Model.State.isMegESP do
                     local folders = {workspace:FindFirstChild("NPCs"), workspace:FindFirstChild("Env")}
                     for _, folder in ipairs(folders) do
                         if folder then
