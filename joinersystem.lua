@@ -706,11 +706,29 @@ if not isLobby then
             end
         end
     end
+    local function countMegalodons()
+        local count = 0
+        local folders = {workspace:FindFirstChild("NPCs"), workspace:FindFirstChild("Env")}
+        for _, folder in ipairs(folders) do
+            if folder then
+                for _, child in ipairs(folder:GetChildren()) do
+                    if child.Name == "Megalodon" and child:FindFirstChild("Humanoid") and child.Humanoid.Health > 0 then
+                        count = count + 1
+                    end
+                end
+            end
+        end
+        return count
+    end
     
     function Model.DoFishingCycle()
         local currentPeli = peliObject and peliObject.Value or 0
         local hookName = LocalPlayer.Name .. "'s hook"
-        if workspace.Effects:FindFirstChild(hookName) then task.wait(); return end
+        if workspace.Effects:FindFirstChild(hookName) then 
+            pcall(function() Remote:InvokeServer({ Action = "Cancel" }) end)
+            task.wait(0.5) 
+            return 
+        end
         local character = LocalPlayer.Character
         if not character then return end
 
@@ -729,34 +747,129 @@ if not isLobby then
         if hook then
             local maxWait, waited = 15, 0
             while waited < maxWait do
-                if not Model.State.isFishing then return end
-                if hook:GetAttribute("Caught") == true then
-                    local diffMult = hook:GetAttribute("MoveMultiplier") or 1.0
-                    print("Fish caught! MoveMultiplier:", diffMult)
-                    for _, child in ipairs(hook:GetDescendants()) do
-                        if child:IsA("Sound") then
-                            print("Sound found from fish/hook:", child.Name, "| SoundId:", child.SoundId)
+                if not (Model.State.isFishing or Model.State.isDeepSeaCatcher) then return end
+                if hook:GetAttribute("Caught") == true or hook:FindFirstChild("ReelLoop") then
+                    if Model.State.isDeepSeaCatcher then
+                        local beastDetected = false
+                        local bWaited = 0
+                        local initialSoundTime = nil
+                        
+                        -- Global Passive Listener (Zero Stutter)
+                        -- Only runs ONCE per game session!
+                        if not getgenv().DSC_SoundCache then
+                            getgenv().DSC_SoundCache = {}
+                            
+                            local function onNewSound(child)
+                                if child:IsA("Sound") and string.find(child.Name, "DeepSea") then
+                                    table.insert(getgenv().DSC_SoundCache, child)
+                                end
+                            end
+                            
+                            -- Listen for when the game clones the sound from ReplicatedStorage!
+                            workspace.DescendantAdded:Connect(onNewSound)
+                            game:GetService("SoundService").DescendantAdded:Connect(onNewSound)
+                            
+                            if LocalPlayer.Character then
+                                LocalPlayer.Character.DescendantAdded:Connect(onNewSound)
+                            end
+                            LocalPlayer.CharacterAdded:Connect(function(char)
+                                char.DescendantAdded:Connect(onNewSound)
+                            end)
+                            
+                            -- Grab any that might already exist right now (just once, instantly)
+                            local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+                            if root then
+                                for _, child in ipairs(root:GetChildren()) do
+                                    onNewSound(child)
+                                end
+                            end
                         end
-                    end
-                    currentPeli = peliObject and peliObject.Value or 0
-                    local skipFish
-                    if Model.State.strictReel then
-                        skipFish = (diffMult <= 1.0)
+                        
+                        while _running and hook.Parent do
+                            -- Quickly copy valid sounds from our zero-lag cache
+                            local beastSounds = {}
+                            for i = #getgenv().DSC_SoundCache, 1, -1 do
+                                local s = getgenv().DSC_SoundCache[i]
+                                if s.Parent then
+                                    table.insert(beastSounds, s)
+                                else
+                                    table.remove(getgenv().DSC_SoundCache, i) -- Clean up deleted sounds
+                                end
+                            end
+                            -- 1. Check for initial sound in character
+                            if rootPart then
+                                for _, child in ipairs(rootPart:GetChildren()) do
+                                    if child:IsA("Sound") and child.Playing then
+                                        if not initialSoundTime and (child.Name == "Small" or child.Name == "Medium" or child.Name == "Large" or child.Name == "Giant") then
+                                            print("🐟 Initial sound detected:", child.Name, "- Waiting 0.3s for possible Beast sound...")
+                                            initialSoundTime = bWaited
+                                        end
+                                    end
+                                end
+                            end
+                            
+                            -- 2. Check ALL beast sounds globally
+                            for _, s in ipairs(beastSounds) do
+                                -- A fresh bite sound will have just started (TimePosition < 3.0)
+                                -- Lingering roars from previous catches will be > 7.0s because the reel animation takes 6s!
+                                if s.Playing and s.TimePosition < 3.0 then
+                                    local parentName = s.Parent and s.Parent.Name or "nil"
+                                    print("🔥 BEAST SOUND DETECTED! Name:", s.Name, "Time:", string.format("%.1f", s.TimePosition), "Parent:", parentName)
+                                    beastDetected = true
+                                    break
+                                end
+                            end
+                            
+                            if beastDetected then break end
+                            
+                            if initialSoundTime and (bWaited - initialSoundTime >= 0.3) then
+                                print("⏱️ 0.3s passed with no Beast sound. Safe to cancel.")
+                                break
+                            end
+                            if bWaited >= 5.0 then
+                                break -- Hard safety timeout
+                            end
+                            
+                            task.wait(0.1)
+                            bWaited += 0.1
+                        end
+                        
+                        if beastDetected then
+                            print("🔥 REELING IN THE BEAST! 🔥")
+                            local reelTrack = playAnimation(REEL_ANIMATION_ID)
+                            task.wait(6)
+                            pcall(function() Remote:InvokeServer({ Action = "Reel" }) end)
+                            if reelTrack then reelTrack:Stop(0.2) end
+                        else
+                            print("❌ No Megalodon detected. Cancelling normal fish to save bait.")
+                            pcall(function() Remote:InvokeServer({ Action = "Reel" }) end)
+                            task.wait()
+                            pcall(function() Remote:InvokeServer({ Action = "Cancel" }) end)
+                        end
+                        break
                     else
-                        skipFish = (currentPeli >= MAX_PELI) and (diffMult < 1.2) or (diffMult < 0.9)
-                    end
+                        local diffMult = hook:GetAttribute("MoveMultiplier") or 1.0
+                        print("Fish caught! MoveMultiplier:", diffMult)
+                        currentPeli = peliObject and peliObject.Value or 0
+                        local skipFish
+                        if Model.State.strictReel then
+                            skipFish = (diffMult <= 1.0)
+                        else
+                            skipFish = (currentPeli >= MAX_PELI) and (diffMult < 1.2) or (diffMult < 0.9)
+                        end
 
-                    if skipFish then
-                        pcall(function() Remote:InvokeServer({ Action = "Reel" }) end)
-                        task.wait()
-                        pcall(function() Remote:InvokeServer({ Action = "Cancel" }) end)
-                    else
-                        local reelTrack = playAnimation(REEL_ANIMATION_ID)
-                        task.wait(6)
-                        pcall(function() Remote:InvokeServer({ Action = "Reel" }) end)
-                        if reelTrack then reelTrack:Stop(0.2) end
+                        if skipFish then
+                            pcall(function() Remote:InvokeServer({ Action = "Reel" }) end)
+                            task.wait()
+                            pcall(function() Remote:InvokeServer({ Action = "Cancel" }) end)
+                        else
+                            local reelTrack = playAnimation(REEL_ANIMATION_ID)
+                            task.wait(6)
+                            pcall(function() Remote:InvokeServer({ Action = "Reel" }) end)
+                            if reelTrack then reelTrack:Stop(0.2) end
+                        end
+                        break
                     end
-                    break
                 end
                 task.wait(0.1); waited += 0.1
             end
@@ -819,7 +932,7 @@ if not isLobby then
     end)
 
     task.spawn(function() while _running and task.wait(2) do if Model.State.autoBuy then Model.CheckInventory() end end end)
-    task.spawn(function() while _running and task.wait() do if Model.State.isFishing then Model.DoFishingCycle() end end end)
+    task.spawn(function() while _running and task.wait() do if Model.State.isFishing or Model.State.isDeepSeaCatcher then Model.DoFishingCycle() end end end)
 
     addConn(RunService.Heartbeat:Connect(function(dt)
         if _running and Model.State.isAutoTraveling then Model.HandleMovement(dt) end
@@ -1105,6 +1218,49 @@ Tabs = {
         if isLobby then if Value then Fluent:Notify({ Title = "Error", Content = "Cannot fish in Lobby!", Duration = 3 }); Fluent.Options.T_Fish:SetValue(false) end return end
         Model.State.isFishing = Value 
     end })
+    Tabs.Fishing:AddToggle("T_DeepSea", { Title = "Deep Sea Catcher (ONLY Beasts)", Default = false, Callback = function(Value) 
+        if isLobby then if Value then Fluent:Notify({ Title = "Error", Content = "Cannot fish in Lobby!", Duration = 3 }); Fluent.Options.T_DeepSea:SetValue(false) end return end
+        Model.State.isDeepSeaCatcher = Value 
+    end })
+    
+    Tabs.Fishing:AddToggle("T_MegStack", { Title = "Megalodon Stack (Wait 10, Kill)", Default = false, Callback = function(Value) 
+        if isLobby then if Value then Fluent:Notify({ Title = "Error", Content = "Cannot stack in Lobby!", Duration = 3 }); Fluent.Options.T_MegStack:SetValue(false) end return end
+        Model.State.isMegStacking = Value 
+        if Value then
+            task.spawn(function()
+                while Model.State.isMegStacking do
+                    local megCount = countMegalodons()
+                    if megCount >= 10 then
+                        if Fluent.Options.T_DeepSea.Value == true then
+                            Fluent.Options.T_DeepSea:SetValue(false)
+                        end
+                        if getgenv().ToggleCyborgAutofarm then
+                            getgenv().ToggleCyborgAutofarm(true)
+                        end
+                        while countMegalodons() > 0 and Model.State.isMegStacking do
+                            task.wait(1)
+                        end
+                        if getgenv().ToggleCyborgAutofarm then
+                            getgenv().ToggleCyborgAutofarm(false)
+                        end
+                        if Model.State.isMegStacking then
+                            Fluent.Options.T_DeepSea:SetValue(true)
+                        end
+                    else
+                        if Fluent.Options.T_DeepSea.Value == false then
+                            Fluent.Options.T_DeepSea:SetValue(true)
+                        end
+                    end
+                    task.wait(1)
+                end
+            end)
+        else
+            if Fluent.Options.T_DeepSea.Value == true then
+                Fluent.Options.T_DeepSea:SetValue(false)
+            end
+        end
+    end })
+
     Tabs.Fishing:AddToggle("T_StrictReel", { Title = "Only Reel > 1.0 Multiplier", Default = true, Callback = function(Value) 
         Model.State.strictReel = Value 
     end })
@@ -1135,7 +1291,7 @@ Tabs = {
             task.spawn(Model.ForceCraftAll)
         end
     })
-    Tabs.Fishing:AddToggle("T_AFK", { Title = "AFK Mode (Auto-start after 10s)", Default = (not isLobby and GetCurrentPSCode() ~= "qj1ttW4JG1"), Callback = function(Value) 
+    Tabs.Fishing:AddToggle("T_AFK", { Title = "AFK Mode (Auto-start after 10s)", Default = false, Callback = function(Value) 
         if isLobby then if Value then Fluent:Notify({ Title = "Error", Content = "AFK Mode requires Fishing server!", Duration = 3 }); Fluent.Options.T_AFK:SetValue(false) end return end
         isAFKModeActive = Value; secondsSinceLastInput = 0 
     end })
@@ -1149,7 +1305,7 @@ Tabs = {
             if Model.State.isFishing then table.insert(statusParts, "Fishing") end
             if Model.State.autoBuy then table.insert(statusParts, "Buying") end
             if Model.State.autoSell then table.insert(statusParts, "Selling") end
-            if Model.State.autoCraft then table.insert(statusParts, Model.State.isCurrentlyCrafting and "Crafting" or "Craft ON") end
+            if Model.State.autoCraft then table.insert(statusParts,  Model.State.isCurrentlyCrafting and "Crafting" or "Craft ON") end
             if isAFKModeActive then table.insert(statusParts, "[AFK ON]") end
 
             if Model.State.isAutoTraveling or Model.State.travelMessage ~= "" then
@@ -1171,7 +1327,7 @@ Tabs = {
 -- ======================================================================
 -- 🤖 AUTOFARM TAB UI
 -- ======================================================================
-Tabs.Autofarm:AddButton({
+Tabs.Autofarm:AddButton({                   
     Title = "Load CombinedAutoLoad (Autofarm)",
     Description = "Executes the script and queues it for future teleports.",
     Callback = function()
@@ -1221,6 +1377,18 @@ Tabs.Settings:AddToggle("T_AntiLag", {
     Callback = function(Value)
         RunService:Set3dRenderingEnabled(not Value)
     end 
+})
+
+Tabs.Settings:AddSlider("S_FPSCap", {
+    Title = "FPS Cap",
+    Description = "Limits your FPS to reduce CPU/GPU usage when AFKing.",
+    Default = 10,
+    Min = 5,
+    Max = 240,
+    Rounding = 0,
+    Callback = function(Value)
+        if setfpscap then pcall(setfpscap, Value) end
+    end
 })
 
 Tabs.Settings:AddButton({
