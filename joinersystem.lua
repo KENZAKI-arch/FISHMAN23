@@ -620,14 +620,25 @@ if not isLobby then
         Model.State.waitingForArrivalToFish = true 
     end
 
+    function Model.GetInventoryData()
+        local ui = LocalPlayer:FindFirstChild("PlayerGui") and LocalPlayer.PlayerGui:FindFirstChild("ui")
+        local invDataObj = ui and ui:FindFirstChild("inventoryJSONData")
+        if invDataObj then
+            local ok, data = pcall(function() return HttpService:JSONDecode(invDataObj.Value) end)
+            if ok and type(data) == "table" then return data end
+        end
+        if inventoryObj then
+            local ok, data = pcall(function() return HttpService:JSONDecode(inventoryObj.Value) end)
+            if ok and type(data) == "table" then return data end
+        end
+        return nil
+    end
+
     function Model.ForceCraftAll()
         if Model.State.isCurrentlyCrafting then return end
         
-        local inventoryObj = LocalPlayer:FindFirstChild("PlayerGui") and LocalPlayer.PlayerGui:FindFirstChild("ui") and LocalPlayer.PlayerGui.ui:FindFirstChild("inventoryObj")
-        if not inventoryObj then return end
-        
-        local ok, inventoryData = pcall(function() return HttpService:JSONDecode(inventoryObj.Value) end)
-        if not ok or not inventoryData then return end
+        local inventoryData = Model.GetInventoryData()
+        if not inventoryData then return end
         
         local craftQueue = {}
         for _, legFish in ipairs(LEGENDARY_FISHES) do
@@ -832,8 +843,8 @@ if not isLobby then
     end
 
     function Model.CheckInventory()
-        local ok, inventoryData = pcall(function() return HttpService:JSONDecode(inventoryObj.Value) end)
-        if not ok or not inventoryData then return end
+        local inventoryData = Model.GetInventoryData()
+        if not inventoryData then return end
         
         if Model.State.isMegStackLoc and not Model.State.isRefillingMegBait then
             if (inventoryData["Common Fish Bait"] or 0) <= 0 then
@@ -1061,8 +1072,8 @@ if not isLobby then
     task.spawn(function()
         while _running and task.wait(3) do
             if not Model.State.autoCraft or Model.State.isCurrentlyCrafting then continue end
-            local ok, inventoryData = pcall(function() return HttpService:JSONDecode(inventoryObj.Value) end)
-            if not ok or not inventoryData then continue end
+            local inventoryData = Model.GetInventoryData()
+            if not inventoryData then continue end
             local craftQueue = {}
             local totalBatches = 0
             for _, legFish in ipairs(LEGENDARY_FISHES) do
