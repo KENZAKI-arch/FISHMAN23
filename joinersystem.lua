@@ -621,12 +621,6 @@ if not isLobby then
     end
 
     function Model.GetInventoryData()
-        local ui = LocalPlayer:FindFirstChild("PlayerGui") and LocalPlayer.PlayerGui:FindFirstChild("ui")
-        local invDataObj = ui and ui:FindFirstChild("inventoryJSONData")
-        if invDataObj then
-            local ok, data = pcall(function() return HttpService:JSONDecode(invDataObj.Value) end)
-            if ok and type(data) == "table" then return data end
-        end
         if inventoryObj then
             local ok, data = pcall(function() return HttpService:JSONDecode(inventoryObj.Value) end)
             if ok and type(data) == "table" then return data end
@@ -1092,7 +1086,7 @@ if not isLobby then
         end
     end)
 
-    task.spawn(function() while _running and task.wait(2) do if Model.State.autoBuy then Model.CheckInventory() end end end)
+    task.spawn(function() while _running and task.wait(2) do if Model.State.autoBuy or Model.State.isMegStackLoc or Model.State.autoSell then Model.CheckInventory() end end end)
     task.spawn(function() while _running and task.wait() do if Model.State.isFishing or Model.State.isDeepSeaCatcher then Model.DoFishingCycle() end end end)
 
     addConn(RunService.Heartbeat:Connect(function(dt)
