@@ -70,7 +70,7 @@ pcall(function()
 end)
 
 GlobalMem.FishmanPSCode = GlobalMem.FishmanPSCode or "qj1ttW4JG1"
-GlobalMem.FishmanDestination = GlobalMem.FishmanDestination or "Second Sea" 
+GlobalMem.FishmanDestination = GlobalMem.FishmanDestination or "tradeHub" 
 GlobalMem.FishmanAutoTeleport = GlobalMem.FishmanAutoTeleport or false 
 GlobalMem.FishmanAutoJoin = GlobalMem.FishmanAutoJoin or false
 if GlobalMem.FishmanAutoReconnect == nil then GlobalMem.FishmanAutoReconnect = true end
