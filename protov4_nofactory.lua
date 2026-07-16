@@ -744,17 +744,7 @@ View.Build(function(isFarming)
             end
         end)
 
-        task.spawn(function()
-            local statsEvent = ReplicatedStorage:WaitForChild("Events", 9e9):WaitForChild("stats", 9e9)
-            local args = { "Strength", nil, 1 }
-            
-            while Model.State.isAutoFarming do
-                pcall(function()
-                    statsEvent:FireServer(unpack(args))
-                end)
-                task.wait(3) 
-            end
-        end)
+        -- Strength auto-stat loop removed
     end
 end)
 
