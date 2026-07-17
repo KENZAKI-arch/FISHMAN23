@@ -1226,7 +1226,6 @@ Tabs = {
     Teleport = Window:AddTab({ Title = "Teleport", Icon = "plane" }),
     Fishing = Window:AddTab({ Title = "Fishing", Icon = "anchor" }),
     Autofarm = Window:AddTab({ Title = "Autofarm", Icon = "swords" }),
-    Hoverboard = Window:AddTab({ Title = "Hoverboard", Icon = "rocket" }),
     Settings = Window:AddTab({ Title = "Settings", Icon = "settings" })
 }
 
@@ -1368,6 +1367,70 @@ Tabs = {
     end
 
 -- ======================================================================
+-- 🚀 HOVERBOARD UI
+-- ======================================================================
+
+Tabs.Teleport:AddInput("I_HoverHeight", {
+    Title = "Hoverboard Flight Altitude",
+    Default = "50",
+    Placeholder = "Enter Altitude...",
+    Numeric = true,
+    Finished = false,
+    Callback = function(Value)
+        local height = tonumber(Value) or 50
+        getgenv().HoverboardTargetHeight = height
+        if getgenv().HoverboardController and getgenv().HoverboardController.SetHeightValue then
+            getgenv().HoverboardController.SetHeightValue(height)
+        end
+    end
+})
+
+local function EnsureHoverboardLoaded()
+    if not getgenv().HoverboardController then
+        pcall(function()
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/main/hoverboardfloat.lua?t="..tostring(tick())))()
+        end)
+        task.wait(1)
+        if getgenv().HoverboardController and getgenv().HoverboardTargetHeight then
+            getgenv().HoverboardController.SetHeightValue(getgenv().HoverboardTargetHeight)
+        end
+    end
+end
+
+Tabs.Teleport:AddButton({
+    Title = "🚀 Set Flight Height",
+    Description = "Lifts your hoverboard to the target altitude.",
+    Callback = function()
+        EnsureHoverboardLoaded()
+        if getgenv().HoverboardController and getgenv().HoverboardController.SetHeight then
+            getgenv().HoverboardController.SetHeight()
+        end
+    end
+})
+
+Tabs.Teleport:AddButton({
+    Title = "🛳️ Auto Spawn Ship",
+    Description = "Flies to spawn, spawns hoverboard, and sets flight height.",
+    Callback = function()
+        EnsureHoverboardLoaded()
+        if getgenv().HoverboardController and getgenv().HoverboardController.AutoSpawn then
+            getgenv().HoverboardController.AutoSpawn()
+        end
+    end
+})
+
+Tabs.Teleport:AddButton({
+    Title = "⬇️ Reset to Normal",
+    Description = "Restores normal hoverboard physics.",
+    Callback = function()
+        EnsureHoverboardLoaded()
+        if getgenv().HoverboardController and getgenv().HoverboardController.Reset then
+            getgenv().HoverboardController.Reset()
+        end
+    end
+})
+
+-- ======================================================================
 -- 🎣 FISHING TAB UI
 -- ======================================================================
     Tabs.Fishing:AddToggle("T_Fish", { Title = "Auto Fish", Default = false, Callback = function(Value) 
@@ -1397,7 +1460,7 @@ Tabs = {
                         end
                         if not getgenv().ToggleCyborgAutofarm then
                             pcall(function()
-                                loadstring(game:HttpGet("https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/main/protov4_nofactory.lua"))()
+                                loadstring(game:HttpGet("https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/main/protov4_nofactory.lua?t="..tostring(tick())))()
                             end)
                             task.wait(1)
                         end
@@ -1667,67 +1730,6 @@ Tabs.Autofarm:AddButton({
         if typeof(getgenv().StopAutofarm) == "function" then pcall(getgenv().StopAutofarm) end
         
         Fluent:Notify({ Title = "Autofarm Halted", Content = "Queue cleared. If loops are still running, please manually rejoin.", Duration = 5 })
-    end
-})
-
--- ======================================================================
--- 🚀 HOVERBOARD TAB UI
--- ======================================================================
-Tabs.Hoverboard:AddInput("I_HoverHeight", {
-    Title = "Flight Altitude",
-    Default = "50",
-    Placeholder = "Enter Altitude...",
-    Numeric = true,
-    Finished = false,
-    Callback = function(Value)
-        Model.State.hoverTargetHeight = tonumber(Value) or 50
-    end
-})
-
-local function EnsureHoverboardLoaded()
-    if not getgenv().HoverboardController then
-        pcall(function()
-            loadstring(game:HttpGet("https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/main/hoverboardfloat.lua"))()
-        end)
-        task.wait(1)
-    end
-end
-
-Tabs.Hoverboard:AddButton({
-    Title = "🚀 Set Flight Height",
-    Description = "Lifts your hoverboard to the target altitude.",
-    Callback = function()
-        EnsureHoverboardLoaded()
-        local height = Model.State.hoverTargetHeight or 50
-        if getgenv().HoverboardController then
-            local success, msg = getgenv().HoverboardController.SetHeight(height)
-            Fluent:Notify({ Title = "Hoverboard", Content = msg or "Error", Duration = 3 })
-        end
-    end
-})
-
-Tabs.Hoverboard:AddButton({
-    Title = "🛳️ Auto Spawn Ship",
-    Description = "Flies to spawn, spawns hoverboard, and sets flight height.",
-    Callback = function()
-        EnsureHoverboardLoaded()
-        local height = Model.State.hoverTargetHeight or 50
-        if getgenv().HoverboardController then
-            local success, msg = getgenv().HoverboardController.AutoSpawn(height)
-            Fluent:Notify({ Title = "Hoverboard", Content = msg or "Error", Duration = 3 })
-        end
-    end
-})
-
-Tabs.Hoverboard:AddButton({
-    Title = "⬇️ Reset to Normal",
-    Description = "Restores normal hoverboard physics.",
-    Callback = function()
-        EnsureHoverboardLoaded()
-        if getgenv().HoverboardController then
-            local success, msg = getgenv().HoverboardController.Reset()
-            Fluent:Notify({ Title = "Hoverboard", Content = msg or "Error", Duration = 3 })
-        end
     end
 })
 
