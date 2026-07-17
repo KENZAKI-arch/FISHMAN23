@@ -217,6 +217,8 @@ getgenv().HoverboardController.SetHeight = function()
     task.wait(1)
     setBtn.Text = "Set Flight Height"
     setBtn.BackgroundColor3 = Color3.fromRGB(45, 120, 200)
+end
+
 getgenv().HoverboardController.Reset = function()
     RunService:UnbindFromRenderStep("CustomHoverboardLaser")
     
@@ -225,6 +227,8 @@ getgenv().HoverboardController.Reset = function()
     task.wait(1)
     resetBtn.Text = "Reset to Normal"
     resetBtn.BackgroundColor3 = Color3.fromRGB(200, 45, 45)
+end
+
 getgenv().HoverboardController.AutoSpawn = function()
     spawnBtn.Text = "Flying to Target..."
     spawnBtn.BackgroundColor3 = Color3.fromRGB(200, 150, 45)
