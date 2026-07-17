@@ -1458,8 +1458,7 @@ Tabs.Teleport:AddButton({
         if isLobby then if Value then Fluent:Notify({ Title = "Error", Content = "Cannot stack in Lobby!", Duration = 3 }); Fluent.Options.T_MegStack:SetValue(false) end return end
         Model.State.isMegStacking = Value 
  if Value then
-            if Fluent.Options.T_CyborgAuto then Fluent.Options.T_CyborgAuto:SetValue(true) end
-            if Fluent.Options.T_Buy then Fluent.Options.T_Buy:SetValue(true) end
+         if Fluent.Options.T_Buy then Fluent.Options.T_Buy:SetValue(true) end
             if Fluent.Options.T_MegStackLoc then Fluent.Options.T_MegStackLoc:SetValue(true) end
             print("🌊 [MegStack] Meg stack starting now! Enabling deep sea catcher for 10 megalodons.")
             task.spawn(function()
@@ -1489,11 +1488,7 @@ Tabs.Teleport:AddButton({
                         if Model.State.isMegStacking then
                             Fluent.Options.T_DeepSea:SetValue(true)
                         end
-                    else
-                        if Fluent.Options.T_DeepSea.Value == false then
-                            Fluent.Options.T_DeepSea:SetValue(true)
-                        end
-                    end
+
                     task.wait(1)
                 end
             end)
