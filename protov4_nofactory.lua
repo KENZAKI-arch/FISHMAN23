@@ -214,8 +214,8 @@ function Model.Geppo()
             end
         end)
         
-        -- Fire the remote to use a bit of stamina (every 2 seconds)
-        if currentTick - lastGeppoRemoteTick >= 2 then
+        -- Fire the remote to use a bit of stamina (every 3 seconds)
+        if currentTick - lastGeppoRemoteTick >= 3 then
             lastGeppoRemoteTick = currentTick
             pcall(function()
                 local stats = game.ReplicatedStorage:FindFirstChild("Stats" .. LocalPlayer.Name)
