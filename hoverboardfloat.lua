@@ -42,118 +42,7 @@ player.CharacterAdded:Connect(setupAntiFling)
 -- ========================================================
 
 
--- ========================================================
--- GUI CREATION
--- ========================================================
-local guiName = "HoverboardFlightPanel"
-local targetGui = (gethui and gethui()) or CoreGui
-if targetGui:FindFirstChild(guiName) then targetGui[guiName]:Destroy() end
 
-local screenGui = Instance.new("ScreenGui")
-screenGui.Name = guiName
-screenGui.ResetOnSpawn = false
-screenGui.Parent = targetGui
-
-local mainFrame = Instance.new("Frame")
-mainFrame.Size = UDim2.new(0, 220, 0, 200)
-mainFrame.Position = UDim2.new(0.5, -110, 0.5, -100)
-mainFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-mainFrame.BorderSizePixel = 0
-mainFrame.Active = true
-mainFrame.Parent = screenGui
-Instance.new("UICorner", mainFrame).CornerRadius = UDim.new(0, 8)
-
-local title = Instance.new("TextLabel")
-title.Size = UDim2.new(1, 0, 0, 30)
-title.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-title.Text = "Hoverboard Flight"
-title.TextColor3 = Color3.fromRGB(255, 255, 255)
-title.Font = Enum.Font.GothamBold
-title.TextSize = 14
-title.Parent = mainFrame
-Instance.new("UICorner", title).CornerRadius = UDim.new(0, 8)
-
-local closeBtn = Instance.new("TextButton")
-closeBtn.Size = UDim2.new(0, 30, 0, 30)
-closeBtn.Position = UDim2.new(1, -30, 0, 0)
-closeBtn.BackgroundColor3 = Color3.fromRGB(200, 40, 40)
-closeBtn.Text = "X"
-closeBtn.TextColor3 = Color3.new(1, 1, 1)
-closeBtn.Font = Enum.Font.GothamBold
-closeBtn.TextSize = 14
-closeBtn.Parent = title
-Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, 8)
-
-closeBtn.MouseButton1Click:Connect(function()
-    RunService:UnbindFromRenderStep("CustomHoverboardLaser")
-    screenGui:Destroy()
-end)
-
-local dragging, dragInput, dragStart, startPos
-title.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        dragging = true
-        dragStart = input.Position
-        startPos = mainFrame.Position
-        input.Changed:Connect(function()
-            if input.UserInputState == Enum.UserInputState.End then dragging = false end
-        end)
-    end
-end)
-title.InputChanged:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseMovement then dragInput = input end
-end)
-UserInputService.InputChanged:Connect(function(input)
-    if input == dragInput and dragging then
-        local delta = input.Position - dragStart
-        mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-    end
-end)
-
-local heightInput = Instance.new("TextBox")
-heightInput.Size = UDim2.new(1, -20, 0, 30)
-heightInput.Position = UDim2.new(0, 10, 0, 40)
-heightInput.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-heightInput.Text = "50"
-heightInput.PlaceholderText = "Enter Altitude..."
-heightInput.TextColor3 = Color3.fromRGB(255, 255, 255)
-heightInput.Font = Enum.Font.Gotham
-heightInput.TextSize = 14
-heightInput.Parent = mainFrame
-Instance.new("UICorner", heightInput).CornerRadius = UDim.new(0, 6)
-
-local setBtn = Instance.new("TextButton")
-setBtn.Size = UDim2.new(1, -20, 0, 35)
-setBtn.Position = UDim2.new(0, 10, 0, 75)
-setBtn.BackgroundColor3 = Color3.fromRGB(45, 120, 200)
-setBtn.Text = "Set Flight Height"
-setBtn.TextColor3 = Color3.new(1, 1, 1)
-setBtn.Font = Enum.Font.GothamBold
-setBtn.TextSize = 14
-setBtn.Parent = mainFrame
-Instance.new("UICorner", setBtn).CornerRadius = UDim.new(0, 6)
-
-local resetBtn = Instance.new("TextButton")
-resetBtn.Size = UDim2.new(1, -20, 0, 35)
-resetBtn.Position = UDim2.new(0, 10, 0, 115)
-resetBtn.BackgroundColor3 = Color3.fromRGB(200, 45, 45)
-resetBtn.Text = "Reset to Normal"
-resetBtn.TextColor3 = Color3.new(1, 1, 1)
-resetBtn.Font = Enum.Font.GothamBold
-resetBtn.TextSize = 14
-resetBtn.Parent = mainFrame
-Instance.new("UICorner", resetBtn).CornerRadius = UDim.new(0, 6)
-
-local spawnBtn = Instance.new("TextButton")
-spawnBtn.Size = UDim2.new(1, -20, 0, 35)
-spawnBtn.Position = UDim2.new(0, 10, 0, 155)
-spawnBtn.BackgroundColor3 = Color3.fromRGB(150, 45, 200)
-spawnBtn.Text = "Auto Spawn Ship"
-spawnBtn.TextColor3 = Color3.new(1, 1, 1)
-spawnBtn.Font = Enum.Font.GothamBold
-spawnBtn.TextSize = 14
-spawnBtn.Parent = mainFrame
-Instance.new("UICorner", spawnBtn).CornerRadius = UDim.new(0, 6)
 
 -- ========================================================
 -- HELPER FUNCTIONS
@@ -254,16 +143,14 @@ end
 
 local absoluteTargetY = 0
 
-setBtn.MouseButton1Click:Connect(function()
-    local desiredHeight = tonumber(heightInput.Text)
+getgenv().HoverboardController = {}
+
+function getgenv().HoverboardController.SetHeight(desiredHeight)
     if not desiredHeight then return end
     
     local myShip = getMyShip()
     if not myShip then
-        setBtn.Text = "Spawn Hoverboard 1st!"
-        task.wait(1)
-        setBtn.Text = "Set Flight Height"
-        return
+        return false, "Spawn Hoverboard 1st!"
     end
     
     local seat = myShip:FindFirstChildWhichIsA("VehicleSeat", true) or myShip:FindFirstChildWhichIsA("Seat", true)
@@ -281,7 +168,7 @@ setBtn.MouseButton1Click:Connect(function()
     end
     
     local bodyPos = myShip:FindFirstChild("m") and myShip.m:FindFirstChild("BodyPosition")
-    if not bodyPos then return end
+    if not bodyPos then return false, "No BodyPosition found on ship." end
     
     absoluteTargetY = bodyPos.Position.Y
 
@@ -310,73 +197,47 @@ setBtn.MouseButton1Click:Connect(function()
         bodyPos.Position = Vector3.new(bodyPos.Position.X, absoluteTargetY, bodyPos.Position.Z)
     end)
     
-    setBtn.Text = "Ascending Safely!"
-    setBtn.BackgroundColor3 = Color3.fromRGB(45, 200, 100)
-    task.wait(1)
-    setBtn.Text = "Set Flight Height"
-    setBtn.BackgroundColor3 = Color3.fromRGB(45, 120, 200)
-end)
+    return true, "Ascending Safely!"
+end
 
-resetBtn.MouseButton1Click:Connect(function()
+function getgenv().HoverboardController.Reset()
     RunService:UnbindFromRenderStep("CustomHoverboardLaser")
-    
-    resetBtn.Text = "Restored!"
-    resetBtn.BackgroundColor3 = Color3.fromRGB(45, 200, 100)
-    task.wait(1)
-    resetBtn.Text = "Reset to Normal"
-    resetBtn.BackgroundColor3 = Color3.fromRGB(200, 45, 45)
-end)
+    return true, "Restored!"
+end
 
-spawnBtn.MouseButton1Click:Connect(function()
-    spawnBtn.Text = "Flying to Target..."
-    spawnBtn.BackgroundColor3 = Color3.fromRGB(200, 150, 45)
-    
+function getgenv().HoverboardController.AutoSpawn(desiredHeight)
     local targetPos = Vector3.new(-3710, 244, 7598)
     flyToWithGeppo(targetPos)
-    
-    spawnBtn.Text = "Spawning & Setting Height..."
-    spawnBtn.BackgroundColor3 = Color3.fromRGB(45, 200, 100)
     
     task.spawn(function()
         local ReplicatedStorage = game:GetService("ReplicatedStorage")
         local events = ReplicatedStorage:FindFirstChild("Events")
 
         local myShip = getMyShip()
-        print("[Auto Spawn] Initial ship check result:", myShip and myShip.Name or "Not found")
 
         if events and events:FindFirstChild("ShipEvents") and events.ShipEvents:FindFirstChild("Spawn") then
             if not myShip then
-                print("[Auto Spawn] Invoking Spawn Remote...")
                 pcall(function()
                     events.ShipEvents.Spawn:InvokeServer("true")
                 end)
                 
-                -- Wait for the ship to actually appear
-                print("[Auto Spawn] Waiting for ship to appear in workspace...")
                 local timeout = 0
                 while not getMyShip() and timeout < 50 do
                     task.wait(0.1)
                     timeout = timeout + 1
                 end
                 myShip = getMyShip()
-                print("[Auto Spawn] Spawn wait finished. myShip:", myShip and myShip.Name or "Still not found")
-            else
-                print("[Auto Spawn] Ship already spawned. Skipping invoke.")
             end
-        else
-            print("[Auto Spawn] Error: Could not find ShipEvents.Spawn remote!")
         end
         
         -- Auto-set flight height if we successfully have a ship
         if myShip then
-            print("[Auto Spawn] Found ship model! Teleporting to seat to gain Network Ownership...")
             local char = player.Character
             local hum = char and char:FindFirstChild("Humanoid")
             local hrp = char and char:FindFirstChild("HumanoidRootPart")
             local seat = myShip:FindFirstChildWhichIsA("VehicleSeat", true) or myShip:FindFirstChildWhichIsA("Seat", true)
             
             if hum and hrp and seat then
-                print("[Auto Spawn] Forcing seat teleport...")
                 local sitTimeout = 0
                 while not hum.SeatPart and sitTimeout < 50 do
                     hrp.CFrame = seat.CFrame * CFrame.new(0, 1.5, 0)
@@ -385,54 +246,40 @@ spawnBtn.MouseButton1Click:Connect(function()
                 end
                 
                 if hum.SeatPart then
-                    print("[Auto Spawn] Successfully seated!")
-                    local desiredHeight = tonumber(heightInput.Text)
-                    
                     if desiredHeight then
                         local bodyPos = myShip:FindFirstChild("m") and myShip.m:FindFirstChild("BodyPosition")
                         
                         if bodyPos then
-                            print("[Auto Spawn] BodyPosition found. Lifting off to height:", desiredHeight)
                             absoluteTargetY = bodyPos.Position.Y
                     
-                    local hasReachedHeight = false
-                    
-                    pcall(function() RunService:UnbindFromRenderStep("CustomHoverboardLaser") end)
-                    RunService:BindToRenderStep("CustomHoverboardLaser", 2000, function()
-                        if absoluteTargetY < desiredHeight - 2 then
-                            absoluteTargetY = absoluteTargetY + 2
-                        elseif absoluteTargetY > desiredHeight + 2 then
-                            absoluteTargetY = absoluteTargetY - 2
-                        else
-                            absoluteTargetY = desiredHeight + (math.sin(tick() * 4) * 0.8)
+                            local hasReachedHeight = false
                             
-                            if not hasReachedHeight then
-                                hasReachedHeight = true
-                                if hum and hrp then
-                                    hum.Sit = false
-                                    task.delay(0.1, function()
-                                        hrp.CFrame = seat.CFrame * CFrame.new(0, 3, 4.5)
-                                    end)
+                            pcall(function() RunService:UnbindFromRenderStep("CustomHoverboardLaser") end)
+                            RunService:BindToRenderStep("CustomHoverboardLaser", 2000, function()
+                                if absoluteTargetY < desiredHeight - 2 then
+                                    absoluteTargetY = absoluteTargetY + 2
+                                elseif absoluteTargetY > desiredHeight + 2 then
+                                    absoluteTargetY = absoluteTargetY - 2
+                                else
+                                    absoluteTargetY = desiredHeight + (math.sin(tick() * 4) * 0.8)
+                                    
+                                    if not hasReachedHeight then
+                                        hasReachedHeight = true
+                                        if hum and hrp then
+                                            hum.Sit = false
+                                            task.delay(0.1, function()
+                                                hrp.CFrame = seat.CFrame * CFrame.new(0, 3, 4.5)
+                                            end)
+                                        end
+                                    end
                                 end
-                            end
+                                bodyPos.Position = Vector3.new(bodyPos.Position.X, absoluteTargetY, bodyPos.Position.Z)
+                            end)
                         end
-                        bodyPos.Position = Vector3.new(bodyPos.Position.X, absoluteTargetY, bodyPos.Position.Z)
-                    end)
-                        else
-                            print("[Auto Spawn] Error: Could not find BodyPosition ('m' part) in ship model.")
-                        end
-                    else
-                        print("[Auto Spawn] Error: Invalid height input.")
                     end
-                else
-                    print("[Auto Spawn] Error: Failed to sit in vehicle seat.")
                 end
-            else
-                print("[Auto Spawn] Error: Missing Humanoid, HRP, or Seat.")
             end
         end
-        
-        spawnBtn.Text = "Auto Spawn Ship"
-        spawnBtn.BackgroundColor3 = Color3.fromRGB(150, 45, 200)
     end)
-end)
+    return true, "Auto Spawn Process Started!"
+end

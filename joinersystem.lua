@@ -1226,6 +1226,7 @@ Tabs = {
     Teleport = Window:AddTab({ Title = "Teleport", Icon = "plane" }),
     Fishing = Window:AddTab({ Title = "Fishing", Icon = "anchor" }),
     Autofarm = Window:AddTab({ Title = "Autofarm", Icon = "swords" }),
+    Hoverboard = Window:AddTab({ Title = "Hoverboard", Icon = "rocket" }),
     Settings = Window:AddTab({ Title = "Settings", Icon = "settings" })
 }
 
@@ -1382,6 +1383,9 @@ Tabs = {
         if isLobby then if Value then Fluent:Notify({ Title = "Error", Content = "Cannot stack in Lobby!", Duration = 3 }); Fluent.Options.T_MegStack:SetValue(false) end return end
         Model.State.isMegStacking = Value 
         if Value then
+            if Fluent.Options.T_CyborgAuto then Fluent.Options.T_CyborgAuto:SetValue(true) end
+            if Fluent.Options.T_Buy then Fluent.Options.T_Buy:SetValue(true) end
+            if Fluent.Options.T_MegStackLoc then Fluent.Options.T_MegStackLoc:SetValue(true) end
             print("🌊 [MegStack] Meg stack starting now! Enabling deep sea catcher for 10 megalodons.")
             task.spawn(function()
                 while Model.State.isMegStacking do
@@ -1390,6 +1394,12 @@ Tabs = {
                         print("🔥 [MegStack] 10 Megalodons reached! Disabling fishing and unleashing Cyborg Autofarm...")
                         if Fluent.Options.T_DeepSea.Value == true then
                             Fluent.Options.T_DeepSea:SetValue(false)
+                        end
+                        if not getgenv().ToggleCyborgAutofarm then
+                            pcall(function()
+                                loadstring(game:HttpGet("https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/main/protov4_nofactory.lua"))()
+                            end)
+                            task.wait(1)
                         end
                         if getgenv().ToggleCyborgAutofarm then
                             getgenv().ToggleCyborgAutofarm(true)
@@ -1537,8 +1547,8 @@ Tabs = {
     Tabs.Fishing:AddSlider("S_ShipSpeed", {
         Title = "Return To Ship Speed",
         Description = "Adjusts flight speed (300 is recommended)",
-        Default = 300,
-        Min = 100,
+        Default = 90,
+        Min = 50,
         Max = 1000,
         Rounding = 0,
         Callback = function(Value)
@@ -1546,7 +1556,7 @@ Tabs = {
         end
     })
 
-    Tabs.Fishing:AddToggle("T_StrictReel", { Title = "Only Reel > 1.0 Multiplier", Default = true, Callback = function(Value) 
+    Tabs.Fishing:AddToggle("T_StrictReel", { Title = "Only Reel > 1.0 Multiplier", Default = false, Callback = function(Value) 
         Model.State.strictReel = Value 
     end })
     Tabs.Fishing:AddToggle("T_Buy", { Title = "Auto Buy Bait", Default = false, Callback = function(Value) 
@@ -1612,6 +1622,22 @@ Tabs = {
 -- ======================================================================
 -- 🤖 AUTOFARM TAB UI
 -- ======================================================================
+Tabs.Autofarm:AddToggle("T_CyborgAuto", { 
+    Title = "Toggle Cyborg Autofarm", 
+    Default = false, 
+    Callback = function(Value)
+        if not getgenv().ToggleCyborgAutofarm then
+            pcall(function()
+                loadstring(game:HttpGet("https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/main/protov4_nofactory.lua"))()
+            end)
+            task.wait(1)
+        end
+        if getgenv().ToggleCyborgAutofarm then
+            getgenv().ToggleCyborgAutofarm(Value)
+        end
+    end 
+})
+
 Tabs.Autofarm:AddButton({                   
     Title = "Load CombinedAutoLoad (Autofarm)",
     Description = "Executes the script and queues it for future teleports.",
@@ -1645,6 +1671,67 @@ Tabs.Autofarm:AddButton({
 })
 
 -- ======================================================================
+-- 🚀 HOVERBOARD TAB UI
+-- ======================================================================
+Tabs.Hoverboard:AddInput("I_HoverHeight", {
+    Title = "Flight Altitude",
+    Default = "50",
+    Placeholder = "Enter Altitude...",
+    Numeric = true,
+    Finished = false,
+    Callback = function(Value)
+        Model.State.hoverTargetHeight = tonumber(Value) or 50
+    end
+})
+
+local function EnsureHoverboardLoaded()
+    if not getgenv().HoverboardController then
+        pcall(function()
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/main/hoverboardfloat.lua"))()
+        end)
+        task.wait(1)
+    end
+end
+
+Tabs.Hoverboard:AddButton({
+    Title = "🚀 Set Flight Height",
+    Description = "Lifts your hoverboard to the target altitude.",
+    Callback = function()
+        EnsureHoverboardLoaded()
+        local height = Model.State.hoverTargetHeight or 50
+        if getgenv().HoverboardController then
+            local success, msg = getgenv().HoverboardController.SetHeight(height)
+            Fluent:Notify({ Title = "Hoverboard", Content = msg or "Error", Duration = 3 })
+        end
+    end
+})
+
+Tabs.Hoverboard:AddButton({
+    Title = "🛳️ Auto Spawn Ship",
+    Description = "Flies to spawn, spawns hoverboard, and sets flight height.",
+    Callback = function()
+        EnsureHoverboardLoaded()
+        local height = Model.State.hoverTargetHeight or 50
+        if getgenv().HoverboardController then
+            local success, msg = getgenv().HoverboardController.AutoSpawn(height)
+            Fluent:Notify({ Title = "Hoverboard", Content = msg or "Error", Duration = 3 })
+        end
+    end
+})
+
+Tabs.Hoverboard:AddButton({
+    Title = "⬇️ Reset to Normal",
+    Description = "Restores normal hoverboard physics.",
+    Callback = function()
+        EnsureHoverboardLoaded()
+        if getgenv().HoverboardController then
+            local success, msg = getgenv().HoverboardController.Reset()
+            Fluent:Notify({ Title = "Hoverboard", Content = msg or "Error", Duration = 3 })
+        end
+    end
+})
+
+-- ======================================================================
 -- ⚙️ SETTINGS TAB UI
 -- ======================================================================
 Tabs.Settings:AddToggle("T_AutoReconnect", { 
@@ -1667,7 +1754,7 @@ Tabs.Settings:AddToggle("T_AntiLag", {
 Tabs.Settings:AddSlider("S_FPSCap", {
     Title = "FPS Cap",
     Description = "Limits your FPS to reduce CPU/GPU usage when AFKing.",
-    Default = 10,
+    Default = 25,
     Min = 5,
     Max = 240,
     Rounding = 0,
