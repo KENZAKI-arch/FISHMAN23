@@ -108,7 +108,7 @@ end))
 -- ======================================================================
 -- 🚀 TELEPORT MEMORY INJECTION
 -- ======================================================================
-local myScriptURL = "https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/MSTACK/joinersystem.lua"
+local myScriptURL = "https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/joinersystem.lua"
 local qot = queue_on_teleport or (syn and syn.queue_on_teleport) or (fluxus and fluxus.queue_on_teleport)
 
 local function UpdateTeleportMemory(willAutoTeleport)
@@ -1717,14 +1717,7 @@ Tabs.Autofarm:AddToggle("T_CyborgAuto", {
 
         if not getgenv().ToggleCyborgAutofarm then
             pcall(function()
-                local localPath = "c:/Users/luigi/Downloads/AutofishSYSTEMGIT/AUTOFISHMAN/MSTACK/protov4_nofactory.lua"
-                if loadfile then
-                    loadfile(localPath)()
-                elseif readfile then
-                    loadstring(readfile(localPath))()
-                else
-                    warn("Executor does not support reading local files!")
-                end
+                loadstring(game:HttpGet("https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/main/protov4_nofactory.lua"))()
             end)
             task.wait(1)
         end
