@@ -8,55 +8,24 @@ local LocalPlayer = Players.LocalPlayer
 local targetX = 7976.704
 local targetY = -2152.832
 local targetZ = -17074.277
-local travelSpeed = 90 -- NOTE: Lower to 35 if anti-cheat kicks you
 
--- =========================================== --
--- 1. FLY PHYSICS CONTROLS                     --
--- =========================================== --
-local function enableFlight(character)
-    if not character then return end
-    local rootPart = character:FindFirstChild("HumanoidRootPart")
-    local humanoid = character:FindFirstChild("Humanoid")
-    
-    if rootPart and humanoid then
-        humanoid.PlatformStand = true 
-        
-        local bg = rootPart:FindFirstChild("AutoTravel_Gyro") or Instance.new("BodyGyro")
-        bg.Name = "AutoTravel_Gyro"
-        bg.P = 9e4
-        bg.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
-        bg.CFrame = rootPart.CFrame
-        bg.Parent = rootPart
-        
-        local bv = rootPart:FindFirstChild("AutoTravel_Velocity") or Instance.new("BodyVelocity")
-        bv.Name = "AutoTravel_Velocity"
-        bv.Velocity = Vector3.new(0, 0, 0)
-        bv.MaxForce = Vector3.new(9e9, 9e9, 9e9)
-        bv.Parent = rootPart
-    end
-end
+local targetLandingPos = Vector3.new(targetX, targetY, targetZ)
+local flySpeed = 90 -- Lower to 35 if anti-cheat kicks you. Uses 'flySpeed' terminology from Model.lua
 
-local function disableFlight(character)
-    if not character then return end
-    local rootPart = character:FindFirstChild("HumanoidRootPart")
-    local humanoid = character:FindFirstChild("Humanoid")
-    
-    if rootPart then
-        local bg = rootPart:FindFirstChild("AutoTravel_Gyro")
-        if bg then bg:Destroy() end
-        local bv = rootPart:FindFirstChild("AutoTravel_Velocity")
-        if bv then bv:Destroy() end
-    end
-    if humanoid then humanoid.PlatformStand = false end
-end
-
--- =========================================== --
--- 2. AUTO-EXECUTE FLIGHT LOGIC                --
--- =========================================== --
 local character = LocalPlayer.Character
 if not character then return end
+local rootPart = character:FindFirstChild("HumanoidRootPart")
+if not rootPart then return end
 
-enableFlight(character)
+-- =========================================== --
+-- 1. PHYSICS SETUP (Exact from Model.lua)     --
+-- =========================================== --
+-- Removes BodyGyro/PlatformStand, uses only AntiGravity BodyVelocity
+local bv = rootPart:FindFirstChild("AntiGravity") or Instance.new("BodyVelocity")
+bv.Name = "AntiGravity"
+bv.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+bv.Velocity = Vector3.new(0, 0, 0)
+bv.Parent = rootPart
 
 local noclipLoop
 local flightLoop
@@ -70,14 +39,13 @@ noclipLoop = RunService.Stepped:Connect(function()
 end)
 
 flightLoop = RunService.Heartbeat:Connect(function(deltaTime)
-    local rootPart = character:FindFirstChild("HumanoidRootPart")
-    if not rootPart then return end
+    if not rootPart or not rootPart.Parent then return end
 
     -- ========================================== --
     -- THE GLOBAL KILL SWITCH
     -- ========================================== --
     if _G.CancelAutoTravel == true then
-        disableFlight(character)
+        if bv then bv:Destroy() end
         if noclipLoop then noclipLoop:Disconnect() end
         if flightLoop then flightLoop:Disconnect() end
         return
@@ -86,6 +54,7 @@ flightLoop = RunService.Heartbeat:Connect(function(deltaTime)
     local currentPos = rootPart.Position
     local nextPoint
     
+    -- Step-by-step pathing logic to avoid walls
     if math.abs(currentPos.X - targetX) > 1 then
         nextPoint = Vector3.new(targetX, currentPos.Y, currentPos.Z)
     elseif math.abs(currentPos.Z - targetZ) > 1 then
@@ -96,7 +65,7 @@ flightLoop = RunService.Heartbeat:Connect(function(deltaTime)
         -- ========================================== --
         -- SAFELY ARRIVED AT THE TARGET
         -- ========================================== --
-        disableFlight(character) 
+        if bv then bv:Destroy() end
         if noclipLoop then noclipLoop:Disconnect() end
         if flightLoop then flightLoop:Disconnect() end
         
@@ -110,10 +79,15 @@ flightLoop = RunService.Heartbeat:Connect(function(deltaTime)
         return
     end
 
+    -- Exact CFrame:Lerp math from Model.lua UpdateTracking
+    local finalCFrame = CFrame.lookAt(nextPoint, targetLandingPos) 
     local distance = (currentPos - nextPoint).Magnitude
-    if distance > 0 then
-        local alpha = math.clamp((travelSpeed * deltaTime) / distance, 0, 1)
-        rootPart.CFrame = rootPart.CFrame:Lerp(CFrame.new(nextPoint), alpha)
+    
+    if distance > 0.5 then
+        local lerpAlpha = math.clamp((flySpeed * deltaTime) / distance, 0, 1)
+        rootPart.CFrame = rootPart.CFrame:Lerp(finalCFrame, lerpAlpha)
+    else
+        rootPart.CFrame = finalCFrame
     end
     
     rootPart.Velocity = Vector3.new(0, 0, 0)
