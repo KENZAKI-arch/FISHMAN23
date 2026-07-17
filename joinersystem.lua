@@ -1488,7 +1488,7 @@ Tabs.Teleport:AddButton({
                         if Model.State.isMegStacking then
                             Fluent.Options.T_DeepSea:SetValue(true)
                         end
-
+                    end
                     task.wait(1)
                 end
             end)
