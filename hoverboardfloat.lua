@@ -45,7 +45,7 @@ player.CharacterAdded:Connect(setupAntiFling)
 -- ========================================================
 -- FAKE GUI TO PRESERVE ALL ORIGINAL LOGIC & PRINTS
 -- ========================================================
-local heightInput = { Text = "50" }
+local heightInput = { Text = "400" }
 local setBtn = { BackgroundColor3 = Color3.new(), Text = "" }
 local resetBtn = { BackgroundColor3 = Color3.new(), Text = "" }
 local spawnBtn = { BackgroundColor3 = Color3.new(), Text = "" }
