@@ -1401,9 +1401,13 @@ Tabs.Teleport:AddButton({
     Title = "🚀 Set Flight Height",
     Description = "Lifts your hoverboard to the target altitude.",
     Callback = function()
+        print("[Hub] 'Set Flight Height' clicked!")
         EnsureHoverboardLoaded()
         if getgenv().HoverboardController and getgenv().HoverboardController.SetHeight then
+            print("[Hub] Calling HoverboardController.SetHeight()...")
             getgenv().HoverboardController.SetHeight()
+        else
+            print("[Hub] ERROR: HoverboardController.SetHeight not found!")
         end
     end
 })
@@ -1412,9 +1416,13 @@ Tabs.Teleport:AddButton({
     Title = "🛳️ Auto Spawn Ship",
     Description = "Flies to spawn, spawns hoverboard, and sets flight height.",
     Callback = function()
+        print("[Hub] 'Auto Spawn Ship' clicked!")
         EnsureHoverboardLoaded()
         if getgenv().HoverboardController and getgenv().HoverboardController.AutoSpawn then
+            print("[Hub] Calling HoverboardController.AutoSpawn()...")
             getgenv().HoverboardController.AutoSpawn()
+        else
+            print("[Hub] ERROR: HoverboardController.AutoSpawn not found!")
         end
     end
 })
@@ -1423,9 +1431,13 @@ Tabs.Teleport:AddButton({
     Title = "⬇️ Reset to Normal",
     Description = "Restores normal hoverboard physics.",
     Callback = function()
+        print("[Hub] 'Reset to Normal' clicked!")
         EnsureHoverboardLoaded()
         if getgenv().HoverboardController and getgenv().HoverboardController.Reset then
+            print("[Hub] Calling HoverboardController.Reset()...")
             getgenv().HoverboardController.Reset()
+        else
+            print("[Hub] ERROR: HoverboardController.Reset not found!")
         end
     end
 })
