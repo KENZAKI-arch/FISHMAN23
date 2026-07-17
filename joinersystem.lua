@@ -1458,26 +1458,20 @@ Tabs.Teleport:AddButton({
         if isLobby then if Value then Fluent:Notify({ Title = "Error", Content = "Cannot stack in Lobby!", Duration = 3 }); Fluent.Options.T_MegStack:SetValue(false) end return end
         Model.State.isMegStacking = Value 
         if Value then
-            if Fluent.Options.T_CyborgAuto then Fluent.Options.T_CyborgAuto:SetValue(true) end
             if Fluent.Options.T_Buy then Fluent.Options.T_Buy:SetValue(true) end
             if Fluent.Options.T_MegStackLoc then Fluent.Options.T_MegStackLoc:SetValue(true) end
+            if Fluent.Options.T_DeepSea then Fluent.Options.T_DeepSea:SetValue(true) end
             print("🌊 [MegStack] Meg stack starting now! Enabling deep sea catcher for 10 megalodons.")
             task.spawn(function()
                 while Model.State.isMegStacking do
                     local megCount = Model.countMegalodons()
                     if megCount >= 10 then
                         print("🔥 [MegStack] 10 Megalodons reached! Disabling fishing and unleashing Cyborg Autofarm...")
-                        if Fluent.Options.T_DeepSea.Value == true then
+                        if Fluent.Options.T_DeepSea and Fluent.Options.T_DeepSea.Value == true then
                             Fluent.Options.T_DeepSea:SetValue(false)
                         end
-                        if not getgenv().ToggleCyborgAutofarm then
-                            pcall(function()
-                                loadstring(game:HttpGet("https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/main/protov4_nofactory.lua?t="..tostring(tick())))()
-                            end)
-                            task.wait(1)
-                        end
-                        if getgenv().ToggleCyborgAutofarm then
-                            getgenv().ToggleCyborgAutofarm(true)
+                        if Fluent.Options.T_CyborgAuto and not Fluent.Options.T_CyborgAuto.Value then
+                            Fluent.Options.T_CyborgAuto:SetValue(true)
                         end
                         while Model.countMegalodons() > 0 and Model.State.isMegStacking do
                             task.wait(1)
