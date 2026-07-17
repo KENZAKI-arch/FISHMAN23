@@ -1451,6 +1451,15 @@ Tabs.Teleport:AddButton({
     end })
     Tabs.Fishing:AddToggle("T_DeepSea", { Title = "Deep Sea Catcher (ONLY Beasts)", Default = false, Callback = function(Value) 
         if isLobby then if Value then Fluent:Notify({ Title = "Error", Content = "Cannot fish in Lobby!", Duration = 3 }); Fluent.Options.T_DeepSea:SetValue(false) end return end
+        task.spawn(function()
+            if Value then
+                print("triggering title: \"Skilled Fisherman\"")
+                local args = {
+                    "Skilled Fisherman"
+                }
+                game:GetService("ReplicatedStorage"):WaitForChild("Events"):WaitForChild("Titles"):InvokeServer(unpack(args))
+            end
+        end)
         Model.State.isDeepSeaCatcher = Value 
     end })
     
@@ -1697,6 +1706,16 @@ Tabs.Autofarm:AddToggle("T_CyborgAuto", {
     Title = "Toggle Cyborg Autofarm", 
     Default = false, 
     Callback = function(Value)
+        task.spawn(function()
+            if Value then
+                print("triggering title: \"Megalodon Slayer\"")
+                local args = {
+                    "Megalodon Slayer"
+                }
+                game:GetService("ReplicatedStorage"):WaitForChild("Events"):WaitForChild("Titles"):InvokeServer(unpack(args))
+            end
+        end)
+
         if not getgenv().ToggleCyborgAutofarm then
             pcall(function()
                 loadstring(game:HttpGet("https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/main/protov4_nofactory.lua"))()
