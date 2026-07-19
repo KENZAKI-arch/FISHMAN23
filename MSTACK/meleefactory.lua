@@ -187,7 +187,8 @@ Model.State = {
     patrolWaitTimer = 0,
     lastFactoryCheckTime = 0,
     factoryCachedStatus = true,
-    botMode = "PATROL" -- Can be "PATROL" or "COMBAT"
+    botMode = "PATROL", -- Can be "PATROL" or "COMBAT"
+    isFactoryPoolDead = false
 }
 
 local flySpeed = 50
@@ -438,6 +439,7 @@ function Model.UpdateTracking(deltaTime)
     -- Check if current enemy died
     if currentEnemy then
         local isAlive = false
+        local cName = currentEnemy.Name
         if currentEnemy.Parent ~= nil then
             local hum = currentEnemy:FindFirstChild("Humanoid")
             local barrel = currentEnemy:FindFirstChild("barrelHP")
@@ -445,6 +447,9 @@ function Model.UpdateTracking(deltaTime)
             if barrel and barrel.Value > 0 then isAlive = true end
         end
         if not isAlive then
+            if cName == "FactoryPool" then
+                Model.State.isFactoryPoolDead = true
+            end
             currentEnemy = nil
             targetSwitchTimer = switchInterval
         end
@@ -457,11 +462,14 @@ function Model.UpdateTracking(deltaTime)
 
     local isFactoryClosedOrHighAlert = (not isFactoryOpen()) or isAlertLevelHigh()
 
-    if isFactoryClosedOrHighAlert then
+    if isFactoryClosedOrHighAlert or Model.State.isFactoryPoolDead then
+        if isFactoryClosedOrHighAlert then
+            Model.State.isFactoryPoolDead = false
+        end
         Model.State.wasWaitingForFactory = true
-        Model.State.resumePatrolTime = nil
+        Model.State.isGateWaiting = false
         
-        local safeSpot = Vector3.new(8807, 66, 11521)
+        local safeSpot = Vector3.new(8805, 66, 11536)
         local flatTarget = Vector3.new(safeSpot.X, 0, safeSpot.Z)
         local flatCurrent = Vector3.new(rootPart.Position.X, 0, rootPart.Position.Z)
         
@@ -477,13 +485,18 @@ function Model.UpdateTracking(deltaTime)
         end
     elseif Model.State.wasWaitingForFactory then
         Model.State.wasWaitingForFactory = false
-        Model.State.resumePatrolTime = os.clock() + 5
-        print("[AutoFarm] Factory/Alert cleared! Waiting 5 seconds before moving...")
+        print("[AutoFarm] Factory/Alert cleared! Waiting 5 seconds for the gate to open...")
         Model.State.isWaitingAtSafeSpot = true
         local bv = rootPart:FindFirstChild("AntiGravity")
         if bv then bv:Destroy() end
+        
+        Model.State.isGateWaiting = true
+        task.spawn(function()
+            task.wait(5)
+            Model.State.isGateWaiting = false
+        end)
         return
-    elseif Model.State.resumePatrolTime and os.clock() < Model.State.resumePatrolTime then
+    elseif Model.State.isGateWaiting then
         Model.State.isWaitingAtSafeSpot = true
         local bv = rootPart:FindFirstChild("AntiGravity")
         if bv then bv:Destroy() end
