@@ -784,14 +784,12 @@ if not isLobby then
             end
         end
         local shipsFolder = workspace:FindFirstChild("Ships")
-        if shipsFolder then
-            local myShip = shipsFolder:FindFirstChild(shipName)
-            if myShip then
-                local seat = myShip:FindFirstChild("VehicleSeat", true) or myShip:FindFirstChildOfClass("VehicleSeat")
-                if seat then
-                    getgenv().CachedHoverboard = seat
-                    return seat
-                end
+        local myShip = (shipsFolder and shipsFolder:FindFirstChild(shipName)) or workspace:FindFirstChild(shipName)
+        if myShip then
+            local seat = myShip:FindFirstChild("VehicleSeat", true) or myShip:FindFirstChildOfClass("VehicleSeat")
+            if seat then
+                getgenv().CachedHoverboard = seat
+                return seat
             end
         end
         return nil
@@ -1714,8 +1712,7 @@ Tabs.Teleport:AddButton({
             task.spawn(function()
                 while _running and Model.State.isHoverboardESP do
                     local shipsFolder = workspace:FindFirstChild("Ships")
-                    if shipsFolder then
-                        local myShip = shipsFolder:FindFirstChild(LocalPlayer.Name .. "Ship")
+                    local myShip = (shipsFolder and shipsFolder:FindFirstChild(LocalPlayer.Name .. "Ship")) or workspace:FindFirstChild(LocalPlayer.Name .. "Ship")
                         if myShip and myShip:IsA("Model") then
                             if not myShip:FindFirstChild("HoverESP_Highlight") then
                                 local hl = Instance.new("Highlight")
@@ -1730,8 +1727,7 @@ Tabs.Teleport:AddButton({
                     task.wait(1)
                 end
                 local shipsFolder = workspace:FindFirstChild("Ships")
-                if shipsFolder then
-                    local myShip = shipsFolder:FindFirstChild(LocalPlayer.Name .. "Ship")
+                local myShip = (shipsFolder and shipsFolder:FindFirstChild(LocalPlayer.Name .. "Ship")) or workspace:FindFirstChild(LocalPlayer.Name .. "Ship")
                     if myShip then
                         local hl = myShip:FindFirstChild("HoverESP_Highlight")
                         if hl then hl:Destroy() end
@@ -1740,8 +1736,7 @@ Tabs.Teleport:AddButton({
             end)
         else
             local shipsFolder = workspace:FindFirstChild("Ships")
-            if shipsFolder then
-                local myShip = shipsFolder:FindFirstChild(LocalPlayer.Name .. "Ship")
+            local myShip = (shipsFolder and shipsFolder:FindFirstChild(LocalPlayer.Name .. "Ship")) or workspace:FindFirstChild(LocalPlayer.Name .. "Ship")
                 if myShip then
                     local hl = myShip:FindFirstChild("HoverESP_Highlight")
                     if hl then hl:Destroy() end
