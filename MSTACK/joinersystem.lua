@@ -39,6 +39,7 @@ local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local GuiService = game:GetService("GuiService")
+local VirtualInputManager = game:GetService("VirtualInputManager")
 local LocalPlayer = Players.LocalPlayer
 
 while not LocalPlayer do 
@@ -1135,6 +1136,114 @@ local function ShutdownEverything()
 end
 env.Fishman_StopPrevious = ShutdownEverything
 
+local targetFruits = {
+    "Dragon", "Venom", "Mochi", "Soul", "Pika", "Buddha", "Magu", "Goro", "Goru",
+    "Hie", "Kage", "Mera", "Tori", "Pteranodon", "Smoke", "Yami", "Suna", "Yuki", "Ope", "Zushi", "Ito", "Paw"
+}
+
+local function checkFruits(fruitList)
+    local character = LocalPlayer.Character
+    local backpack = LocalPlayer:FindFirstChild("Backpack")
+    if not character or not backpack then return end
+    
+    local inventoryCounts = {}
+    local foundAny = false
+    
+    for _, tool in pairs(backpack:GetChildren()) do
+        if tool:IsA("Tool") then
+            local toolName = string.lower(tool.Name)
+            for _, fruitName in ipairs(fruitList) do
+                if string.find(toolName, string.lower(fruitName)) then
+                    inventoryCounts[tool.Name] = (inventoryCounts[tool.Name] or 0) + 1
+                    foundAny = true
+                    break
+                end
+            end
+        end
+    end
+    
+    if foundAny then
+        local lines = {}
+        for name, count in pairs(inventoryCounts) do
+            table.insert(lines, count .. "x " .. name)
+        end
+        local message = table.concat(lines, ", ")
+        if Fluent then Fluent:Notify({ Title = "Fruits Found", Content = message, Duration = 5 }) end
+    else
+        if Fluent then Fluent:Notify({ Title = "Fruit Check", Content = "No target fruits found.", Duration = 3 }) end
+    end
+end
+
+local function storeFruits(fruitList)
+    local character = LocalPlayer.Character
+    local humanoid = character and character:FindFirstChild("Humanoid")
+    local backpack = LocalPlayer:FindFirstChild("Backpack")
+    if not character or not humanoid or not backpack then return end
+    
+    for _, tool in pairs(backpack:GetChildren()) do
+        if tool:IsA("Tool") then
+            local toolName = string.lower(tool.Name)
+            local isTargetFruit = false
+            for _, fruitName in ipairs(fruitList) do
+                if string.find(toolName, string.lower(fruitName)) then
+                    isTargetFruit = true
+                    break
+                end
+            end
+            
+            if isTargetFruit then
+                humanoid:EquipTool(tool)
+                task.wait(0.2)
+                
+                ReplicatedStorage.Events.FruitStorage:InvokeServer(true)
+                task.wait(0.5)
+                
+                if tool.Parent == character or tool.Parent == backpack then
+                    humanoid:EquipTool(tool)
+                    task.wait(0.1)
+                    VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Backspace, false, game)
+                    task.wait(0.1)
+                    VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Backspace, false, game)
+                    if Fluent then Fluent:Notify({ Title = "Fruit Dropped", Content = "Couldn't store, so dropped: " .. tool.Name, Duration = 3 }) end
+                else
+                    if Fluent then Fluent:Notify({ Title = "Fruit Stored", Content = "Successfully stored: " .. tool.Name, Duration = 3 }) end
+                end
+                task.wait(0.5)
+            end
+        end
+    end
+end
+
+local function dropFruits(fruitList)
+    local character = LocalPlayer.Character
+    local humanoid = character and character:FindFirstChild("Humanoid")
+    local backpack = LocalPlayer:FindFirstChild("Backpack")
+    if not character or not humanoid or not backpack then return end
+    
+    for _, tool in pairs(backpack:GetChildren()) do
+        if tool:IsA("Tool") then
+            local toolName = string.lower(tool.Name)
+            local isTargetFruit = false
+            for _, fruitName in ipairs(fruitList) do
+                if string.find(toolName, string.lower(fruitName)) then
+                    isTargetFruit = true
+                    break
+                end
+            end
+            
+            if isTargetFruit then
+                humanoid:EquipTool(tool)
+                task.wait(0.2)
+                VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Backspace, false, game)
+                task.wait(0.1)
+                VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Backspace, false, game)
+                if Fluent then Fluent:Notify({ Title = "Dropping Fruit", Content = "Dropped: " .. tool.Name, Duration = 3 }) end
+                task.wait(0.5)
+            end
+        end
+    end
+end
+
 
 -- ======================================================================
 -- 🎨 FLUENT UI INTEGRATION
@@ -1669,6 +1778,41 @@ Tabs.Teleport:AddButton({
         if isLobby then if Value then Fluent:Notify({ Title = "Error", Content = "AFK Mode requires Fishing server!", Duration = 3 }); Fluent.Options.T_AFK:SetValue(false) end return end
         isAFKModeActive = Value; secondsSinceLastInput = 0 
     end })
+
+    Tabs.Fishing:AddButton({
+        Title = "Check Fruits",
+        Description = "Check your inventory for target fruits.",
+        Callback = function() checkFruits(targetFruits) end
+    })
+    
+    Tabs.Fishing:AddButton({
+        Title = "Store Fruits",
+        Description = "Store target fruits (drops if full).",
+        Callback = function() storeFruits(targetFruits) end
+    })
+    
+    Tabs.Fishing:AddButton({
+        Title = "Drop Fruits",
+        Description = "Force drop all target fruits.",
+        Callback = function() dropFruits(targetFruits) end
+    })
+    
+    local autoStoreEnabled = false
+    Tabs.Fishing:AddToggle("T_AutoStoreFruit", { 
+        Title = "Auto Store Fruit (Hourly)", 
+        Default = false, 
+        Callback = function(Value)
+            autoStoreEnabled = Value
+            if autoStoreEnabled then
+                task.spawn(function()
+                    while autoStoreEnabled do
+                        storeFruits(targetFruits)
+                        task.wait(3600)
+                    end
+                end)
+            end
+        end 
+    })
 
     -- Status Monitor
     local StatusPara = Tabs.Fishing:AddParagraph({ Title = "Status", Content = "Idle" })
