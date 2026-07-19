@@ -225,6 +225,11 @@ local secondsSinceLastInput = 0
 local craftHeartbeatConn = nil
 local craftFlyTarget = nil
 
+    local EVASION_DIRECTIONS = {
+        Vector3.new(1, 0, 0),   -- 1. Slide Right
+        Vector3.new(0, 1, 0)    -- 2. Climb Up (Only if cornered/trapped)
+    }
+
     Model.State = {
         isFishing             = false,
         autoBuy               = false,
@@ -240,6 +245,7 @@ local craftFlyTarget = nil
         isCurrentlyCrafting   = false,
         waitingForArrivalToFish = false,
         isCraftFlying         = false,
+        activeNavigation      = nil,
     }
 
 if not isLobby then
@@ -330,6 +336,307 @@ if not isLobby then
             if bv then bv:Destroy() end
         end
         if humanoid then humanoid.PlatformStand = false end
+    end
+    
+    function Model.NavigateTo(object, targetPosition, speed, arrivalDistance)
+        speed = speed or 100
+        arrivalDistance = arrivalDistance or 20
+        
+        local primaryPart = object:IsA("Model") and object.PrimaryPart or (object:IsA("BasePart") and object or nil)
+        if not primaryPart then return nil end
+
+        local startPosition = primaryPart.Position
+        local size = primaryPart.Size
+        if object:IsA("Model") then
+            local _, modelSize = object:GetBoundingBox()
+            size = modelSize
+        end
+
+        local downwardParams = RaycastParams.new()
+        downwardParams.FilterType = Enum.RaycastFilterType.Exclude
+        downwardParams.FilterDescendantsInstances = {object, LocalPlayer.Character}
+        downwardParams.IgnoreWater = false 
+
+        local forwardParams = RaycastParams.new()
+        forwardParams.FilterType = Enum.RaycastFilterType.Exclude
+        
+        local ignoreList = {object, LocalPlayer.Character}
+        local OCEAN_LEVEL = 0 
+        
+        local oceanModel = workspace:FindFirstChild("Ocean")
+        if oceanModel then 
+            table.insert(ignoreList, oceanModel) 
+            local highestWater = -math.huge
+            for _, part in ipairs(oceanModel:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    local topSurface = part.Position.Y + (part.Size.Y / 2)
+                    if topSurface > highestWater then
+                        highestWater = topSurface
+                    end
+                end
+            end
+            if highestWater ~= -math.huge then
+                OCEAN_LEVEL = highestWater
+            end
+        end
+        
+        local envFolder = workspace:FindFirstChild("Env")
+        if envFolder then
+            local waterStuff = envFolder:FindFirstChild("WaterStuff")
+            if waterStuff then
+                table.insert(ignoreList, waterStuff)
+                local highestWater = -math.huge
+                for _, part in ipairs(waterStuff:GetDescendants()) do
+                    if part:IsA("BasePart") then
+                        local topSurface = part.Position.Y + (part.Size.Y / 2)
+                        if topSurface > highestWater then
+                            highestWater = topSurface
+                        end
+                    end
+                end
+                if highestWater ~= -math.huge and highestWater > OCEAN_LEVEL then
+                    OCEAN_LEVEL = highestWater
+                end
+            end
+        end
+        
+        local npcsFolder = workspace:FindFirstChild("NPCs")
+        if npcsFolder then
+            table.insert(ignoreList, npcsFolder)
+            local downIgnore = downwardParams.FilterDescendantsInstances
+            table.insert(downIgnore, npcsFolder)
+            downwardParams.FilterDescendantsInstances = downIgnore
+        end
+        
+        forwardParams.FilterDescendantsInstances = ignoreList
+        forwardParams.IgnoreWater = true 
+
+        local humanoid = object:FindFirstChildOfClass("Humanoid")
+        if humanoid then humanoid.PlatformStand = true end
+
+        local bv = Instance.new("BodyVelocity")
+        bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+        bv.Velocity = Vector3.zero
+        bv.Parent = primaryPart
+
+        local bg = Instance.new("BodyGyro")
+        bg.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
+        bg.CFrame = primaryPart.CFrame
+        bg.Parent = primaryPart
+
+        local navigator = { 
+            _isNavigating = true,
+            _isPaused = false,
+            _evadingTimer = 0,
+            _evasionDir = nil,
+            _roboTarget = nil,
+            _lastScan = 0,
+            Distance = 0
+        }
+        local connection = nil
+        local noclipConnection = nil
+        
+        function navigator:Cancel()
+            self._isNavigating = false
+            if bv then bv:Destroy() end
+            if bg then bg:Destroy() end
+            if humanoid then humanoid.PlatformStand = false end
+            if connection then connection:Disconnect() end
+            if noclipConnection then noclipConnection:Disconnect() end
+        end
+        
+        function navigator:TogglePause()
+            self._isPaused = not self._isPaused
+            if self._isPaused then
+                if bv then bv.Velocity = Vector3.zero end
+            end
+            return self._isPaused
+        end
+
+        local function raycastSolid(origin, direction, params)
+            local result = workspace:Raycast(origin, direction, params)
+            local loops = 0
+            while result and not result.Instance.CanCollide and loops < 10 do
+                local currentList = params.FilterDescendantsInstances
+                table.insert(currentList, result.Instance)
+                params.FilterDescendantsInstances = currentList
+                loops = loops + 1
+                result = workspace:Raycast(origin, direction, params)
+            end
+            return result
+        end
+
+        local function blockcastSolid(cframe, extents, dir, params)
+            local result = workspace:Blockcast(cframe, extents, dir, params)
+            local loops = 0
+            while result and not result.Instance.CanCollide and loops < 10 do
+                local currentList = params.FilterDescendantsInstances
+                table.insert(currentList, result.Instance)
+                params.FilterDescendantsInstances = currentList
+                loops = loops + 1
+                result = workspace:Blockcast(cframe, extents, dir, params)
+            end
+            return result
+        end
+
+        noclipConnection = RunService.Stepped:Connect(function()
+            if not navigator._isNavigating or navigator._isPaused then return end
+            if object then
+                for _, part in ipairs(object:GetDescendants()) do
+                    if part:IsA("BasePart") then part.CanCollide = false end
+                end
+            end
+        end)
+
+        connection = RunService.Heartbeat:Connect(function(deltaTime)
+            if not navigator._isNavigating then
+                navigator:Cancel()
+                return
+            end
+            
+            if navigator._isPaused then return end
+            
+            local currentPos = primaryPart.Position
+            local flatCurrent = Vector3.new(currentPos.X, 0, currentPos.Z)
+            local flatTarget = Vector3.new(targetPosition.X, 0, targetPosition.Z)
+            
+            local directionToTarget = (flatTarget - flatCurrent)
+            local distToTarget = directionToTarget.Magnitude
+            
+            navigator.Distance = math.floor(distToTarget)
+            
+            if not navigator._roboTarget and distToTarget <= 1500 then
+                local now = tick()
+                if now - navigator._lastScan > 1 then
+                    navigator._lastScan = now
+                    if npcsFolder then
+                        local closestRobo = nil
+                        local shortestDist = 1500
+                        
+                        for _, npc in ipairs(npcsFolder:GetChildren()) do
+                            if string.find(string.lower(npc.Name), "robo") then
+                                local root = npc:FindFirstChild("HumanoidRootPart") or npc:FindFirstChildWhichIsA("BasePart")
+                                if root then
+                                    local distToDestination = (root.Position - targetPosition).Magnitude
+                                    local distToStart = (root.Position - startPosition).Magnitude
+                                    
+                                    if distToDestination < shortestDist and distToDestination < distToStart then
+                                        shortestDist = distToDestination
+                                        closestRobo = root
+                                    end
+                                end
+                            end
+                        end
+                        
+                        if closestRobo then
+                            navigator._roboTarget = closestRobo
+                        end
+                    end
+                end
+            end
+            
+            if navigator._roboTarget then
+                local roboPos = navigator._roboTarget.Position
+                local roboLook = navigator._roboTarget.CFrame.LookVector
+                targetPosition = roboPos + (roboLook * 15)
+                flatTarget = Vector3.new(targetPosition.X, 0, targetPosition.Z)
+                directionToTarget = (flatTarget - flatCurrent)
+                distToTarget = directionToTarget.Magnitude
+                arrivalDistance = 8 
+            end
+            
+            local moveDir = directionToTarget.Unit
+            if distToTarget == 0 then moveDir = primaryPart.CFrame.LookVector end
+            
+            local targetVelocity = (moveDir * speed)
+            local targetRotation = CFrame.lookAt(currentPos, currentPos + moveDir)
+            
+            local lookAheadPos = flatCurrent + (targetVelocity.Unit * 5)
+            local rayOrigin = Vector3.new(lookAheadPos.X, currentPos.Y + 500, lookAheadPos.Z)
+            local groundHit = raycastSolid(rayOrigin, Vector3.new(0, -1000, 0), downwardParams)
+            
+            if distToTarget <= arrivalDistance then
+                if navigator._roboTarget then
+                    navigator:Cancel()
+                    return
+                else
+                    if groundHit and groundHit.Position.Y > (OCEAN_LEVEL + 3) then
+                        navigator:Cancel()
+                        return
+                    end
+                    if distToTarget <= 20 then
+                        navigator:Cancel()
+                        return
+                    end
+                end
+            end
+            
+            local targetY = currentPos.Y
+            if groundHit then
+                targetY = groundHit.Position.Y + 5 + (size.Y / 2)
+            end
+            
+            local minAllowedHeight = OCEAN_LEVEL + 5 + (size.Y / 2)
+            if targetY < minAllowedHeight then targetY = minAllowedHeight end
+            
+            local wallCheckCFrame = primaryPart.CFrame + Vector3.new(0, 3, 0)
+            local isCloseToArrival = (distToTarget <= arrivalDistance + 15)
+            
+            if navigator._evadingTimer > 0 and not isCloseToArrival then
+                navigator._evadingTimer = navigator._evadingTimer - deltaTime
+                local evadeWallCast = blockcastSolid(wallCheckCFrame, size, navigator._evasionDir * 15, forwardParams)
+                if evadeWallCast and evadeWallCast.Distance <= 5 then
+                    navigator._evadingTimer = 0
+                else
+                    targetVelocity = (navigator._evasionDir * speed)
+                    if navigator._evasionDir.Y >= 0.99 or navigator._evasionDir.Y <= -0.99 then
+                        targetRotation = CFrame.lookAt(currentPos, currentPos + navigator._evasionDir + (moveDir * 0.01))
+                    else
+                        targetRotation = CFrame.lookAt(currentPos, currentPos + navigator._evasionDir)
+                    end
+                end
+            elseif not isCloseToArrival then
+                local wallCast = blockcastSolid(wallCheckCFrame, size, moveDir * 10, forwardParams)
+                if wallCast and wallCast.Distance <= 5 then
+                    if wallCast.Distance > 0.5 then
+                        local evaded = false
+                        local baseLook = CFrame.lookAt(currentPos, currentPos + moveDir)
+                        for _, evasionDir in ipairs(EVASION_DIRECTIONS) do
+                            local relativeVector = evasionDir
+                            if evasionDir.X ~= 0 then relativeVector = baseLook:VectorToWorldSpace(evasionDir) end
+                            local evadeCast = blockcastSolid(wallCheckCFrame, size, relativeVector * 15, forwardParams)
+                            if not evadeCast then
+                                navigator._evadingTimer = 0.3 
+                                navigator._evasionDir = relativeVector
+                                targetVelocity = (relativeVector * speed)
+                                if relativeVector.Y >= 0.99 or relativeVector.Y <= -0.99 then
+                                    targetRotation = CFrame.lookAt(currentPos, currentPos + relativeVector + (moveDir * 0.01))
+                                else
+                                    targetRotation = CFrame.lookAt(currentPos, currentPos + relativeVector)
+                                end
+                                evaded = true
+                                break
+                            end
+                        end
+                        if not evaded then
+                            navigator._evadingTimer = 0.3
+                            navigator._evasionDir = Vector3.new(0, 1, 0)
+                        end
+                    end
+                end
+            end
+            
+            if navigator._evadingTimer <= 0 or isCloseToArrival then
+                local heightDiff = targetY - currentPos.Y
+                local yVelocity = math.clamp(heightDiff * 5, -speed, speed)
+                targetVelocity = Vector3.new(targetVelocity.X, yVelocity, targetVelocity.Z)
+            end
+            
+            bv.Velocity = targetVelocity
+            bg.CFrame = targetRotation
+        end)
+        
+        return navigator
     end
     
     function Model.HandleMovement(deltaTime)
@@ -1429,6 +1736,7 @@ end)
 
 Tabs = {
     Teleport = Window:AddTab({ Title = "Teleport", Icon = "plane" }),
+    Navigation = Window:AddTab({ Title = "Navigation", Icon = "map" }),
     Fishing = Window:AddTab({ Title = "Fishing", Icon = "anchor" }),
     Autofarm = Window:AddTab({ Title = "Autofarm", Icon = "swords" }),
     Settings = Window:AddTab({ Title = "Settings", Icon = "settings" })
@@ -1646,6 +1954,115 @@ Tabs.Teleport:AddButton({
         end
     end
 })
+
+-- ======================================================================
+-- 🗺️ NAVIGATION TAB UI
+-- ======================================================================
+
+    local islandNames = {}
+    local islandPositions = {}
+    
+    local function refreshIslands()
+        table.clear(islandNames)
+        table.clear(islandPositions)
+        local guider = game.ReplicatedStorage:FindFirstChild("CompassGuider")
+        if guider then
+            for _, island in ipairs(guider:GetChildren()) do
+                table.insert(islandNames, island.Name)
+                islandPositions[island.Name] = island.Value
+            end
+        end
+        if #islandNames == 0 then table.insert(islandNames, "None") end
+    end
+    refreshIslands()
+
+    local selectedIslandPos = nil
+
+    local D_Island = Tabs.Navigation:AddDropdown("D_Island", {
+        Title = "Select Island",
+        Values = islandNames,
+        Multi = false,
+        Default = islandNames[1],
+        Callback = function(Value)
+            selectedIslandPos = islandPositions[Value]
+        end
+    })
+    
+    Tabs.Navigation:AddButton({
+        Title = "🔄 Refresh Islands",
+        Description = "Refreshes the island list if CompassGuider was slow to load.",
+        Callback = function()
+            refreshIslands()
+            D_Island:SetValues(islandNames)
+            Fluent:Notify({ Title = "Refreshed", Content = "Island list updated.", Duration = 3 })
+        end
+    })
+    
+    local flightStatus = Tabs.Navigation:AddParagraph({ Title = "Flight Status", Content = "Idle" })
+    
+    Tabs.Navigation:AddButton({
+        Title = "🛫 Start Flight",
+        Description = "Begins advanced auto-navigation to the selected island.",
+        Callback = function()
+            local character = LocalPlayer.Character
+            if not character or not character.PrimaryPart then return end
+            
+            if Model.State.activeNavigation and Model.State.activeNavigation._isNavigating then
+                Fluent:Notify({ Title = "Already Flying", Content = "Cancel or Pause current flight first.", Duration = 3 })
+                return
+            end
+            
+            if not selectedIslandPos then
+                Fluent:Notify({ Title = "No Island", Content = "Please select a valid island first.", Duration = 3 })
+                return
+            end
+            
+            Model.State.activeNavigation = Model.NavigateTo(character, selectedIslandPos, 90, 20)
+            
+            task.spawn(function()
+                while Model.State.activeNavigation and Model.State.activeNavigation._isNavigating do
+                    local nav = Model.State.activeNavigation
+                    if nav._isPaused then
+                        flightStatus:SetDesc("Paused (" .. tostring(nav.Distance) .. " studs)")
+                    elseif nav._roboTarget then
+                        flightStatus:SetDesc("Lock: Robo! (" .. tostring(nav.Distance) .. " studs)")
+                    else
+                        flightStatus:SetDesc("Flying... (" .. tostring(nav.Distance) .. " studs)")
+                    end
+                    task.wait(0.1)
+                end
+                flightStatus:SetDesc("Idle")
+            end)
+        end
+    })
+
+    Tabs.Navigation:AddButton({
+        Title = "⏸️ Pause / Resume Flight",
+        Description = "Toggles the current flight state.",
+        Callback = function()
+            if Model.State.activeNavigation and Model.State.activeNavigation._isNavigating then
+                local isPaused = Model.State.activeNavigation:TogglePause()
+                if isPaused then
+                    Fluent:Notify({ Title = "Paused", Content = "Flight paused.", Duration = 3 })
+                else
+                    Fluent:Notify({ Title = "Resumed", Content = "Flight resumed.", Duration = 3 })
+                end
+            end
+        end
+    })
+
+    Tabs.Navigation:AddButton({
+        Title = "🛑 Cancel Flight",
+        Description = "Immediately stops the current flight.",
+        Callback = function()
+            if Model.State.activeNavigation and Model.State.activeNavigation._isNavigating then
+                Model.State.activeNavigation:Cancel()
+                Model.State.activeNavigation = nil
+                flightStatus:SetDesc("Idle")
+                Fluent:Notify({ Title = "Cancelled", Content = "Flight cancelled.", Duration = 3 })
+            end
+        end
+    })
 
 -- ======================================================================
 -- 🎣 FISHING TAB UI
@@ -2128,6 +2545,9 @@ addConn(UserInputService.InputBegan:Connect(function(input, gameProcessed)
                 -- Abort actions
                 if Model.DisableFlight then pcall(Model.DisableFlight) end
                 if Model.UnequipRod then pcall(Model.UnequipRod) end
+                if Model.State.activeNavigation and Model.State.activeNavigation._isNavigating then
+                    Model.State.activeNavigation:Cancel()
+                end
 
                 -- Close any dialogue
                 pcall(function()
