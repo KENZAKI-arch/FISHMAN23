@@ -42,6 +42,19 @@ local GuiService = game:GetService("GuiService")
 local VirtualInputManager = game:GetService("VirtualInputManager")
 local LocalPlayer = Players.LocalPlayer
 
+-- Polyfill for older executors missing task library
+if not task then
+    getgenv().task = {
+        wait = function(n) return wait(n) end,
+        spawn = function(f, ...) return coroutine.wrap(f)(...) end,
+        delay = function(n, f, ...) local args = {...}; coroutine.wrap(function() wait(n); f(unpack(args)) end)() end
+    }
+else
+    if not task.wait then task.wait = function(n) return wait(n) end end
+    if not task.spawn then task.spawn = function(f, ...) return coroutine.wrap(f)(...) end end
+    if not task.delay then task.delay = function(n, f, ...) local args = {...}; coroutine.wrap(function() wait(n); f(unpack(args)) end)() end end
+end
+
 while not LocalPlayer do 
     task.wait(1)
     LocalPlayer = Players.LocalPlayer 
@@ -985,7 +998,7 @@ if not isLobby then
                             end
                             
                             task.wait(0.1)
-                            bWaited += 0.1
+                            bWaited = bWaited + 0.1
                         end
                         
                         if beastDetected then
@@ -1025,7 +1038,7 @@ if not isLobby then
                         break
                     end
                 end
-                task.wait(0.1); waited += 0.1
+                task.wait(0.1); waited = waited + 0.1
             end
         end
         pcall(function() Remote:InvokeServer({ Action = "Cancel" }) end)
@@ -1038,7 +1051,7 @@ if not isLobby then
     task.spawn(function()
         while _running and task.wait(1) do
             if isAFKModeActive then
-                secondsSinceLastInput += 1
+                secondsSinceLastInput = secondsSinceLastInput + 1
                 if secondsSinceLastInput == 10 then
                     if Fluent and Fluent.Options then
                         if Fluent.Options.T_Buy then Fluent.Options.T_Buy:SetValue(true) end
@@ -1074,7 +1087,7 @@ if not isLobby then
                 if fishCount >= 40 then
                     local timesToCraft = math.floor(fishCount / 40)
                     table.insert(craftQueue, { Name = legFish, Batches = timesToCraft })
-                    totalBatches += timesToCraft
+                    totalBatches = totalBatches + timesToCraft
                 end
             end
             if totalBatches > 0 then
