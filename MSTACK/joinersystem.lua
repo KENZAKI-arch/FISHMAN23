@@ -2139,6 +2139,76 @@ Tabs.Teleport:AddButton({
         end
     end })
 
+    Tabs.Navigation:AddToggle("T_FruitESP", { Title = "Fruit ESP", Default = false, Callback = function(Value) 
+        Model.State.isFruitESP = Value
+        if Value then
+            task.spawn(function()
+                while _running and Model.State.isFruitESP do
+                    for _, obj in ipairs(workspace:GetChildren()) do
+                        if (obj:IsA("Tool") or obj:IsA("Model")) and string.find(string.lower(obj.Name), "fruit") then
+                            local rootPart = (obj:IsA("Model") and (obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart"))) or (obj:IsA("Tool") and obj:FindFirstChild("Handle"))
+                            if rootPart then
+                                local espName = "FruitESP_" .. obj.Name
+                                if not rootPart:FindFirstChild(espName) then
+                                    local bgui = Instance.new("BillboardGui")
+                                    bgui.Name = espName
+                                    bgui.AlwaysOnTop = true
+                                    bgui.Size = UDim2.new(0, 100, 0, 50)
+                                    bgui.StudsOffset = Vector3.new(0, 5, 0)
+                                    
+                                    local txt = Instance.new("TextLabel")
+                                    txt.Size = UDim2.new(1, 0, 1, 0)
+                                    txt.BackgroundTransparency = 1
+                                    txt.Text = obj.Name
+                                    txt.TextColor3 = Color3.fromRGB(255, 0, 255)
+                                    txt.TextStrokeTransparency = 0
+                                    txt.TextScaled = true
+                                    txt.Parent = bgui
+                                    
+                                    bgui.Parent = rootPart
+                                    
+                                    if not obj:FindFirstChild("FruitESP_HL") then
+                                        local hl = Instance.new("Highlight")
+                                        hl.Name = "FruitESP_HL"
+                                        hl.FillColor = Color3.fromRGB(255, 0, 255)
+                                        hl.OutlineColor = Color3.fromRGB(255, 255, 255)
+                                        hl.FillTransparency = 0.5
+                                        hl.Parent = obj
+                                    end
+                                end
+                            end
+                        end
+                    end
+                    task.wait(2)
+                end
+                
+                for _, obj in ipairs(workspace:GetChildren()) do
+                    if (obj:IsA("Tool") or obj:IsA("Model")) and string.find(string.lower(obj.Name), "fruit") then
+                        local rootPart = (obj:IsA("Model") and (obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart"))) or (obj:IsA("Tool") and obj:FindFirstChild("Handle"))
+                        if rootPart then
+                            local bgui = rootPart:FindFirstChild("FruitESP_" .. obj.Name)
+                            if bgui then bgui:Destroy() end
+                        end
+                        local hl = obj:FindFirstChild("FruitESP_HL")
+                        if hl then hl:Destroy() end
+                    end
+                end
+            end)
+        else
+            for _, obj in ipairs(workspace:GetChildren()) do
+                if (obj:IsA("Tool") or obj:IsA("Model")) and string.find(string.lower(obj.Name), "fruit") then
+                    local rootPart = (obj:IsA("Model") and (obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart"))) or (obj:IsA("Tool") and obj:FindFirstChild("Handle"))
+                    if rootPart then
+                        local bgui = rootPart:FindFirstChild("FruitESP_" .. obj.Name)
+                        if bgui then bgui:Destroy() end
+                    end
+                    local hl = obj:FindFirstChild("FruitESP_HL")
+                    if hl then hl:Destroy() end
+                end
+            end
+        end
+    end })
+
 -- ======================================================================
 -- 🎣 FISHING TAB UI
 -- ======================================================================
