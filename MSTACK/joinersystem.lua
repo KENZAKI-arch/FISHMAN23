@@ -42,19 +42,6 @@ local GuiService = game:GetService("GuiService")
 local VirtualInputManager = game:GetService("VirtualInputManager")
 local LocalPlayer = Players.LocalPlayer
 
--- Polyfill for older executors missing task library
-if not task then
-    getgenv().task = {
-        wait = function(n) return wait(n) end,
-        spawn = function(f, ...) return coroutine.wrap(f)(...) end,
-        delay = function(n, f, ...) local args = {...}; coroutine.wrap(function() wait(n); f(unpack(args)) end)() end
-    }
-else
-    if not task.wait then task.wait = function(n) return wait(n) end end
-    if not task.spawn then task.spawn = function(f, ...) return coroutine.wrap(f)(...) end end
-    if not task.delay then task.delay = function(n, f, ...) local args = {...}; coroutine.wrap(function() wait(n); f(unpack(args)) end)() end end
-end
-
 while not LocalPlayer do 
     task.wait(1)
     LocalPlayer = Players.LocalPlayer 
@@ -537,7 +524,16 @@ if not isLobby then
     
     function Model.ReturnToShip()
         local hoverboard = Model.FindHoverboard()
-        if not hoverboard then return false end
+        local targetVector = nil
+        
+        if hoverboard then
+            targetVector = (hoverboard.CFrame * CFrame.new(0, 3, 4)).Position
+            getgenv().CachedHoverboardTailPos = targetVector
+        elseif getgenv().CachedHoverboardTailPos then
+            targetVector = getgenv().CachedHoverboardTailPos
+        else
+            return false
+        end
         
         local character = LocalPlayer.Character
         local rootPart = character and character:FindFirstChild("HumanoidRootPart")
@@ -547,8 +543,6 @@ if not isLobby then
         Model.DisableFlight()
         task.wait(0.1)
         Model.EnableFlight()
-        
-        local targetVector = (hoverboard.CFrame * CFrame.new(0, 3, 4)).Position
         local speed = Model.State.shipSpeed or 300 
         
         local function TweenTo(point)
@@ -797,12 +791,14 @@ if not isLobby then
             end
         end
         local shipsFolder = workspace:FindFirstChild("Ships")
-        local myShip = (shipsFolder and shipsFolder:FindFirstChild(shipName)) or workspace:FindFirstChild(shipName)
-        if myShip then
-            local seat = myShip:FindFirstChild("VehicleSeat", true) or myShip:FindFirstChildOfClass("VehicleSeat")
-            if seat then
-                getgenv().CachedHoverboard = seat
-                return seat
+        if shipsFolder then
+            local myShip = shipsFolder:FindFirstChild(shipName)
+            if myShip then
+                local seat = myShip:FindFirstChild("VehicleSeat", true) or myShip:FindFirstChildOfClass("VehicleSeat")
+                if seat then
+                    getgenv().CachedHoverboard = seat
+                    return seat
+                end
             end
         end
         return nil
@@ -835,7 +831,11 @@ if not isLobby then
         print("🚀 [MegStackLoc] Flying back to fishing spot...")
         local hoverboard = Model.FindHoverboard()
         if hoverboard then
-            Model.CraftFlyPath({ (hoverboard.CFrame * CFrame.new(0, 3, 4)).Position })
+            local tailPos = (hoverboard.CFrame * CFrame.new(0, 3, 4)).Position
+            getgenv().CachedHoverboardTailPos = tailPos
+            Model.CraftFlyPath({ tailPos })
+        elseif getgenv().CachedHoverboardTailPos then
+            Model.CraftFlyPath({ getgenv().CachedHoverboardTailPos })
         else
             Model.CraftFlyPath({ originalPos })
         end
@@ -998,7 +998,7 @@ if not isLobby then
                             end
                             
                             task.wait(0.1)
-                            bWaited = bWaited + 0.1
+                            bWaited += 0.1
                         end
                         
                         if beastDetected then
@@ -1038,7 +1038,7 @@ if not isLobby then
                         break
                     end
                 end
-                task.wait(0.1); waited = waited + 0.1
+                task.wait(0.1); waited += 0.1
             end
         end
         pcall(function() Remote:InvokeServer({ Action = "Cancel" }) end)
@@ -1051,7 +1051,7 @@ if not isLobby then
     task.spawn(function()
         while _running and task.wait(1) do
             if isAFKModeActive then
-                secondsSinceLastInput = secondsSinceLastInput + 1
+                secondsSinceLastInput += 1
                 if secondsSinceLastInput == 10 then
                     if Fluent and Fluent.Options then
                         if Fluent.Options.T_Buy then Fluent.Options.T_Buy:SetValue(true) end
@@ -1087,7 +1087,7 @@ if not isLobby then
                 if fishCount >= 40 then
                     local timesToCraft = math.floor(fishCount / 40)
                     table.insert(craftQueue, { Name = legFish, Batches = timesToCraft })
-                    totalBatches = totalBatches + timesToCraft
+                    totalBatches += timesToCraft
                 end
             end
             if totalBatches > 0 then
@@ -1725,7 +1725,8 @@ Tabs.Teleport:AddButton({
             task.spawn(function()
                 while _running and Model.State.isHoverboardESP do
                     local shipsFolder = workspace:FindFirstChild("Ships")
-                    local myShip = (shipsFolder and shipsFolder:FindFirstChild(LocalPlayer.Name .. "Ship")) or workspace:FindFirstChild(LocalPlayer.Name .. "Ship")
+                    if shipsFolder then
+                        local myShip = shipsFolder:FindFirstChild(LocalPlayer.Name .. "Ship")
                         if myShip and myShip:IsA("Model") then
                             if not myShip:FindFirstChild("HoverESP_Highlight") then
                                 local hl = Instance.new("Highlight")
@@ -1740,7 +1741,8 @@ Tabs.Teleport:AddButton({
                     task.wait(1)
                 end
                 local shipsFolder = workspace:FindFirstChild("Ships")
-                local myShip = (shipsFolder and shipsFolder:FindFirstChild(LocalPlayer.Name .. "Ship")) or workspace:FindFirstChild(LocalPlayer.Name .. "Ship")
+                if shipsFolder then
+                    local myShip = shipsFolder:FindFirstChild(LocalPlayer.Name .. "Ship")
                     if myShip then
                         local hl = myShip:FindFirstChild("HoverESP_Highlight")
                         if hl then hl:Destroy() end
@@ -1749,7 +1751,8 @@ Tabs.Teleport:AddButton({
             end)
         else
             local shipsFolder = workspace:FindFirstChild("Ships")
-            local myShip = (shipsFolder and shipsFolder:FindFirstChild(LocalPlayer.Name .. "Ship")) or workspace:FindFirstChild(LocalPlayer.Name .. "Ship")
+            if shipsFolder then
+                local myShip = shipsFolder:FindFirstChild(LocalPlayer.Name .. "Ship")
                 if myShip then
                     local hl = myShip:FindFirstChild("HoverESP_Highlight")
                     if hl then hl:Destroy() end
