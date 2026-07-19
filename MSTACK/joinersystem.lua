@@ -2064,6 +2064,81 @@ Tabs.Teleport:AddButton({
         end
     })
 
+    Tabs.Navigation:AddToggle("T_IslandESP", { Title = "Islands ESP", Default = false, Callback = function(Value) 
+        Model.State.isIslandESP = Value
+        if Value then
+            task.spawn(function()
+                while _running and Model.State.isIslandESP do
+                    local islandsFolder = workspace:FindFirstChild("Islands")
+                    if islandsFolder then
+                        for _, island in ipairs(islandsFolder:GetChildren()) do
+                            if island:IsA("Model") or island:IsA("BasePart") then
+                                local rootPart = island:IsA("Model") and (island.PrimaryPart or island:FindFirstChildWhichIsA("BasePart")) or island
+                                if rootPart then
+                                    local espName = "IslandESP_" .. island.Name
+                                    if not rootPart:FindFirstChild(espName) then
+                                        local bgui = Instance.new("BillboardGui")
+                                        bgui.Name = espName
+                                        bgui.AlwaysOnTop = true
+                                        bgui.Size = UDim2.new(0, 100, 0, 50)
+                                        bgui.StudsOffset = Vector3.new(0, 50, 0)
+                                        
+                                        local txt = Instance.new("TextLabel")
+                                        txt.Size = UDim2.new(1, 0, 1, 0)
+                                        txt.BackgroundTransparency = 1
+                                        txt.Text = island.Name
+                                        txt.TextColor3 = Color3.fromRGB(0, 255, 255)
+                                        txt.TextStrokeTransparency = 0
+                                        txt.TextScaled = true
+                                        txt.Parent = bgui
+                                        
+                                        bgui.Parent = rootPart
+                                        
+                                        if not island:FindFirstChild("IslandESP_HL") then
+                                            local hl = Instance.new("Highlight")
+                                            hl.Name = "IslandESP_HL"
+                                            hl.FillColor = Color3.fromRGB(0, 255, 255)
+                                            hl.OutlineColor = Color3.fromRGB(255, 255, 255)
+                                            hl.FillTransparency = 0.5
+                                            hl.Parent = island
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                    end
+                    task.wait(2)
+                end
+                
+                local islandsFolder = workspace:FindFirstChild("Islands")
+                if islandsFolder then
+                    for _, island in ipairs(islandsFolder:GetChildren()) do
+                        local rootPart = island:IsA("Model") and (island.PrimaryPart or island:FindFirstChildWhichIsA("BasePart")) or island
+                        if rootPart then
+                            local bgui = rootPart:FindFirstChild("IslandESP_" .. island.Name)
+                            if bgui then bgui:Destroy() end
+                        end
+                        local hl = island:FindFirstChild("IslandESP_HL")
+                        if hl then hl:Destroy() end
+                    end
+                end
+            end)
+        else
+            local islandsFolder = workspace:FindFirstChild("Islands")
+            if islandsFolder then
+                for _, island in ipairs(islandsFolder:GetChildren()) do
+                    local rootPart = island:IsA("Model") and (island.PrimaryPart or island:FindFirstChildWhichIsA("BasePart")) or island
+                    if rootPart then
+                        local bgui = rootPart:FindFirstChild("IslandESP_" .. island.Name)
+                        if bgui then bgui:Destroy() end
+                    end
+                    local hl = island:FindFirstChild("IslandESP_HL")
+                    if hl then hl:Destroy() end
+                end
+            end
+        end
+    end })
+
 -- ======================================================================
 -- 🎣 FISHING TAB UI
 -- ======================================================================
