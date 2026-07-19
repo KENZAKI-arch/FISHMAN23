@@ -1204,7 +1204,11 @@ local function storeFruits(fruitList)
             autoBuy = Model.State.autoBuy,
             autoSell = Model.State.autoSell,
             isAutoTraveling = Model.State.isAutoTraveling,
-            autoCraft = Model.State.autoCraft
+            autoCraft = Model.State.autoCraft,
+            deepSea = (Fluent and Fluent.Options and Fluent.Options.T_DeepSea) and Fluent.Options.T_DeepSea.Value or false,
+            megStack = (Fluent and Fluent.Options and Fluent.Options.T_MegStack) and Fluent.Options.T_MegStack.Value or false,
+            megStackLoc = (Fluent and Fluent.Options and Fluent.Options.T_MegStackLoc) and Fluent.Options.T_MegStackLoc.Value or false,
+            cyborgAuto = (Fluent and Fluent.Options and Fluent.Options.T_CyborgAuto) and Fluent.Options.T_CyborgAuto.Value or false
         }
         
         -- Force stop them
@@ -1221,6 +1225,10 @@ local function storeFruits(fruitList)
             if Fluent.Options.T_Sell then Fluent.Options.T_Sell:SetValue(false) end
             if Fluent.Options.T_Travel then Fluent.Options.T_Travel:SetValue(false) end
             if Fluent.Options.T_Craft then Fluent.Options.T_Craft:SetValue(false) end
+            if Fluent.Options.T_DeepSea then Fluent.Options.T_DeepSea:SetValue(false) end
+            if Fluent.Options.T_MegStack then Fluent.Options.T_MegStack:SetValue(false) end
+            if Fluent.Options.T_MegStackLoc then Fluent.Options.T_MegStackLoc:SetValue(false) end
+            if Fluent.Options.T_CyborgAuto then Fluent.Options.T_CyborgAuto:SetValue(false) end
         end
         
         -- Wait a moment for any current actions (like reeling) to finish
@@ -1279,6 +1287,10 @@ local function storeFruits(fruitList)
             if Fluent.Options.T_Sell then Fluent.Options.T_Sell:SetValue(Model.State.autoSell) end
             if Fluent.Options.T_Travel then Fluent.Options.T_Travel:SetValue(Model.State.isAutoTraveling) end
             if Fluent.Options.T_Craft then Fluent.Options.T_Craft:SetValue(Model.State.autoCraft) end
+            if Fluent.Options.T_DeepSea then Fluent.Options.T_DeepSea:SetValue(tempSavedState.deepSea) end
+            if Fluent.Options.T_MegStack then Fluent.Options.T_MegStack:SetValue(tempSavedState.megStack) end
+            if Fluent.Options.T_MegStackLoc then Fluent.Options.T_MegStackLoc:SetValue(tempSavedState.megStackLoc) end
+            if Fluent.Options.T_CyborgAuto then Fluent.Options.T_CyborgAuto:SetValue(tempSavedState.cyborgAuto) end
         end
 
         if Model.State.isAutoTraveling and Model.StartTraveling then
