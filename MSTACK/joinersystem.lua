@@ -2466,7 +2466,7 @@ Tabs.Settings:AddButton({
             Window:Destroy()
         end
         task.wait(1)
-        loadstring(game:HttpGet("https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/main/joinersystem.lua?t="..tostring(tick())))()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/main/MSTACK/joinersystem.lua?t="..tostring(tick())))()
     end
 })
 
