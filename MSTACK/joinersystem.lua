@@ -2141,11 +2141,26 @@ Tabs.Teleport:AddButton({
 
     Tabs.Navigation:AddToggle("T_FruitESP", { Title = "Fruit ESP", Default = false, Callback = function(Value) 
         Model.State.isFruitESP = Value
+        local targetFruits = {
+            "Dragon", "Venom", "Mochi", "Soul", "Pika", "Buddha", "Magu", "Goro", "Goru",
+            "Hie", "Kage", "Mera", "Tori", "Pteranodon", "Smoke", "Yami", "Suna", "Yuki", "Ope", "Zushi", "Ito", "Paw"
+        }
+        
+        local function isTarget(objName)
+            local lowerName = string.lower(objName)
+            for _, fName in ipairs(targetFruits) do
+                if string.find(lowerName, string.lower(fName)) then
+                    return true
+                end
+            end
+            return false
+        end
+
         if Value then
             task.spawn(function()
                 while _running and Model.State.isFruitESP do
                     for _, obj in ipairs(workspace:GetChildren()) do
-                        if (obj:IsA("Tool") or obj:IsA("Model")) and string.find(string.lower(obj.Name), "fruit") then
+                        if (obj:IsA("Tool") or obj:IsA("Model")) and isTarget(obj.Name) then
                             local rootPart = (obj:IsA("Model") and (obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart"))) or (obj:IsA("Tool") and obj:FindFirstChild("Handle"))
                             if rootPart then
                                 local espName = "FruitESP_" .. obj.Name
@@ -2183,7 +2198,7 @@ Tabs.Teleport:AddButton({
                 end
                 
                 for _, obj in ipairs(workspace:GetChildren()) do
-                    if (obj:IsA("Tool") or obj:IsA("Model")) and string.find(string.lower(obj.Name), "fruit") then
+                    if (obj:IsA("Tool") or obj:IsA("Model")) and isTarget(obj.Name) then
                         local rootPart = (obj:IsA("Model") and (obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart"))) or (obj:IsA("Tool") and obj:FindFirstChild("Handle"))
                         if rootPart then
                             local bgui = rootPart:FindFirstChild("FruitESP_" .. obj.Name)
@@ -2196,7 +2211,7 @@ Tabs.Teleport:AddButton({
             end)
         else
             for _, obj in ipairs(workspace:GetChildren()) do
-                if (obj:IsA("Tool") or obj:IsA("Model")) and string.find(string.lower(obj.Name), "fruit") then
+                if (obj:IsA("Tool") or obj:IsA("Model")) and isTarget(obj.Name) then
                     local rootPart = (obj:IsA("Model") and (obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart"))) or (obj:IsA("Tool") and obj:FindFirstChild("Handle"))
                     if rootPart then
                         local bgui = rootPart:FindFirstChild("FruitESP_" .. obj.Name)
