@@ -2083,7 +2083,11 @@ addConn(UserInputService.InputBegan:Connect(function(input, gameProcessed)
                     isAutoTraveling = Model.State.isAutoTraveling,
                     autoCraft = Model.State.autoCraft,
                     isCurrentlyCrafting = Model.State.isCurrentlyCrafting,
-                    antiLag = (Fluent.Options and Fluent.Options.T_AntiLag) and Fluent.Options.T_AntiLag.Value or false
+                    antiLag = (Fluent.Options and Fluent.Options.T_AntiLag) and Fluent.Options.T_AntiLag.Value or false,
+                    deepSea = (Fluent and Fluent.Options and Fluent.Options.T_DeepSea) and Fluent.Options.T_DeepSea.Value or false,
+                    megStack = (Fluent and Fluent.Options and Fluent.Options.T_MegStack) and Fluent.Options.T_MegStack.Value or false,
+                    megStackLoc = (Fluent and Fluent.Options and Fluent.Options.T_MegStackLoc) and Fluent.Options.T_MegStackLoc.Value or false,
+                    cyborgAuto = (Fluent and Fluent.Options and Fluent.Options.T_CyborgAuto) and Fluent.Options.T_CyborgAuto.Value or false
                 }
 
                 -- Force stop everything instantly
@@ -2104,6 +2108,10 @@ addConn(UserInputService.InputBegan:Connect(function(input, gameProcessed)
                     if Fluent.Options.T_Travel then Fluent.Options.T_Travel:SetValue(false) end
                     if Fluent.Options.T_Craft then Fluent.Options.T_Craft:SetValue(false) end
                     if Fluent.Options.T_AntiLag then Fluent.Options.T_AntiLag:SetValue(false) end
+                    if Fluent.Options.T_DeepSea then Fluent.Options.T_DeepSea:SetValue(false) end
+                    if Fluent.Options.T_MegStack then Fluent.Options.T_MegStack:SetValue(false) end
+                    if Fluent.Options.T_MegStackLoc then Fluent.Options.T_MegStackLoc:SetValue(false) end
+                    if Fluent.Options.T_CyborgAuto then Fluent.Options.T_CyborgAuto:SetValue(false) end
                 end
 
                 -- Abort actions
@@ -2136,6 +2144,10 @@ addConn(UserInputService.InputBegan:Connect(function(input, gameProcessed)
                     if Fluent.Options.T_Travel then Fluent.Options.T_Travel:SetValue(Model.State.isAutoTraveling) end
                     if Fluent.Options.T_Craft then Fluent.Options.T_Craft:SetValue(Model.State.autoCraft) end
                     if Fluent.Options.T_AntiLag and savedState.antiLag then Fluent.Options.T_AntiLag:SetValue(true) end
+                    if Fluent.Options.T_DeepSea then Fluent.Options.T_DeepSea:SetValue(savedState.deepSea) end
+                    if Fluent.Options.T_MegStack then Fluent.Options.T_MegStack:SetValue(savedState.megStack) end
+                    if Fluent.Options.T_MegStackLoc then Fluent.Options.T_MegStackLoc:SetValue(savedState.megStackLoc) end
+                    if Fluent.Options.T_CyborgAuto then Fluent.Options.T_CyborgAuto:SetValue(savedState.cyborgAuto) end
                 end
 
                 -- Resume traveling if needed
