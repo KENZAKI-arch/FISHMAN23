@@ -2545,6 +2545,16 @@ Tabs.Autofarm:AddToggle("T_CyborgAuto", {
 })
 
 Tabs.Autofarm:AddButton({                   
+    Title = "Load MeleeFactory",
+    Description = "Executes the Melee Factory script.",
+    Callback = function()
+        local scriptURL = "https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/main/MSTACK/meleefactory.lua?t="..tostring(tick())
+        loadstring(game:HttpGet(scriptURL))()
+        Fluent:Notify({ Title = "MeleeFactory Loaded", Content = "MeleeFactory script initialized.", Duration = 3 })
+    end
+})
+
+Tabs.Autofarm:AddButton({                   
     Title = "Load CombinedAutoLoad (Autofarm)",
     Description = "Executes the script and queues it for future teleports.",
     Callback = function()
