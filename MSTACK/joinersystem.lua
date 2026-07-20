@@ -2557,7 +2557,7 @@ Tabs.Teleport:AddButton({
     
     local autoStoreEnabled = false
     Tabs.Fishing:AddToggle("T_AutoStoreFruit", { 
-        Title = "Auto Store Fruit (Hourly)", 
+        Title = "Auto Store Fruit (10 Minutes)", 
         Default = false, 
         Callback = function(Value)
             autoStoreEnabled = Value
@@ -2565,7 +2565,7 @@ Tabs.Teleport:AddButton({
                 task.spawn(function()
                     while autoStoreEnabled do
                         storeFruits(targetFruits)
-                        task.wait(3600)
+                        task.wait(600)
                     end
                 end)
             end
