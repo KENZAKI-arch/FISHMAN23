@@ -1623,6 +1623,65 @@ local function dropFruits(fruitList)
     local backpack = LocalPlayer:FindFirstChild("Backpack")
     if not character or not humanoid or not backpack then return end
     
+    -- Check if we even have any target fruits before pausing
+    local hasFruits = false
+    for _, tool in pairs(backpack:GetChildren()) do
+        if tool:IsA("Tool") then
+            local toolName = string.lower(tool.Name)
+            for _, fruitName in ipairs(fruitList) do
+                if string.find(toolName, string.lower(fruitName)) then
+                    hasFruits = true
+                    break
+                end
+            end
+        end
+    end
+    
+    if not hasFruits then return end -- No need to pause if no fruits
+
+    -- PAUSE FISHING/KILLING
+    local tempSavedState = {}
+    if Model and Model.State then
+        tempSavedState = {
+            isFishing = Model.State.isFishing,
+            autoBuy = Model.State.autoBuy,
+            autoSell = Model.State.autoSell,
+            isAutoTraveling = Model.State.isAutoTraveling,
+            autoCraft = Model.State.autoCraft,
+            deepSea = (Fluent and Fluent.Options and Fluent.Options.T_DeepSea) and Fluent.Options.T_DeepSea.Value or false,
+            megStack = (Fluent and Fluent.Options and Fluent.Options.T_MegStack) and Fluent.Options.T_MegStack.Value or false,
+            megStackLoc = (Fluent and Fluent.Options and Fluent.Options.T_MegStackLoc) and Fluent.Options.T_MegStackLoc.Value or false,
+            cyborgAuto = (Fluent and Fluent.Options and Fluent.Options.T_CyborgAuto) and Fluent.Options.T_CyborgAuto.Value or false
+        }
+        
+        -- Force stop them
+        Model.State.isFishing = false
+        Model.State.autoBuy = false
+        Model.State.autoSell = false
+        Model.State.isAutoTraveling = false
+        Model.State.autoCraft = false
+        
+        -- Update toggles visually
+        if Fluent and Fluent.Options then
+            if Fluent.Options.T_Fish then Fluent.Options.T_Fish:SetValue(false) end
+            if Fluent.Options.T_Buy then Fluent.Options.T_Buy:SetValue(false) end
+            if Fluent.Options.T_Sell then Fluent.Options.T_Sell:SetValue(false) end
+            if Fluent.Options.T_Travel then Fluent.Options.T_Travel:SetValue(false) end
+            if Fluent.Options.T_Craft then Fluent.Options.T_Craft:SetValue(false) end
+            if Fluent.Options.T_DeepSea then Fluent.Options.T_DeepSea:SetValue(false) end
+            if Fluent.Options.T_MegStack then Fluent.Options.T_MegStack:SetValue(false) end
+            if Fluent.Options.T_MegStackLoc then Fluent.Options.T_MegStackLoc:SetValue(false) end
+            if Fluent.Options.T_CyborgAuto then Fluent.Options.T_CyborgAuto:SetValue(false) end
+        end
+        
+        -- Wait a moment for any current actions (like reeling) to finish
+        task.wait(2)
+        
+        -- Unequip current tools (rod/sword) so we can equip fruits properly
+        humanoid:UnequipTools()
+        task.wait(0.5)
+    end
+    
     for _, tool in pairs(backpack:GetChildren()) do
         if tool:IsA("Tool") then
             local toolName = string.lower(tool.Name)
@@ -1643,6 +1702,32 @@ local function dropFruits(fruitList)
                 if Fluent then Fluent:Notify({ Title = "Dropping Fruit", Content = "Dropped: " .. tool.Name, Duration = 3 }) end
                 task.wait(0.5)
             end
+        end
+    end
+
+    -- RESUME FISHING/KILLING
+    if Model and Model.State then
+        Model.State.isFishing = tempSavedState.isFishing or false
+        Model.State.autoBuy = tempSavedState.autoBuy or false
+        Model.State.autoSell = tempSavedState.autoSell or false
+        Model.State.isAutoTraveling = tempSavedState.isAutoTraveling or false
+        Model.State.autoCraft = tempSavedState.autoCraft or false
+        
+        -- Update UI toggles visually to match restored state
+        if Fluent and Fluent.Options then
+            if Fluent.Options.T_Fish then Fluent.Options.T_Fish:SetValue(Model.State.isFishing) end
+            if Fluent.Options.T_Buy then Fluent.Options.T_Buy:SetValue(Model.State.autoBuy) end
+            if Fluent.Options.T_Sell then Fluent.Options.T_Sell:SetValue(Model.State.autoSell) end
+            if Fluent.Options.T_Travel then Fluent.Options.T_Travel:SetValue(Model.State.isAutoTraveling) end
+            if Fluent.Options.T_Craft then Fluent.Options.T_Craft:SetValue(Model.State.autoCraft) end
+            if Fluent.Options.T_DeepSea then Fluent.Options.T_DeepSea:SetValue(tempSavedState.deepSea) end
+            if Fluent.Options.T_MegStack then Fluent.Options.T_MegStack:SetValue(tempSavedState.megStack) end
+            if Fluent.Options.T_MegStackLoc then Fluent.Options.T_MegStackLoc:SetValue(tempSavedState.megStackLoc) end
+            if Fluent.Options.T_CyborgAuto then Fluent.Options.T_CyborgAuto:SetValue(tempSavedState.cyborgAuto) end
+        end
+
+        if Model.State.isAutoTraveling and Model.StartTraveling then
+            Model.StartTraveling()
         end
     end
 end
