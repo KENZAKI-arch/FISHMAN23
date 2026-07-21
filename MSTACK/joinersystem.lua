@@ -789,7 +789,7 @@ if not isLobby then
         if not rootPart then return end
         
         Model.State.isCraftFlying = true
-        local speed = Model.State.shipSpeed or 300 
+        local speed = Model.State.shipSpeed or 175 
         
         local function TweenTo(point)
             if not Model.State.isCraftFlying then return end
@@ -2373,6 +2373,50 @@ Tabs.Teleport:AddButton({
     Tabs.Fishing:AddToggle("T_MegStackLoc", { Title = "Meg Stack Location (Auto Refill)", Default = false, Callback = function(Value) 
         if isLobby then if Value then Fluent:Notify({ Title = "Error", Content = "Cannot use in Lobby!", Duration = 3 }); Fluent.Options.T_MegStackLoc:SetValue(false) end return end
         Model.State.isMegStackLoc = Value 
+    end })
+    
+    Tabs.Fishing:AddToggle("T_ManualMegStackLoc", { Title = "Manual Meg Stack Travel", Default = false, Callback = function(Value) 
+        if isLobby then if Value then Fluent:Notify({ Title = "Error", Content = "Cannot use in Lobby!", Duration = 3 }); Fluent.Options.T_ManualMegStackLoc:SetValue(false) end return end
+        
+        if Value then
+            task.spawn(function()
+                local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+                if hrp then getgenv().CachedOriginalPos = hrp.Position end
+                
+                Model.State.isAutoTraveling = false
+                Model.DisableFlight()
+                if Model.UnequipRod then Model.UnequipRod() end
+                task.wait(1)
+                
+                Model.State.isRefillingMegBait = true -- REQUIRED for flight loop
+                Model.EnableFlight()
+                Fluent:Notify({ Title = "Manual Travel", Content = "Flying to Meg Stack Island...", Duration = 3 })
+                Model.CraftFlyPath({ Vector3.new(-6760, 27, 9191) })
+                Model.State.isRefillingMegBait = false
+                
+                Model.DisableFlight()
+                Fluent:Notify({ Title = "Manual Travel", Content = "Arrived at Meg Stack Island!", Duration = 3 })
+            end)
+        else
+            task.spawn(function()
+                Model.State.isRefillingMegBait = true -- REQUIRED for flight loop
+                Model.EnableFlight()
+                Fluent:Notify({ Title = "Manual Travel", Content = "Flying back...", Duration = 3 })
+                
+                local hoverboard = Model.FindHoverboard and Model.FindHoverboard()
+                if hoverboard then
+                    local tailPos = (hoverboard.CFrame * CFrame.new(0, 3, 4)).Position
+                    Model.CraftFlyPath({ tailPos })
+                elseif getgenv().CachedOriginalPos then
+                    Model.CraftFlyPath({ getgenv().CachedOriginalPos })
+                end
+                
+                Model.State.isRefillingMegBait = false
+                Model.DisableFlight()
+                if Model.EquipRod then Model.EquipRod() end
+                Fluent:Notify({ Title = "Manual Travel", Content = "Returned successfully!", Duration = 3 })
+            end)
+        end
     end })
     
     Tabs.Fishing:AddToggle("T_HoverboardESP", { Title = "Ship ESP", Default = false, Callback = function(Value) 
