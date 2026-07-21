@@ -1525,8 +1525,7 @@ local function storeFruits(fruitList)
             autoCraft = Model.State.autoCraft,
             deepSea = (Fluent and Fluent.Options and Fluent.Options.T_DeepSea) and Fluent.Options.T_DeepSea.Value or false,
             megStack = (Fluent and Fluent.Options and Fluent.Options.T_MegStack) and Fluent.Options.T_MegStack.Value or false,
-            megStackLoc = (Fluent and Fluent.Options and Fluent.Options.T_MegStackLoc) and Fluent.Options.T_MegStackLoc.Value or false,
-            cyborgAuto = (Fluent and Fluent.Options and Fluent.Options.T_CyborgAuto) and Fluent.Options.T_CyborgAuto.Value or false
+            megStackLoc = (Fluent and Fluent.Options and Fluent.Options.T_MegStackLoc) and Fluent.Options.T_MegStackLoc.Value or false
         }
         
         -- Force stop them
@@ -1546,7 +1545,6 @@ local function storeFruits(fruitList)
             if Fluent.Options.T_DeepSea then Fluent.Options.T_DeepSea:SetValue(false) end
             if Fluent.Options.T_MegStack then Fluent.Options.T_MegStack:SetValue(false) end
             if Fluent.Options.T_MegStackLoc then Fluent.Options.T_MegStackLoc:SetValue(false) end
-            if Fluent.Options.T_CyborgAuto then Fluent.Options.T_CyborgAuto:SetValue(false) end
         end
         
         -- Wait a moment for any current actions (like reeling) to finish
@@ -1608,7 +1606,6 @@ local function storeFruits(fruitList)
             if Fluent.Options.T_DeepSea then Fluent.Options.T_DeepSea:SetValue(tempSavedState.deepSea) end
             if Fluent.Options.T_MegStack then Fluent.Options.T_MegStack:SetValue(tempSavedState.megStack) end
             if Fluent.Options.T_MegStackLoc then Fluent.Options.T_MegStackLoc:SetValue(tempSavedState.megStackLoc) end
-            if Fluent.Options.T_CyborgAuto then Fluent.Options.T_CyborgAuto:SetValue(tempSavedState.cyborgAuto) end
         end
 
         if Model.State.isAutoTraveling and Model.StartTraveling then
@@ -1650,8 +1647,7 @@ local function dropFruits(fruitList)
             autoCraft = Model.State.autoCraft,
             deepSea = (Fluent and Fluent.Options and Fluent.Options.T_DeepSea) and Fluent.Options.T_DeepSea.Value or false,
             megStack = (Fluent and Fluent.Options and Fluent.Options.T_MegStack) and Fluent.Options.T_MegStack.Value or false,
-            megStackLoc = (Fluent and Fluent.Options and Fluent.Options.T_MegStackLoc) and Fluent.Options.T_MegStackLoc.Value or false,
-            cyborgAuto = (Fluent and Fluent.Options and Fluent.Options.T_CyborgAuto) and Fluent.Options.T_CyborgAuto.Value or false
+            megStackLoc = (Fluent and Fluent.Options and Fluent.Options.T_MegStackLoc) and Fluent.Options.T_MegStackLoc.Value or false
         }
         
         -- Force stop them
@@ -1671,7 +1667,6 @@ local function dropFruits(fruitList)
             if Fluent.Options.T_DeepSea then Fluent.Options.T_DeepSea:SetValue(false) end
             if Fluent.Options.T_MegStack then Fluent.Options.T_MegStack:SetValue(false) end
             if Fluent.Options.T_MegStackLoc then Fluent.Options.T_MegStackLoc:SetValue(false) end
-            if Fluent.Options.T_CyborgAuto then Fluent.Options.T_CyborgAuto:SetValue(false) end
         end
         
         -- Wait a moment for any current actions (like reeling) to finish
@@ -1723,7 +1718,6 @@ local function dropFruits(fruitList)
             if Fluent.Options.T_DeepSea then Fluent.Options.T_DeepSea:SetValue(tempSavedState.deepSea) end
             if Fluent.Options.T_MegStack then Fluent.Options.T_MegStack:SetValue(tempSavedState.megStack) end
             if Fluent.Options.T_MegStackLoc then Fluent.Options.T_MegStackLoc:SetValue(tempSavedState.megStackLoc) end
-            if Fluent.Options.T_CyborgAuto then Fluent.Options.T_CyborgAuto:SetValue(tempSavedState.cyborgAuto) end
         end
 
         if Model.State.isAutoTraveling and Model.StartTraveling then
@@ -2769,8 +2763,7 @@ addConn(UserInputService.InputBegan:Connect(function(input, gameProcessed)
                     antiLag = (Fluent.Options and Fluent.Options.T_AntiLag) and Fluent.Options.T_AntiLag.Value or false,
                     deepSea = (Fluent and Fluent.Options and Fluent.Options.T_DeepSea) and Fluent.Options.T_DeepSea.Value or false,
                     megStack = (Fluent and Fluent.Options and Fluent.Options.T_MegStack) and Fluent.Options.T_MegStack.Value or false,
-                    megStackLoc = (Fluent and Fluent.Options and Fluent.Options.T_MegStackLoc) and Fluent.Options.T_MegStackLoc.Value or false,
-                    cyborgAuto = (Fluent and Fluent.Options and Fluent.Options.T_CyborgAuto) and Fluent.Options.T_CyborgAuto.Value or false
+                    megStackLoc = (Fluent and Fluent.Options and Fluent.Options.T_MegStackLoc) and Fluent.Options.T_MegStackLoc.Value or false
                 }
 
                 -- Force stop everything instantly
@@ -2794,7 +2787,6 @@ addConn(UserInputService.InputBegan:Connect(function(input, gameProcessed)
                     if Fluent.Options.T_DeepSea then Fluent.Options.T_DeepSea:SetValue(false) end
                     if Fluent.Options.T_MegStack then Fluent.Options.T_MegStack:SetValue(false) end
                     if Fluent.Options.T_MegStackLoc then Fluent.Options.T_MegStackLoc:SetValue(false) end
-                    if Fluent.Options.T_CyborgAuto then Fluent.Options.T_CyborgAuto:SetValue(false) end
                 end
 
                 -- Abort actions
@@ -2833,7 +2825,6 @@ addConn(UserInputService.InputBegan:Connect(function(input, gameProcessed)
                     if Fluent.Options.T_DeepSea then Fluent.Options.T_DeepSea:SetValue(savedState.deepSea) end
                     if Fluent.Options.T_MegStack then Fluent.Options.T_MegStack:SetValue(savedState.megStack) end
                     if Fluent.Options.T_MegStackLoc then Fluent.Options.T_MegStackLoc:SetValue(savedState.megStackLoc) end
-                    if Fluent.Options.T_CyborgAuto then Fluent.Options.T_CyborgAuto:SetValue(savedState.cyborgAuto) end
                 end
 
                 -- Resume traveling if needed
