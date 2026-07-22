@@ -1455,7 +1455,7 @@ end
 env.Fishman_StopPrevious = ShutdownEverything
 
 local targetFruits = {
-    "Dragon", "Venom", "Mochi", "Soul", "Pika", "Buddha", "Magu", "Goro", "Goru",
+    "Dragon", "Venom", "Mochi", "Soul", "Pika", "Buddha", "Magu", "Goro", "Goru", "Gura",
     "Hie", "Kage", "Mera", "Tori", "Pteranodon", "Smoke", "Yami", "Suna", "Yuki", "Ope", "Zushi", "Ito", "Paw"
 }
 
@@ -1472,8 +1472,19 @@ local function checkFruits(fruitList)
             local toolName = string.lower(tool.Name)
             for _, fruitName in ipairs(fruitList) do
                 if string.find(toolName, string.lower(fruitName)) then
-                    inventoryCounts[tool.Name] = (inventoryCounts[tool.Name] or 0) + 1
-                    foundAny = true
+                    local isSpecial = false
+                    if tool:GetAttribute("Category") == "Special" then
+                        isSpecial = true
+                    end
+                    local attrs = tool:FindFirstChild("Attributes")
+                    if attrs and attrs:FindFirstChild("Category") and attrs.Category.Value == "Special" then
+                        isSpecial = true
+                    end
+                    
+                    if isSpecial then
+                        inventoryCounts[tool.Name] = (inventoryCounts[tool.Name] or 0) + 1
+                        foundAny = true
+                    end
                     break
                 end
             end
@@ -1505,7 +1516,18 @@ local function storeFruits(fruitList)
             local toolName = string.lower(tool.Name)
             for _, fruitName in ipairs(fruitList) do
                 if string.find(toolName, string.lower(fruitName)) then
-                    hasFruits = true
+                    local isSpecial = false
+                    if tool:GetAttribute("Category") == "Special" then
+                        isSpecial = true
+                    end
+                    local attrs = tool:FindFirstChild("Attributes")
+                    if attrs and attrs:FindFirstChild("Category") and attrs.Category.Value == "Special" then
+                        isSpecial = true
+                    end
+                    
+                    if isSpecial then
+                        hasFruits = true
+                    end
                     break
                 end
             end
@@ -1561,7 +1583,18 @@ local function storeFruits(fruitList)
             local isTargetFruit = false
             for _, fruitName in ipairs(fruitList) do
                 if string.find(toolName, string.lower(fruitName)) then
-                    isTargetFruit = true
+                    local isSpecial = false
+                    if tool:GetAttribute("Category") == "Special" then
+                        isSpecial = true
+                    end
+                    local attrs = tool:FindFirstChild("Attributes")
+                    if attrs and attrs:FindFirstChild("Category") and attrs.Category.Value == "Special" then
+                        isSpecial = true
+                    end
+                    
+                    if isSpecial then
+                        isTargetFruit = true
+                    end
                     break
                 end
             end
@@ -1627,7 +1660,18 @@ local function dropFruits(fruitList)
             local toolName = string.lower(tool.Name)
             for _, fruitName in ipairs(fruitList) do
                 if string.find(toolName, string.lower(fruitName)) then
-                    hasFruits = true
+                    local isSpecial = false
+                    if tool:GetAttribute("Category") == "Special" then
+                        isSpecial = true
+                    end
+                    local attrs = tool:FindFirstChild("Attributes")
+                    if attrs and attrs:FindFirstChild("Category") and attrs.Category.Value == "Special" then
+                        isSpecial = true
+                    end
+                    
+                    if isSpecial then
+                        hasFruits = true
+                    end
                     break
                 end
             end
@@ -1683,7 +1727,18 @@ local function dropFruits(fruitList)
             local isTargetFruit = false
             for _, fruitName in ipairs(fruitList) do
                 if string.find(toolName, string.lower(fruitName)) then
-                    isTargetFruit = true
+                    local isSpecial = false
+                    if tool:GetAttribute("Category") == "Special" then
+                        isSpecial = true
+                    end
+                    local attrs = tool:FindFirstChild("Attributes")
+                    if attrs and attrs:FindFirstChild("Category") and attrs.Category.Value == "Special" then
+                        isSpecial = true
+                    end
+                    
+                    if isSpecial then
+                        isTargetFruit = true
+                    end
                     break
                 end
             end
