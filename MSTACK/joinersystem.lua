@@ -1607,12 +1607,8 @@ local function storeFruits(fruitList)
                 task.wait(0.5)
                 
                 if tool.Parent == character or tool.Parent == backpack then
-                    humanoid:EquipTool(tool)
-                    task.wait(0.1)
-                    VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Backspace, false, game)
-                    task.wait(0.1)
-                    VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Backspace, false, game)
-                    if Fluent then Fluent:Notify({ Title = "Fruit Dropped", Content = "Couldn't store, so dropped: " .. tool.Name, Duration = 3 }) end
+                    humanoid:UnequipTools()
+                    if Fluent then Fluent:Notify({ Title = "Storage Full", Content = "Couldn't store: " .. tool.Name .. " (kept in inventory)", Duration = 3 }) end
                 else
                     if Fluent then Fluent:Notify({ Title = "Fruit Stored", Content = "Successfully stored: " .. tool.Name, Duration = 3 }) end
                 end
@@ -2638,7 +2634,7 @@ Tabs.Teleport:AddButton({
     
     Tabs.Fishing:AddButton({
         Title = "Store Fruits",
-        Description = "Store target fruits (drops if full).",
+        Description = "Store target fruits (keeps in inventory if full).",
         Callback = function() storeFruits(targetFruits) end
     })
     
