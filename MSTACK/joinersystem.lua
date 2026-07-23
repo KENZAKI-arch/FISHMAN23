@@ -1466,6 +1466,21 @@ if not isLobby then
         end
     end)
 
+    -- Auto-return background loop
+    task.spawn(function()
+        while _running and task.wait(1) do
+            if Model.State.autoReturn and not Model.State.isCraftFlying and not Model.State.isAutoTraveling then
+                local character = LocalPlayer.Character
+                local hum = character and character:FindFirstChild("Humanoid")
+                if hum and hum.SeatPart == nil then
+                    -- Trigger return!
+                    local success = Model.ReturnToShip()
+                    if success then task.wait(1) end
+                end
+            end
+        end
+    end)
+
     addConn(RunService.Heartbeat:Connect(function(dt)
         if _running and Model.State.isAutoTraveling then Model.HandleMovement(dt) end
     end))
@@ -2639,6 +2654,15 @@ Tabs.Teleport:AddButton({
                 end
             end)
         end
+    })
+
+    Tabs.Fishing:AddToggle("T_AutoReturn", { 
+        Title = "Auto Return to Hoverboard", 
+        Description = "Automatically flies back to your hoverboard if you fall off.",
+        Default = false, 
+        Callback = function(Value) 
+            Model.State.autoReturn = Value 
+        end 
     })
 
     Tabs.Fishing:AddSlider("S_ShipSpeed", {
