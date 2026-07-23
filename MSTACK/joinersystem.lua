@@ -835,7 +835,7 @@ if not isLobby then
         
         if hoverboard then
             local hbCFrame = hoverboard:IsA("Model") and hoverboard:GetPivot() or hoverboard.CFrame
-            targetVector = (hbCFrame * CFrame.new(0, 3, 4)).Position
+            targetVector = (hbCFrame * CFrame.new(0, 3, 5)).Position
             Model.SaveHoverboardPos(targetVector)
         elseif Model.LoadHoverboardPos() then
             targetVector = Model.LoadHoverboardPos()
@@ -1185,7 +1185,7 @@ if not isLobby then
         local hoverboard = Model.FindHoverboard()
         if hoverboard then
             local hbCFrame = hoverboard:IsA("Model") and hoverboard:GetPivot() or hoverboard.CFrame
-            local tailPos = (hbCFrame * CFrame.new(0, 3, 4)).Position
+            local tailPos = (hbCFrame * CFrame.new(0, 3, 5)).Position
             Model.SaveHoverboardPos(tailPos)
             Model.CraftFlyPath({ tailPos })
         elseif Model.LoadHoverboardPos() then
@@ -2504,7 +2504,7 @@ Tabs.Teleport:AddButton({
                 local hoverboard = Model.FindHoverboard and Model.FindHoverboard()
                 if hoverboard then
                     local hbCFrame = hoverboard:IsA("Model") and hoverboard:GetPivot() or hoverboard.CFrame
-                    local tailPos = (hbCFrame * CFrame.new(0, 3, 4)).Position
+                    local tailPos = (hbCFrame * CFrame.new(0, 3, 5)).Position
                     Model.CraftFlyPath({ tailPos })
                 elseif getgenv().CachedOriginalPos then
                     Model.CraftFlyPath({ getgenv().CachedOriginalPos })
