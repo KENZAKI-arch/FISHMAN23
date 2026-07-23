@@ -836,9 +836,9 @@ if not isLobby then
         if hoverboard then
             local hbCFrame = hoverboard:IsA("Model") and hoverboard:GetPivot() or hoverboard.CFrame
             targetVector = (hbCFrame * CFrame.new(0, 3, 4)).Position
-            getgenv().CachedHoverboardTailPos = targetVector
-        elseif getgenv().CachedHoverboardTailPos then
-            targetVector = getgenv().CachedHoverboardTailPos
+            Model.SaveHoverboardPos(targetVector)
+        elseif Model.LoadHoverboardPos() then
+            targetVector = Model.LoadHoverboardPos()
         else
             return false
         end
@@ -1085,6 +1085,35 @@ if not isLobby then
         Model.State.isBuying = false
     end
 
+    local hoverboardSaveFile = "FISHMAN23_HoverboardPos_" .. LocalPlayer.Name .. ".json"
+    
+    function Model.SaveHoverboardPos(pos)
+        getgenv().CachedHoverboardTailPos = pos
+        if writefile and HttpService then
+            local data = { X = pos.X, Y = pos.Y, Z = pos.Z }
+            pcall(function()
+                writefile(hoverboardSaveFile, HttpService:JSONEncode(data))
+            end)
+        end
+    end
+    
+    function Model.LoadHoverboardPos()
+        if getgenv().CachedHoverboardTailPos then
+            return getgenv().CachedHoverboardTailPos
+        end
+        if isfile and readfile and HttpService and isfile(hoverboardSaveFile) then
+            local success, decoded = pcall(function()
+                return HttpService:JSONDecode(readfile(hoverboardSaveFile))
+            end)
+            if success and type(decoded) == "table" and decoded.X and decoded.Y and decoded.Z then
+                local pos = Vector3.new(decoded.X, decoded.Y, decoded.Z)
+                getgenv().CachedHoverboardTailPos = pos
+                return pos
+            end
+        end
+        return nil
+    end
+
     function Model.FindHoverboard()
         if getgenv().CachedHoverboard and getgenv().CachedHoverboard.Parent then
             return getgenv().CachedHoverboard
@@ -1157,10 +1186,10 @@ if not isLobby then
         if hoverboard then
             local hbCFrame = hoverboard:IsA("Model") and hoverboard:GetPivot() or hoverboard.CFrame
             local tailPos = (hbCFrame * CFrame.new(0, 3, 4)).Position
-            getgenv().CachedHoverboardTailPos = tailPos
+            Model.SaveHoverboardPos(tailPos)
             Model.CraftFlyPath({ tailPos })
-        elseif getgenv().CachedHoverboardTailPos then
-            Model.CraftFlyPath({ getgenv().CachedHoverboardTailPos })
+        elseif Model.LoadHoverboardPos() then
+            Model.CraftFlyPath({ Model.LoadHoverboardPos() })
         else
             Model.CraftFlyPath({ originalPos })
         end
