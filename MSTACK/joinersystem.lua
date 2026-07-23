@@ -834,7 +834,8 @@ if not isLobby then
         local targetVector = nil
         
         if hoverboard then
-            targetVector = (hoverboard.CFrame * CFrame.new(0, 3, 4)).Position
+            local hbCFrame = hoverboard:IsA("Model") and hoverboard:GetPivot() or hoverboard.CFrame
+            targetVector = (hbCFrame * CFrame.new(0, 3, 4)).Position
             getgenv().CachedHoverboardTailPos = targetVector
         elseif getgenv().CachedHoverboardTailPos then
             targetVector = getgenv().CachedHoverboardTailPos
@@ -1089,22 +1090,38 @@ if not isLobby then
             return getgenv().CachedHoverboard
         end
         local character = LocalPlayer.Character
-        local shipName = LocalPlayer.Name .. "Ship"
+        local possibleNames = {
+            LocalPlayer.Name .. "Ship",
+            LocalPlayer.Name .. "Striker",
+            LocalPlayer.Name .. "Hoverboard",
+            LocalPlayer.Name .. "Coffin",
+            LocalPlayer.Name .. "Boat"
+        }
         if character then
             local hum = character:FindFirstChild("Humanoid")
-            if hum and hum.SeatPart and hum.SeatPart.Name == "VehicleSeat" and hum.SeatPart.Parent and hum.SeatPart.Parent.Name == shipName then
-                getgenv().CachedHoverboard = hum.SeatPart
-                return hum.SeatPart
+            if hum and hum.SeatPart and hum.SeatPart.Name == "VehicleSeat" and hum.SeatPart.Parent then
+                local pName = hum.SeatPart.Parent.Name
+                if table.find(possibleNames, pName) or pName:find(LocalPlayer.Name) then
+                    getgenv().CachedHoverboard = hum.SeatPart
+                    return hum.SeatPart
+                end
             end
         end
         local shipsFolder = workspace:FindFirstChild("Ships")
         if shipsFolder then
-            local myShip = shipsFolder:FindFirstChild(shipName)
+            local myShip = nil
+            for _, name in ipairs(possibleNames) do
+                myShip = shipsFolder:FindFirstChild(name)
+                if myShip then break end
+            end
             if myShip then
                 local seat = myShip:FindFirstChild("VehicleSeat", true) or myShip:FindFirstChildOfClass("VehicleSeat")
                 if seat then
                     getgenv().CachedHoverboard = seat
                     return seat
+                else
+                    getgenv().CachedHoverboard = myShip
+                    return myShip
                 end
             end
         end
@@ -1138,7 +1155,8 @@ if not isLobby then
         print("🚀 [MegStackLoc] Flying back to fishing spot...")
         local hoverboard = Model.FindHoverboard()
         if hoverboard then
-            local tailPos = (hoverboard.CFrame * CFrame.new(0, 3, 4)).Position
+            local hbCFrame = hoverboard:IsA("Model") and hoverboard:GetPivot() or hoverboard.CFrame
+            local tailPos = (hbCFrame * CFrame.new(0, 3, 4)).Position
             getgenv().CachedHoverboardTailPos = tailPos
             Model.CraftFlyPath({ tailPos })
         elseif getgenv().CachedHoverboardTailPos then
@@ -2456,7 +2474,8 @@ Tabs.Teleport:AddButton({
                 
                 local hoverboard = Model.FindHoverboard and Model.FindHoverboard()
                 if hoverboard then
-                    local tailPos = (hoverboard.CFrame * CFrame.new(0, 3, 4)).Position
+                    local hbCFrame = hoverboard:IsA("Model") and hoverboard:GetPivot() or hoverboard.CFrame
+                    local tailPos = (hbCFrame * CFrame.new(0, 3, 4)).Position
                     Model.CraftFlyPath({ tailPos })
                 elseif getgenv().CachedOriginalPos then
                     Model.CraftFlyPath({ getgenv().CachedOriginalPos })
