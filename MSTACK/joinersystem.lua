@@ -835,7 +835,7 @@ if not isLobby then
         
         if hoverboard then
             local hbCFrame = hoverboard:IsA("Model") and hoverboard:GetPivot() or hoverboard.CFrame
-            targetVector = (hbCFrame * CFrame.new(0, 3, 5)).Position
+            targetVector = (hbCFrame * CFrame.new(0, 3, 4)).Position
             Model.SaveHoverboardPos(targetVector)
         elseif Model.LoadHoverboardPos() then
             targetVector = Model.LoadHoverboardPos()
@@ -1185,7 +1185,7 @@ if not isLobby then
         local hoverboard = Model.FindHoverboard()
         if hoverboard then
             local hbCFrame = hoverboard:IsA("Model") and hoverboard:GetPivot() or hoverboard.CFrame
-            local tailPos = (hbCFrame * CFrame.new(0, 3, 5)).Position
+            local tailPos = (hbCFrame * CFrame.new(0, 3, 4)).Position
             Model.SaveHoverboardPos(tailPos)
             Model.CraftFlyPath({ tailPos })
         elseif Model.LoadHoverboardPos() then
@@ -2473,10 +2473,12 @@ Tabs.Teleport:AddButton({
         Model.State.isMegStackLoc = Value 
     end })
     
+    local manualTravelInitialized = false
     Tabs.Fishing:AddToggle("T_ManualMegStackLoc", { Title = "Manual Meg Stack Travel", Default = false, Callback = function(Value) 
         if isLobby then if Value then Fluent:Notify({ Title = "Error", Content = "Cannot use in Lobby!", Duration = 3 }); Fluent.Options.T_ManualMegStackLoc:SetValue(false) end return end
         
         if Value then
+            manualTravelInitialized = true
             task.spawn(function()
                 local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
                 if hrp then getgenv().CachedOriginalPos = hrp.Position end
@@ -2496,6 +2498,7 @@ Tabs.Teleport:AddButton({
                 Fluent:Notify({ Title = "Manual Travel", Content = "Arrived at Meg Stack Island!", Duration = 3 })
             end)
         else
+            if not manualTravelInitialized then return end
             task.spawn(function()
                 Model.State.isRefillingMegBait = true -- REQUIRED for flight loop
                 Model.EnableFlight()
@@ -2504,7 +2507,7 @@ Tabs.Teleport:AddButton({
                 local hoverboard = Model.FindHoverboard and Model.FindHoverboard()
                 if hoverboard then
                     local hbCFrame = hoverboard:IsA("Model") and hoverboard:GetPivot() or hoverboard.CFrame
-                    local tailPos = (hbCFrame * CFrame.new(0, 3, 5)).Position
+                    local tailPos = (hbCFrame * CFrame.new(0, 3, 4)).Position
                     Model.CraftFlyPath({ tailPos })
                 elseif getgenv().CachedOriginalPos then
                     Model.CraftFlyPath({ getgenv().CachedOriginalPos })
