@@ -1455,6 +1455,17 @@ if not isLobby then
     task.spawn(function() while _running and task.wait(2) do if Model.State.autoBuy or Model.State.isMegStackLoc or Model.State.autoSell then Model.CheckInventory() end end end)
     task.spawn(function() while _running and task.wait() do if Model.State.isFishing or Model.State.isDeepSeaCatcher then Model.DoFishingCycle() end end end)
 
+    -- Auto-track hoverboard position to memory every 3 seconds to prevent StreamingEnabled drop-off
+    task.spawn(function()
+        while _running and task.wait(3) do
+            local hb = Model.FindHoverboard and Model.FindHoverboard()
+            if hb then
+                local hbCFrame = hb:IsA("Model") and hb:GetPivot() or hb.CFrame
+                getgenv().CachedHoverboardTailPos = (hbCFrame * CFrame.new(0, 3, 4)).Position
+            end
+        end
+    end)
+
     addConn(RunService.Heartbeat:Connect(function(dt)
         if _running and Model.State.isAutoTraveling then Model.HandleMovement(dt) end
     end))
@@ -1831,7 +1842,7 @@ end
 Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
 local Window = Fluent:CreateWindow({
     Title = "🐟 Fishman Hub",
-    SubTitle = "Unified Auto-Fisher v1.0.0",
+    SubTitle = "Unified Auto-Fisher v1.0.1",
     TabWidth = 160,
     Size = UDim2.fromOffset(500, 350),
     Theme = "Darker",
