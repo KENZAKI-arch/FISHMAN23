@@ -1469,7 +1469,7 @@ if not isLobby then
     -- Auto-return background loop
     task.spawn(function()
         while _running and task.wait(1) do
-            if Model.State.autoReturn and not Model.State.isCraftFlying and not Model.State.isAutoTraveling then
+            if Model.State.autoReturn and not Model.State.isCraftFlying and not Model.State.isAutoTraveling and not Model.State.isRefillingMegBait and not Model.State.isCurrentlyCrafting then
                 local character = LocalPlayer.Character
                 local hum = character and character:FindFirstChild("Humanoid")
                 if hum and hum.SeatPart == nil then
