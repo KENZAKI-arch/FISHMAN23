@@ -830,7 +830,6 @@ if not isLobby then
     end
     
     function Model.ReturnToShip()
-        if Model.State.isCraftFlying or Model.State.isRefillingMegBait or Model.State.isCurrentlyCrafting then return false end
         local hoverboard = Model.FindHoverboard()
         local targetVector = nil
         
@@ -891,7 +890,6 @@ if not isLobby then
     end
     
     function Model.ExecuteLegendaryCraft(craftQueue)
-        if Model.State.isCurrentlyCrafting or Model.State.isCraftFlying or Model.State.isRefillingMegBait then return end
         local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
         if not hrp then return end
         local originalPos = hrp.Position
@@ -1160,7 +1158,7 @@ if not isLobby then
     end
 
     function Model.RefillMegBait()
-        if Model.State.isRefillingMegBait or Model.State.isCraftFlying or Model.State.isCurrentlyCrafting then return end
+        if Model.State.isRefillingMegBait then return end
         Model.State.isRefillingMegBait = true
         
         local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
@@ -1474,22 +1472,34 @@ if not isLobby then
             if Model.State.autoReturn and not Model.State.isCraftFlying and not Model.State.isAutoTraveling and not Model.State.isRefillingMegBait and not Model.State.isCurrentlyCrafting then
                 local character = LocalPlayer.Character
                 local hum = character and character:FindFirstChild("Humanoid")
-                if hum and hum.SeatPart == nil then
-                    -- Temporarily turn off Meg Stack if it was on
-                    local wasMegStackOn = Model.State.megStack
-                    if wasMegStackOn and Fluent and Fluent.Options and Fluent.Options.T_MegStack then
-                        Fluent.Options.T_MegStack:SetValue(false)
+                local hrp = character and character:FindFirstChild("HumanoidRootPart")
+                if hum and hum.SeatPart == nil and hrp then
+                    local targetVector = nil
+                    local hb = Model.FindHoverboard and Model.FindHoverboard()
+                    if hb then
+                        local hbCFrame = hb:IsA("Model") and hb:GetPivot() or hb.CFrame
+                        targetVector = (hbCFrame * CFrame.new(0, 3, 4)).Position
+                    elseif Model.LoadHoverboardPos then
+                        targetVector = Model.LoadHoverboardPos()
                     end
                     
-                    -- Trigger return!
-                    local success = Model.ReturnToShip()
-                    
-                    if success then 
-                        -- Turn Meg Stack back on since we are safe on the hoverboard
+                    if targetVector and (hrp.Position - targetVector).Magnitude > 20 then
+                        -- Temporarily turn off Meg Stack if it was on
+                        local wasMegStackOn = Model.State.megStack
                         if wasMegStackOn and Fluent and Fluent.Options and Fluent.Options.T_MegStack then
-                            Fluent.Options.T_MegStack:SetValue(true)
+                            Fluent.Options.T_MegStack:SetValue(false)
                         end
-                        task.wait(1) 
+                        
+                        -- Trigger return!
+                        local success = Model.ReturnToShip()
+                        
+                        if success then 
+                            -- Turn Meg Stack back on since we are safe on the hoverboard
+                            if wasMegStackOn and Fluent and Fluent.Options and Fluent.Options.T_MegStack then
+                                Fluent.Options.T_MegStack:SetValue(true)
+                            end
+                            task.wait(1) 
+                        end
                     end
                 end
             end
