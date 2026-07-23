@@ -262,8 +262,8 @@ if not isLobby then
     local LEGENDARY_FISHES  = { "Anglerfish", "Golden Ribbon Angelfish", "Golden Polka Puffer", "Golden Tigerfin" }
     local MAX_PELI            = 1000000
     local BAIT_NAME           = "Common Fish Bait"
-    local MIN_BAIT            = 10
-    local BUY_AMOUNT          = 290
+    local MIN_BAIT            = 1
+    local BUY_AMOUNT          = 300
     local BAIT_SEARCH_RADIUS  = 25
     local THROW_ANIMATION_ID  = "rbxassetid://140322334422224"
     local REEL_ANIMATION_ID   = "rbxassetid://136623058564703"
