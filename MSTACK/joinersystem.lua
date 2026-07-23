@@ -830,6 +830,7 @@ if not isLobby then
     end
     
     function Model.ReturnToShip()
+        if Model.State.isCraftFlying or Model.State.isRefillingMegBait or Model.State.isCurrentlyCrafting then return false end
         local hoverboard = Model.FindHoverboard()
         local targetVector = nil
         
@@ -890,6 +891,7 @@ if not isLobby then
     end
     
     function Model.ExecuteLegendaryCraft(craftQueue)
+        if Model.State.isCurrentlyCrafting or Model.State.isCraftFlying or Model.State.isRefillingMegBait then return end
         local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
         if not hrp then return end
         local originalPos = hrp.Position
@@ -1158,7 +1160,7 @@ if not isLobby then
     end
 
     function Model.RefillMegBait()
-        if Model.State.isRefillingMegBait then return end
+        if Model.State.isRefillingMegBait or Model.State.isCraftFlying or Model.State.isCurrentlyCrafting then return end
         Model.State.isRefillingMegBait = true
         
         local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
