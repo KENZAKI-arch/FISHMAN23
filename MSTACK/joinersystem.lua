@@ -2729,6 +2729,16 @@ Tabs.Autofarm:AddButton({
 })
 
 Tabs.Autofarm:AddButton({                   
+    Title = "Auto Reroll Skypian",
+    Description = "Executes the auto reroll skypian script.",
+    Callback = function()
+        local scriptURL = "https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/main/MSTACK/auto_reroll_skypian.lua?t="..tostring(tick())
+        loadstring(game:HttpGet(scriptURL))()
+        Fluent:Notify({ Title = "Skypian Reroll Loaded", Content = "Auto reroll script initialized.", Duration = 3 })
+    end
+})
+
+Tabs.Autofarm:AddButton({                   
     Title = "Load CombinedAutoLoad (Autofarm)",
     Description = "Executes the script and queues it for future teleports.",
     Callback = function()
