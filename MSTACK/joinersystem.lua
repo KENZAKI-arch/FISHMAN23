@@ -1473,9 +1473,22 @@ if not isLobby then
                 local character = LocalPlayer.Character
                 local hum = character and character:FindFirstChild("Humanoid")
                 if hum and hum.SeatPart == nil then
+                    -- Temporarily turn off Meg Stack if it was on
+                    local wasMegStackOn = Model.State.megStack
+                    if wasMegStackOn and Fluent and Fluent.Options and Fluent.Options.T_MegStack then
+                        Fluent.Options.T_MegStack:SetValue(false)
+                    end
+                    
                     -- Trigger return!
                     local success = Model.ReturnToShip()
-                    if success then task.wait(1) end
+                    
+                    if success then 
+                        -- Turn Meg Stack back on since we are safe on the hoverboard
+                        if wasMegStackOn and Fluent and Fluent.Options and Fluent.Options.T_MegStack then
+                            Fluent.Options.T_MegStack:SetValue(true)
+                        end
+                        task.wait(1) 
+                    end
                 end
             end
         end
