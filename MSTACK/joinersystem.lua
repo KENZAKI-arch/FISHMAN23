@@ -1484,6 +1484,7 @@ if not isLobby then
                     end
                     
                     if targetVector and (hrp.Position - targetVector).Magnitude > 20 then
+                        print("🚀 [Auto Return] Distance > 20 studs! Flying back to the hoverboard now...")
                         -- Temporarily turn off Meg Stack if it was on
                         local wasMegStackOn = Model.State.megStack
                         if wasMegStackOn and Fluent and Fluent.Options and Fluent.Options.T_MegStack then
@@ -1494,6 +1495,7 @@ if not isLobby then
                         local success = Model.ReturnToShip()
                         
                         if success then 
+                            print("✅ [Auto Return] Safely landed on the hoverboard platform!")
                             -- Turn Meg Stack back on since we are safe on the hoverboard
                             if wasMegStackOn and Fluent and Fluent.Options and Fluent.Options.T_MegStack then
                                 Fluent.Options.T_MegStack:SetValue(true)
