@@ -2809,6 +2809,24 @@ Tabs.Autofarm:AddToggle("T_CyborgAuto", {
     Title = "Toggle Cyborg Autofarm", 
     Default = false, 
     Callback = function(Value)
+        if Value then
+            -- Temporarily turn off auto store fruit if it was on
+            if Fluent and Fluent.Options and Fluent.Options.T_AutoStoreFruit then
+                getgenv()._wasAutoStoreFruitOn = Fluent.Options.T_AutoStoreFruit.Value
+                if getgenv()._wasAutoStoreFruitOn then
+                    Fluent.Options.T_AutoStoreFruit:SetValue(false)
+                    Fluent:Notify({ Title = "System", Content = "Auto Store Fruit paused during Cyborg Autofarm", Duration = 3 })
+                end
+            end
+        else
+            -- Restore auto store fruit if it was previously on
+            if getgenv()._wasAutoStoreFruitOn and Fluent and Fluent.Options and Fluent.Options.T_AutoStoreFruit then
+                Fluent.Options.T_AutoStoreFruit:SetValue(true)
+                getgenv()._wasAutoStoreFruitOn = false
+                Fluent:Notify({ Title = "System", Content = "Auto Store Fruit resumed", Duration = 3 })
+            end
+        end
+
         task.spawn(function()
             if Value then
                 print("triggering title: \"Megalodon Slayer\"")
