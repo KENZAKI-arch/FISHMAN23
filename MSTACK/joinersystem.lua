@@ -2006,7 +2006,7 @@ Tabs = {
                     local reserved = events:WaitForChild("reserved", 9e9)
                     pcall(function() reserved:InvokeServer(psCode) end)
                 end)
-                task.wait(1.5) 
+                task.wait(3) 
             end
             
             local confirmArgs = { [1] = destination }
