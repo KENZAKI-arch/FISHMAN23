@@ -2032,17 +2032,23 @@ Tabs = {
                                 game.Loaded:Wait()
                             end
 
+                            -- Step 1: Open sea selection menu
                             local args1 = {
                                 [1] = true;
                             }
                             remoteEvent:FireServer(unpack(args1))
 
-                            task.wait(5)
+                            task.wait(2)
 
+                            -- Step 2: Select "Second Sea" from the menu
                             local args2 = {
                                 [1] = "Second Sea";
                             }
+                            remoteEvent:FireServer(unpack(args2))
 
+                            task.wait(2)
+
+                            -- Step 3: Confirm on ConfirmationPrompt
                             local confirmationPrompt = LocalPlayer:WaitForChild("PlayerGui", 9e9):WaitForChild("ConfirmationPrompt", 9e9)
                             confirmationPrompt:WaitForChild("RemoteEvent", 9e9):FireServer(unpack(args2))
                         else
