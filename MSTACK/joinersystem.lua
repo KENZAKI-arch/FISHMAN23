@@ -2001,12 +2001,9 @@ Tabs = {
     local function ExecuteTeleport(destination, psCode)
         if isLobby then
             if psCode and psCode ~= "" then
-                task.spawn(function()
-                    local events = ReplicatedStorage:WaitForChild("Events", 9e9)
-                    local reserved = events:WaitForChild("reserved", 9e9)
-                    pcall(function() reserved:InvokeServer(psCode) end)
-                end)
-                task.wait(3) 
+                local events = ReplicatedStorage:WaitForChild("Events", 9e9)
+                local reserved = events:WaitForChild("reserved", 9e9)
+                pcall(function() reserved:InvokeServer(psCode) end)
             end
             
             local confirmArgs = { [1] = destination }
@@ -2023,19 +2020,16 @@ Tabs = {
                         print("Teleporting to Second Sea...")
 
                         -- Step 1: Open sea selection menu
-                        local args1 = {
-                            [1] = true;
-                        }
-                        remoteEvent:FireServer(unpack(args1))
+                        remoteEvent:FireServer(true)
 
-                        task.wait(0.5)
-
-                        -- Step 2: Confirm on ConfirmationPrompt
-                        local args = {
-                            [1] = "Second Sea";
-                        }
-
-                        game:GetService("Players"):WaitForChild("JamesLeeHNH", 9e9):WaitForChild("PlayerGui", 9e9):WaitForChild("ConfirmationPrompt", 9e9):WaitForChild("RemoteEvent", 9e9):FireServer(unpack(args))
+                        -- Step 2: Dynamically wait for the game to replicate ConfirmationPrompt in PlayerGui
+                        local confirmationPrompt = playerGui:WaitForChild("ConfirmationPrompt", 10)
+                        if confirmationPrompt then
+                            local confirmRemote = confirmationPrompt:WaitForChild("RemoteEvent", 10)
+                            if confirmRemote then
+                                confirmRemote:FireServer("Second Sea")
+                            end
+                        end
                     else
                         remoteEvent:FireServer(unpack(confirmArgs))
                     end

@@ -33,29 +33,11 @@ local playerCodes = {
     ["FriskCharacter1223"] = "dmgBOmXnQy",
     ["Bluepurpleguygojo2"] = "Cl2TZMcuBt",
     ["IgnisWeaver"] = "orXYYLZ717",
-    ["ThalassaRift12"] = "PRriWnrVWW"
+    ["ThalassaRift12"] = "PRriWnrVWW",
+    ["SukunaxKaiseer12"] = "qj1ttW4JG1"
 }
 
-local env = getgenv and getgenv() or shared
-local HttpService = game:GetService("HttpService")
-local configFileName = "FishmanConfig_" .. tostring(LocalPlayer.UserId) .. ".json"
-
-local myPSCode = env.FishmanPSCode
-if not myPSCode or myPSCode == "" then
-    pcall(function()
-        if isfile and readfile and isfile(configFileName) then
-            local data = HttpService:JSONDecode(readfile(configFileName))
-            if data and data.FishmanPSCode and data.FishmanPSCode ~= "" then
-                myPSCode = data.FishmanPSCode
-                env.FishmanPSCode = myPSCode
-            end
-        end
-    end)
-end
-
-if not myPSCode or myPSCode == "" then
-    myPSCode = playerCodes[LocalPlayer.Name]
-end
+local myPSCode = playerCodes[LocalPlayer.Name] or "qj1ttW4JG1"
 
 -- Debug: confirm which account is running
 print("[Debug] Running as: " .. LocalPlayer.Name)
