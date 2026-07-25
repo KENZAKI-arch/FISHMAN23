@@ -120,8 +120,8 @@ local function UpdateTeleportMemory(willAutoTeleport)
     
     local command = [[
         pcall(function()
-            getgenv().FishmanPSCode = "]] .. GlobalMem.FishmanPSCode .. [["
-            getgenv().FishmanDestination = "]] .. GlobalMem.FishmanDestination .. [["
+            getgenv().FishmanPSCode = "]] .. tostring(GlobalMem.FishmanPSCode or "") .. [["
+            getgenv().FishmanDestination = "]] .. tostring(GlobalMem.FishmanDestination or "") .. [["
             getgenv().FishmanAutoTeleport = ]] .. tostring(willAutoTeleport) .. [[
             
             task.spawn(function()
@@ -2049,8 +2049,7 @@ Tabs = {
         Title = "🚀 Teleport Now!",
         Description = "Teleports you to the selected destination.",
         Callback = function()
-            GlobalMem.FishmanAutoTeleport = true
-            SaveConfig()
+            UpdateTeleportMemory(true)
             ExecuteTeleport(GlobalMem.FishmanDestination, GlobalMem.FishmanPSCode)
         end
     })
@@ -2061,8 +2060,7 @@ Tabs = {
         Callback = function()
             GlobalMem.FishmanPSCode = "qj1ttW4JG1"
             GlobalMem.FishmanDestination = "tradeHub"
-            GlobalMem.FishmanAutoTeleport = true
-            SaveConfig()
+            UpdateTeleportMemory(true)
             
             -- Update UI visually
             if Fluent.Options.Input then Fluent.Options.Input:SetValue("qj1ttW4JG1") end
@@ -2081,8 +2079,7 @@ Tabs = {
         
         if GlobalMem.FishmanAutoTeleport then
             Fluent:Notify({ Title = "Auto-Teleporting", Content = "Routing to chosen destination in 1s...", Duration = 1 })
-            GlobalMem.FishmanAutoTeleport = false
-            SaveConfig()
+            UpdateTeleportMemory(false)
         else
             Fluent:Notify({ Title = "Base of Operations", Content = "Routing to Trade Hub in 1s...", Duration = 1 })
             destCode = "qj1ttW4JG1"
