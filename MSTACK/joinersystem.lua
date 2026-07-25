@@ -2024,7 +2024,27 @@ Tabs = {
                         local chooseType = playerGui:WaitForChild("chooseType", 20)
                         local frame = chooseType:WaitForChild("Frame", 20)
                         local remoteEvent = frame:WaitForChild("RemoteEvent", 20)
-                        remoteEvent:FireServer(unpack(confirmArgs))
+                        
+                        if GlobalMem.FishmanDestination == "Second Sea" then
+                            -- Specific steps for Second Sea destination
+                            local function getNil(name, class) 
+                                for _, v in next, getnilinstances() do 
+                                    if v.ClassName == class and v.Name == name then 
+                                        return v
+                                    end 
+                                end 
+                            end
+
+                            local args1 = { true }
+                            Instance.new("RemoteEvent", nil):FireServer(unpack(args1))
+                            
+                            task.wait(0.5) -- slight delay for safety
+
+                            local args2 = { "Second Sea" }
+                            Instance.new("RemoteEvent", nil):FireServer(unpack(args2))
+                        else
+                            remoteEvent:FireServer(unpack(confirmArgs))
+                        end
                     end
                 end)
             else
