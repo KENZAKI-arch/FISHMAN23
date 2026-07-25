@@ -2006,7 +2006,7 @@ Tabs = {
                     local reserved = events:WaitForChild("reserved", 9e9)
                     pcall(function() reserved:InvokeServer(psCode) end)
                 end)
-                task.wait(3) 
+                if not game:IsLoaded() then game.Loaded:Wait() end
             end
             
             local confirmArgs = { [1] = destination }
