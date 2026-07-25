@@ -1773,6 +1773,7 @@ Tabs.Autofarm:AddButton({
     Title = "Load CombinedAutoLoad (Autofarm)",
     Description = "Executes the script and queues it for future teleports.",
     Callback = function()
+        getgenv().FishmanAllowAutoLoad = true
         local scriptURL = "https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/CombinedAutoLoad.lua"
         
         -- Execute the script. It will automatically queue itself for future teleports.
