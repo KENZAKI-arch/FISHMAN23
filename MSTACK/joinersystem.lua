@@ -2028,23 +2028,16 @@ Tabs = {
                         if GlobalMem.FishmanDestination == "Second Sea" then
                             -- Specific steps for Second Sea destination
                             print("Teleporting to Second Sea...")
-                            function getNil(name,class) for _,v in next, getnilinstances()do if v.ClassName==class and v.Name==name then return v;end end end
-
                             if not game:IsLoaded() then
                                 game.Loaded:Wait()
                             end
 
-                            local args1 = {
-                                true
+                            local args = {
+                                [1] = "Second Sea";
                             }
-                            Instance.new("RemoteEvent", nil):FireServer(unpack(args1))
 
-                            task.wait(5)
-
-                            local args2 = {
-                                "Second Sea"
-                            }
-                            Instance.new("RemoteEvent", nil):FireServer(unpack(args2))
+                            local confirmationPrompt = LocalPlayer:WaitForChild("PlayerGui", 9e9):WaitForChild("ConfirmationPrompt", 9e9)
+                            confirmationPrompt:WaitForChild("RemoteEvent", 9e9):FireServer(unpack(args))
                         else
                             remoteEvent:FireServer(unpack(confirmArgs))
                         end
