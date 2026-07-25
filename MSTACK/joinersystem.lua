@@ -2988,7 +2988,6 @@ Tabs.Settings:AddButton({
         end
         task.wait(1)
         loadstring(game:HttpGet("https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/main/MSTACK/joinersystem.lua?t="..tostring(tick())))()
-        end)
     end
 })
 
