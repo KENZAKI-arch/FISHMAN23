@@ -144,7 +144,7 @@ local function GetCurrentPSCode()
             local main = settingsGui:FindFirstChild("Main")
             if main then
                 local codeLabel = main:FindFirstChild("Code")
-                if codeLabel and codeLabel:IsA("TextLabel") or codeLabel:IsA("TextBox") then
+                if codeLabel and (codeLabel:IsA("TextLabel") or codeLabel:IsA("TextBox")) then
                     return codeLabel.Text
                 end
             end
@@ -2813,7 +2813,7 @@ Tabs.Teleport:AddButton({
         end
     end)
     
-    if GetCurrentPSCode() == "qj1ttW4JG1" and not isLobby then
+    if not isLobby and GetCurrentPSCode() == "qj1ttW4JG1" then
         Fluent:Notify({ Title = "Detection", Content = "Target Server qj1ttW4JG1 Detected.", Duration = 5 })
     end
 
@@ -2824,6 +2824,14 @@ Tabs.Autofarm:AddToggle("T_CyborgAuto", {
     Title = "Toggle Cyborg Autofarm", 
     Default = false, 
     Callback = function(Value)
+        if isLobby then 
+            if Value then 
+                Fluent:Notify({ Title = "Error", Content = "Cannot farm in Lobby!", Duration = 3 }) 
+                if Fluent.Options.T_CyborgAuto then Fluent.Options.T_CyborgAuto:SetValue(false) end 
+            end 
+            return 
+        end
+
         if Value then
             -- Temporarily turn off auto store fruit if it was on
             if Fluent and Fluent.Options and Fluent.Options.T_AutoStoreFruit then
@@ -2852,7 +2860,7 @@ Tabs.Autofarm:AddToggle("T_CyborgAuto", {
             end
         end)
 
-        if not getgenv().ToggleCyborgAutofarm then
+        if Value and not getgenv().ToggleCyborgAutofarm then
             pcall(function()
                 loadstring(game:HttpGet("https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/main/protov4_nofactory.lua"))()
             end)
