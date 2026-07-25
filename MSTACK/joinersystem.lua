@@ -801,7 +801,7 @@ if not isLobby then
             tween:Play()
             
             while tween.PlaybackState == Enum.PlaybackState.Playing do
-                if not Model.State.autoCraft and not Model.State.isRefillingMegBait then 
+                if not Model.State.autoCraft and not Model.State.isRefillingMegBait and not Model.State.isManualTraveling then 
                     tween:Cancel()
                     Model.State.isCraftFlying = false
                     break 
@@ -824,7 +824,7 @@ if not isLobby then
 
     function Model.CraftFlyPath(pathTable)
         for _, targetPos in ipairs(pathTable) do 
-            if not Model.State.autoCraft and not Model.State.isRefillingMegBait then break end
+            if not Model.State.autoCraft and not Model.State.isRefillingMegBait and not Model.State.isManualTraveling then break end
             CraftFlyToAndWait(targetPos) 
         end
     end
@@ -1469,7 +1469,7 @@ if not isLobby then
     -- Auto-return background loop
     task.spawn(function()
         while _running and task.wait(1) do
-            if Model.State.autoReturn and not Model.State.isCraftFlying and not Model.State.isAutoTraveling and not Model.State.isRefillingMegBait and not Model.State.isCurrentlyCrafting then
+            if Model.State.autoReturn and not Model.State.isCraftFlying and not Model.State.isAutoTraveling and not Model.State.isRefillingMegBait and not Model.State.isManualTraveling and not Model.State.isCurrentlyCrafting then
                 local character = LocalPlayer.Character
                 local hum = character and character:FindFirstChild("Humanoid")
                 local hrp = character and character:FindFirstChild("HumanoidRootPart")
@@ -2540,14 +2540,21 @@ Tabs.Teleport:AddButton({
                 if Model.UnequipRod then Model.UnequipRod() end
                 task.wait(1)
                 
-                Model.State.isRefillingMegBait = true -- REQUIRED for flight loop
+                if not Fluent.Options.T_ManualMegStackLoc.Value then return end
+                
+                Model.State.isManualTraveling = true
                 Model.EnableFlight()
                 Fluent:Notify({ Title = "Manual Travel", Content = "Flying to Meg Stack Island...", Duration = 3 })
                 Model.CraftFlyPath({ Vector3.new(-6760, 27, 9191) })
-                Model.State.isRefillingMegBait = false
                 
-                Model.DisableFlight()
-                Fluent:Notify({ Title = "Manual Travel", Content = "Arrived at Meg Stack Island!", Duration = 3 })
+                if Model.State.isManualTraveling then
+                    Model.State.isManualTraveling = false
+                    Model.DisableFlight()
+                    Fluent:Notify({ Title = "Manual Travel", Content = "Arrived at Meg Stack Island!", Duration = 3 })
+                    if Fluent and Fluent.Options and Fluent.Options.T_ManualMegStackLoc then
+                        Fluent.Options.T_ManualMegStackLoc:SetValue(false)
+                    end
+                end
             end)
         else
             -- Restore Auto Return if it was previously on
@@ -2558,25 +2565,15 @@ Tabs.Teleport:AddButton({
             end
 
             if not manualTravelInitialized then return end
-            task.spawn(function()
-                Model.State.isRefillingMegBait = true -- REQUIRED for flight loop
-                Model.EnableFlight()
-                Fluent:Notify({ Title = "Manual Travel", Content = "Flying back...", Duration = 3 })
-                
-                local hoverboard = Model.FindHoverboard and Model.FindHoverboard()
-                if hoverboard then
-                    local hbCFrame = hoverboard:IsA("Model") and hoverboard:GetPivot() or hoverboard.CFrame
-                    local tailPos = (hbCFrame * CFrame.new(0, 3, 4)).Position
-                    Model.CraftFlyPath({ tailPos })
-                elseif getgenv().CachedOriginalPos then
-                    Model.CraftFlyPath({ getgenv().CachedOriginalPos })
-                end
-                
+            
+            if Model.State.isManualTraveling then
+                Model.State.isManualTraveling = false
                 Model.State.isRefillingMegBait = false
+                Model.State.isCraftFlying = false
                 Model.DisableFlight()
                 if Model.EquipRod then Model.EquipRod() end
-                Fluent:Notify({ Title = "Manual Travel", Content = "Returned successfully!", Duration = 3 })
-            end)
+                Fluent:Notify({ Title = "Manual Travel", Content = "Travel paused - flight disabled.", Duration = 3 })
+            end
         end
     end })
     
