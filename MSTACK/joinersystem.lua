@@ -2038,21 +2038,32 @@ Tabs = {
                     local remoteEvent = frame:WaitForChild("RemoteEvent", 20)
                     
                     if destination == "Second Sea" then
-                        print("[Debug - Teleport] Teleporting to Second Sea (Firing sea menu & waiting for ConfirmationPrompt)...")
+                        print("[Debug - Teleport] Teleporting to Second Sea (Step 1: Selecting 'Universe Hub' on choices menu)...")
 
-                        -- Step 1: Open sea selection menu
-                        remoteEvent:FireServer(true)
+                        -- Step 1: Advance past choices screen by selecting Universe Hub
+                        print("[Debug - Teleport] Trying remoteEvent:FireServer('universeHub')...")
+                        pcall(function() remoteEvent:FireServer("universeHub") end)
+                        task.wait(0.5)
+                        print("[Debug - Teleport] Trying remoteEvent:FireServer('Universe Hub')...")
+                        pcall(function() remoteEvent:FireServer("Universe Hub") end)
 
                         -- Step 2: Dynamically wait for the game to replicate ConfirmationPrompt in PlayerGui
-                        local confirmationPrompt = playerGui:WaitForChild("ConfirmationPrompt", 10)
+                        print("[Debug - Teleport] Step 1 fired. Waiting for sea selection UI (ConfirmationPrompt) to replicate in PlayerGui...")
+                        local confirmationPrompt = playerGui:WaitForChild("ConfirmationPrompt", 15)
                         if confirmationPrompt then
-                            local confirmRemote = confirmationPrompt:WaitForChild("RemoteEvent", 10)
+                            print("[Debug - Teleport] Found ConfirmationPrompt! Firing RemoteEvent for 'Second Sea'...")
+                            local confirmRemote = confirmationPrompt:WaitForChild("RemoteEvent", 15)
                             if confirmRemote then
-                                print("[Debug - Teleport] Firing ConfirmationPrompt RemoteEvent for Second Sea...")
                                 confirmRemote:FireServer("Second Sea")
+                                print("[Debug - Teleport] 'Second Sea' RemoteEvent fired successfully!")
+                            else
+                                warn("[Debug - Teleport] RemoteEvent not found inside ConfirmationPrompt!")
                             end
                         else
-                            warn("[Debug - Teleport] ConfirmationPrompt failed to replicate within 10s!")
+                            warn("[Debug - Teleport] ConfirmationPrompt failed to replicate within 15s! Dumping PlayerGui children for debugging:")
+                            for _, child in ipairs(playerGui:GetChildren()) do
+                                print(" - PlayerGui Child:", child.Name, "| Class:", child.ClassName)
+                            end
                         end
                     else
                         print(string.format("[Debug - Teleport] Firing lobby RemoteEvent for destination '%s'...", tostring(destination)))
