@@ -76,6 +76,9 @@ GlobalMem.FishmanAutoTeleport = GlobalMem.FishmanAutoTeleport or false
 GlobalMem.FishmanAutoJoin = GlobalMem.FishmanAutoJoin or false
 if GlobalMem.FishmanAutoReconnect == nil then GlobalMem.FishmanAutoReconnect = true end
 
+print(string.format("[Debug - Teleport] Startup Memory State -> PlaceId: %d | isLobby: %s | AutoTeleport: %s | Dest: %s | PSCode: %s", 
+    game.PlaceId, tostring(isLobby), tostring(GlobalMem.FishmanAutoTeleport), tostring(GlobalMem.FishmanDestination), tostring(GlobalMem.FishmanPSCode)))
+
 local function SaveConfig()
     pcall(function()
         if writefile then
@@ -115,8 +118,13 @@ local qot = queue_on_teleport or (syn and syn.queue_on_teleport) or (fluxus and 
 local function UpdateTeleportMemory(willAutoTeleport)
     GlobalMem.FishmanAutoTeleport = willAutoTeleport
     SaveConfig()
+    print(string.format("[Debug - Teleport] UpdateTeleportMemory called -> AutoTeleport: %s | Dest: %s | PSCode: %s", tostring(willAutoTeleport), tostring(GlobalMem.FishmanDestination), tostring(GlobalMem.FishmanPSCode)))
     
-    if not qot then return end
+    if not qot then 
+        warn("[Debug - Teleport] queue_on_teleport (qot) is NOT supported/available on this executor! Relying on file disk I/O only.")
+        return 
+    end
+    print("[Debug - Teleport] Injecting teleport state into queue_on_teleport for next server hop...")
     
     local command = [[
         pcall(function()
@@ -1999,18 +2007,27 @@ Tabs = {
     })
 
     local function ExecuteTeleport(destination, psCode)
-        if not game:IsLoaded() then game.Loaded:Wait() end
+        print(string.format("[Debug - Teleport] ExecuteTeleport triggered -> Dest: '%s' | PSCode: '%s' | isLobby: %s", tostring(destination), tostring(psCode), tostring(isLobby)))
+        if not game:IsLoaded() then 
+            print("[Debug - Teleport] Game not loaded yet! Waiting for game.Loaded...")
+            game.Loaded:Wait() 
+        end
 
         if isLobby then
             if psCode and psCode ~= "" then
+                print(string.format("[Debug - Teleport] In Lobby: Reserving/Invoking Private Server code '%s' via RemoteFunction...", tostring(psCode)))
                 local events = ReplicatedStorage:WaitForChild("Events", 9e9)
                 local reserved = events:WaitForChild("reserved", 9e9)
                 pcall(function() reserved:InvokeServer(psCode) end)
+                print("[Debug - Teleport] Private Server reservation returned/completed.")
+            else
+                print("[Debug - Teleport] In Lobby: No PSCode provided. Proceeding to public destination.")
             end
             
             local confirmArgs = { [1] = destination }
             pcall(function()
                 if destination == "Lobby" then
+                    print("[Debug - Teleport] Teleporting directly to Main Lobby Place ID: " .. tostring(targetPlaceId))
                     if not game:IsLoaded() then game.Loaded:Wait() end
                     TeleportService:Teleport(targetPlaceId, LocalPlayer)
                 else
@@ -2020,7 +2037,7 @@ Tabs = {
                     local remoteEvent = frame:WaitForChild("RemoteEvent", 20)
                     
                     if destination == "Second Sea" then
-                        print("Teleporting to Second Sea...")
+                        print("[Debug - Teleport] Teleporting to Second Sea (Firing sea menu & waiting for ConfirmationPrompt)...")
 
                         -- Step 1: Open sea selection menu
                         remoteEvent:FireServer(true)
@@ -2030,16 +2047,21 @@ Tabs = {
                         if confirmationPrompt then
                             local confirmRemote = confirmationPrompt:WaitForChild("RemoteEvent", 10)
                             if confirmRemote then
+                                print("[Debug - Teleport] Firing ConfirmationPrompt RemoteEvent for Second Sea...")
                                 confirmRemote:FireServer("Second Sea")
                             end
+                        else
+                            warn("[Debug - Teleport] ConfirmationPrompt failed to replicate within 10s!")
                         end
                     else
+                        print(string.format("[Debug - Teleport] Firing lobby RemoteEvent for destination '%s'...", tostring(destination)))
                         if not game:IsLoaded() then game.Loaded:Wait() end
                         remoteEvent:FireServer(unpack(confirmArgs))
                     end
                 end
             end)
         else
+            print(string.format("[Debug - Teleport] Not in Lobby (PlaceId: %d). Teleporting character to Main Lobby Place ID %d first so routing can complete...", game.PlaceId, targetPlaceId))
             if not game:IsLoaded() then game.Loaded:Wait() end
             TeleportService:Teleport(targetPlaceId, LocalPlayer)
         end
@@ -2049,6 +2071,7 @@ Tabs = {
         Title = "🚀 Teleport Now!",
         Description = "Teleports you to the selected destination.",
         Callback = function()
+            print("[Debug - Teleport] '🚀 Teleport Now!' clicked in UI.")
             UpdateTeleportMemory(true)
             ExecuteTeleport(GlobalMem.FishmanDestination, GlobalMem.FishmanPSCode)
         end
@@ -2058,6 +2081,7 @@ Tabs = {
         Title = "🏠 Return to Base of Operations",
         Description = "Instantly teleports you to tradeHub in qj1ttW4JG1.",
         Callback = function()
+            print("[Debug - Teleport] '🏠 Return to Base of Operations' clicked in UI.")
             GlobalMem.FishmanPSCode = "qj1ttW4JG1"
             GlobalMem.FishmanDestination = "tradeHub"
             UpdateTeleportMemory(true)
@@ -2076,11 +2100,14 @@ Tabs = {
     if isLobby then
         local destCode = GlobalMem.FishmanPSCode
         local destPlace = GlobalMem.FishmanDestination
+        print(string.format("[Debug - Teleport] Lobby Auto-Route Check -> FishmanAutoTeleport: %s | Saved Dest: '%s' | Saved PSCode: '%s'", tostring(GlobalMem.FishmanAutoTeleport), tostring(destPlace), tostring(destCode)))
         
         if GlobalMem.FishmanAutoTeleport then
+            print("[Debug - Teleport] AutoTeleport is TRUE! Proceeding to warp to saved destination.")
             Fluent:Notify({ Title = "Auto-Teleporting", Content = "Routing to chosen destination in 1s...", Duration = 1 })
             UpdateTeleportMemory(false)
         else
+            print("[Debug - Teleport] AutoTeleport is FALSE. Defaulting emergency warp to Trade Hub (qj1ttW4JG1).")
             Fluent:Notify({ Title = "Base of Operations", Content = "Routing to Trade Hub in 1s...", Duration = 1 })
             destCode = "qj1ttW4JG1"
             destPlace = "tradeHub"
@@ -2088,6 +2115,7 @@ Tabs = {
         
         task.spawn(function()
             task.wait(1)
+            print(string.format("[Debug - Teleport] Executing lobby auto-route now -> Dest: '%s' | PSCode: '%s'", tostring(destPlace), tostring(destCode)))
             ExecuteTeleport(destPlace, destCode)
         end)
     end
