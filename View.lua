@@ -3,7 +3,7 @@ local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 
-function View.Build(onToggleCallback)
+function View.Build(onToggleCallback, onCloseCallback)
     local LocalPlayer = Players.LocalPlayer
     local screenGui = Instance.new("ScreenGui")
     screenGui.Name = "AutoFarmGui"
@@ -16,7 +16,7 @@ function View.Build(onToggleCallback)
     toggleBtn.Size = UDim2.new(0, 180, 0, 50)
     toggleBtn.Position = UDim2.new(0.5, -90, 0.1, 0)
     toggleBtn.BackgroundColor3 = Color3.fromRGB(255, 85, 85)
-    toggleBtn.Text = "AUTO FARMer: OFF"
+    toggleBtn.Text = "AUTO FARM: OFF"
     toggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
     toggleBtn.Font = Enum.Font.GothamBold
     toggleBtn.TextSize = 14
@@ -24,25 +24,49 @@ function View.Build(onToggleCallback)
 
     Instance.new("UICorner", toggleBtn).CornerRadius = UDim.new(0, 8)
 
+    -- Close / Cleanup Button ("X")
+    local closeBtn = Instance.new("TextButton")
+    closeBtn.Name = "CloseButton"
+    closeBtn.Size = UDim2.new(0, 40, 0, 50)
+    closeBtn.Position = UDim2.new(1, 6, 0, 0)
+    closeBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
+    closeBtn.Text = "X"
+    closeBtn.TextColor3 = Color3.fromRGB(255, 85, 85)
+    closeBtn.Font = Enum.Font.GothamBold
+    closeBtn.TextSize = 18
+    closeBtn.Parent = toggleBtn
+
+    Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, 8)
+
+    local stroke = Instance.new("UIStroke", closeBtn)
+    stroke.Color = Color3.fromRGB(255, 85, 85)
+    stroke.Thickness = 1.5
+    stroke.Transparency = 0.3
+
     -- Dragging Logic
     local dragging, dragInput, dragStart, startPos
-    
-    toggleBtn.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            dragging = true
-            dragStart = input.Position
-            startPos = toggleBtn.Position
-            input.Changed:Connect(function()
-                if input.UserInputState == Enum.UserInputState.End then dragging = false end
-            end)
-        end
-    end)
 
-    toggleBtn.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-            dragInput = input
-        end
-    end)
+    local function setupDragging(button)
+        button.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                dragging = true
+                dragStart = input.Position
+                startPos = toggleBtn.Position
+                input.Changed:Connect(function()
+                    if input.UserInputState == Enum.UserInputState.End then dragging = false end
+                end)
+            end
+        end)
+
+        button.InputChanged:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+                dragInput = input
+            end
+        end)
+    end
+
+    setupDragging(toggleBtn)
+    setupDragging(closeBtn)
 
     UserInputService.InputChanged:Connect(function(input)
         if input == dragInput and dragging then
@@ -72,6 +96,16 @@ function View.Build(onToggleCallback)
     toggleBtn.MouseButton1Click:Connect(function()
         allowAutoStart = false -- If you manually click, it stops the auto-starter from interfering
         setFarmingState(not isFarming)
+    end)
+
+    -- Close Button Click Event (Clean Up)
+    closeBtn.MouseButton1Click:Connect(function()
+        allowAutoStart = false
+        setFarmingState(false)
+        if onCloseCallback then
+            onCloseCallback()
+        end
+        screenGui:Destroy()
     end)
 
     -- Map Detection Auto-Start Logic
