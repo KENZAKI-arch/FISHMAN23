@@ -1,10 +1,5 @@
-# Strategic Memory (FISHMAN23)
-*Constraint: This file must NOT exceed 150 lines. Condense old info rather than appending endlessly.*
 
-## Core Idea & High-Level Architecture
-- Development of an advanced Autofarm/Autofish Roblox script.
-- Components include `mega_autofarm.lua`, `protov4_nofactory.lua`, `joinersystem.lua`, etc.
-- Focus on modularity, path recording (`PathRecorder.lua`), GUI interfaces (`HoverboardGUI.lua`), and optimized bot logic.
 
-## Current State
-- Iterating on movement logic and autofarm flow to increase efficiency.
+## Directories & Setup
+- The primary local file path for testing and execution is always the Potassium autoexec: `C:\Users\luigi\AppData\Local\Potassium\autoexec`
+- **Workflow Requirement:** Always commit and push changes to GitHub after making modifications, and ensure the updated file is also copied to the Potassium autoexec folder.
