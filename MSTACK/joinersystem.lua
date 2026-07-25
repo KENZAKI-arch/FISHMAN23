@@ -2032,12 +2032,19 @@ Tabs = {
                                 game.Loaded:Wait()
                             end
 
-                            local args = {
+                            local args1 = {
+                                [1] = true;
+                            }
+                            remoteEvent:FireServer(unpack(args1))
+
+                            task.wait(5)
+
+                            local args2 = {
                                 [1] = "Second Sea";
                             }
 
                             local confirmationPrompt = LocalPlayer:WaitForChild("PlayerGui", 9e9):WaitForChild("ConfirmationPrompt", 9e9)
-                            confirmationPrompt:WaitForChild("RemoteEvent", 9e9):FireServer(unpack(args))
+                            confirmationPrompt:WaitForChild("RemoteEvent", 9e9):FireServer(unpack(args2))
                         else
                             remoteEvent:FireServer(unpack(confirmArgs))
                         end
