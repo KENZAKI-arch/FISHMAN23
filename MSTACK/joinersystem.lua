@@ -2000,6 +2000,10 @@ Tabs = {
 
     local function ExecuteTeleport(destination, psCode)
         if isLobby then
+            if destination == "Lobby" then
+                Fluent:Notify({ Title = "Lobby", Content = "You are already in the Lobby!", Duration = 3 })
+                return
+            end
             if psCode and psCode ~= "" then
                 task.spawn(function()
                     local events = ReplicatedStorage:WaitForChild("Events", 9e9)
@@ -2084,10 +2088,18 @@ Tabs = {
         local destPlace = GlobalMem.FishmanDestination
         
         if GlobalMem.FishmanAutoTeleport then
-            Fluent:Notify({ Title = "Auto-Teleporting", Content = "Routing to chosen destination in 3s...", Duration = 3 })
             GlobalMem.FishmanAutoTeleport = false
             SaveConfig()
+            if destPlace == "Lobby" then
+                Fluent:Notify({ Title = "Arrived at Lobby", Content = "You have arrived at the Lobby.", Duration = 3 })
+                return
+            end
+            Fluent:Notify({ Title = "Auto-Teleporting", Content = "Routing to chosen destination in 3s...", Duration = 3 })
         else
+            if destPlace == "Lobby" then
+                Fluent:Notify({ Title = "Lobby", Content = "Destination is Lobby. Staying in Lobby.", Duration = 3 })
+                return
+            end
             Fluent:Notify({ Title = "Base of Operations", Content = "Routing to Trade Hub in 3s...", Duration = 3 })
             destCode = "qj1ttW4JG1"
             destPlace = "tradeHub"
