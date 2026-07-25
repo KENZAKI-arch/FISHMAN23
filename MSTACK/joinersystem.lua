@@ -1999,6 +1999,8 @@ Tabs = {
     })
 
     local function ExecuteTeleport(destination, psCode)
+        if not game:IsLoaded() then game.Loaded:Wait() end
+
         if isLobby then
             if psCode and psCode ~= "" then
                 local events = ReplicatedStorage:WaitForChild("Events", 9e9)
@@ -2009,6 +2011,7 @@ Tabs = {
             local confirmArgs = { [1] = destination }
             pcall(function()
                 if destination == "Lobby" then
+                    if not game:IsLoaded() then game.Loaded:Wait() end
                     TeleportService:Teleport(targetPlaceId, LocalPlayer)
                 else
                     local playerGui = LocalPlayer:WaitForChild("PlayerGui", 20)
@@ -2031,11 +2034,13 @@ Tabs = {
                             end
                         end
                     else
+                        if not game:IsLoaded() then game.Loaded:Wait() end
                         remoteEvent:FireServer(unpack(confirmArgs))
                     end
                 end
             end)
         else
+            if not game:IsLoaded() then game.Loaded:Wait() end
             TeleportService:Teleport(targetPlaceId, LocalPlayer)
         end
     end
