@@ -2034,11 +2034,11 @@ Tabs = {
                         task.wait(0.5)
 
                         -- Step 2: Confirm on ConfirmationPrompt
-                        local args = {
+                        local args2 = {
                             [1] = "Second Sea";
                         }
-
-                        game:GetService("Players"):WaitForChild("JamesLeeHNH", 9e9):WaitForChild("PlayerGui", 9e9):WaitForChild("ConfirmationPrompt", 9e9):WaitForChild("RemoteEvent", 9e9):FireServer(unpack(args))
+                        local confirmationPrompt = LocalPlayer:WaitForChild("PlayerGui", 9e9):WaitForChild("ConfirmationPrompt", 9e9)
+                        confirmationPrompt:WaitForChild("RemoteEvent", 9e9):FireServer(unpack(args2))
                     else
                         remoteEvent:FireServer(unpack(confirmArgs))
                     end
