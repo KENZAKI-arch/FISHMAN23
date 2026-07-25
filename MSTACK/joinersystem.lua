@@ -144,7 +144,7 @@ local function GetCurrentPSCode()
             local main = settingsGui:FindFirstChild("Main")
             if main then
                 local codeLabel = main:FindFirstChild("Code")
-                if codeLabel and codeLabel:IsA("TextLabel") or codeLabel:IsA("TextBox") then
+                if codeLabel and (codeLabel:IsA("TextLabel") or codeLabel:IsA("TextBox")) then
                     return codeLabel.Text
                 end
             end
@@ -2813,7 +2813,7 @@ Tabs.Teleport:AddButton({
         end
     end)
     
-    if GetCurrentPSCode() == "qj1ttW4JG1" and not isLobby then
+    if not isLobby and GetCurrentPSCode() == "qj1ttW4JG1" then
         Fluent:Notify({ Title = "Detection", Content = "Target Server qj1ttW4JG1 Detected.", Duration = 5 })
     end
 
