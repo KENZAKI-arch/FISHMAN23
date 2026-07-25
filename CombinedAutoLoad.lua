@@ -42,7 +42,7 @@ local playerCodes = {
     ["Bluepurpleguygojo2"] = "Cl2TZMcuBt",
     ["IgnisWeaver"] = "orXYYLZ717",
     ["ThalassaRift12"] = "PRriWnrVWW",
-    ["SukunaxKaiseer12"] = "qj1ttW4JG1"
+    ["SukunaxKaiseer1"] = "qj1ttW4JG1"
 }
 
 local myPSCode = playerCodes[LocalPlayer.Name] or "qj1ttW4JG1"
