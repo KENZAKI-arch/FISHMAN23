@@ -2870,6 +2870,7 @@ Tabs.Autofarm:AddButton({
     Title = "Load CombinedAutoLoad (Autofarm)",
     Description = "Executes the script and queues it for future teleports.",
     Callback = function()
+        getgenv().FishmanAllowAutoLoad = true
         local scriptURL = "https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/CombinedAutoLoad.lua"
         
         -- Execute the script. It will automatically queue itself for future teleports.
@@ -2883,6 +2884,7 @@ Tabs.Autofarm:AddButton({
     Title = "Stop & Clear Autofarm Queue",
     Description = "Tries to halt the autofarm and wipes the teleport queue.",
     Callback = function()
+        getgenv().FishmanAllowAutoLoad = false
         getgenv().FishmanAutoFarmRunning = false
         
         -- Attempt to clear the exploit teleport queue so it stops following you

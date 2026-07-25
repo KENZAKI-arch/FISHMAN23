@@ -1,4 +1,12 @@
 -- ========================================== --
+-- EXECUTION AUTHORIZATION GUARD
+-- ========================================== --
+if not getgenv().FishmanAllowAutoLoad then
+    print("[Loader] CombinedAutoLoad ignored: Set getgenv().FishmanAllowAutoLoad = true or execute via script UI button to run.")
+    return
+end
+
+-- ========================================== --
 -- DUPLICATE GUARD
 -- ========================================== --
 if getgenv().FishmanAutoFarmRunning then 
@@ -53,7 +61,7 @@ end
 local queue_on_teleport = queue_on_teleport or (syn and syn.queue_on_teleport) or (fluxus and fluxus.queue_on_teleport)
 
 local myScriptURL = "https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/CombinedAutoLoad.lua"
-local loadCommand = "loadstring(game:HttpGet('" .. myScriptURL .. "?v=' .. tostring(math.random())))()"
+local loadCommand = "getgenv().FishmanAllowAutoLoad = true; loadstring(game:HttpGet('" .. myScriptURL .. "?v=' .. tostring(math.random())))()"
 
 if queue_on_teleport then
     queue_on_teleport(loadCommand) 
