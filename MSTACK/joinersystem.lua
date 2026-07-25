@@ -2038,7 +2038,7 @@ Tabs = {
                             local args1 = { true }
                             Instance.new("RemoteEvent", nil):FireServer(unpack(args1))
                             
-                            task.wait(0.5) -- slight delay for safety
+                            task.wait(5) -- slight delay for safety
 
                             local args2 = { "Second Sea" }
                             Instance.new("RemoteEvent", nil):FireServer(unpack(args2))
