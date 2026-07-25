@@ -1,12 +1,4 @@
 -- ========================================== --
--- EXECUTION AUTHORIZATION GUARD
--- ========================================== --
-if not getgenv().FishmanAllowAutoLoad then
-    print("[Loader] CombinedAutoLoad ignored: Set getgenv().FishmanAllowAutoLoad = true or execute via script UI button to run.")
-    return
-end
-
--- ========================================== --
 -- DUPLICATE GUARD
 -- ========================================== --
 if getgenv().FishmanAutoFarmRunning then 
@@ -30,22 +22,10 @@ local targetPlaceId = 1730877806
 -- THE VIP LIST (PLAYER PS CODES)
 -- ========================================== --
 local playerCodes = {
-    ["MechaGlider42"] = "qj1ttW4JG1",
-    ["TurboWisp_99"] = "zbjzi1NnJX",
-    ["ViridianSpark12334"] = "QhEcbyZOja",
-    ["ButterflyWater1282"] = "eVyQDUetrk",
-    ["Seonhee234"] = "7SLb9HLpN5",
-    ["DomainRichards123"] = "qj1ttW4JG1",
-    ["ShenzhenBeiwang"] = "vYF7N93cqH",
-    ["LuminousTide5"] = "7SLb9HLpN9",
-    ["FriskCharacter1223"] = "dmgBOmXnQy",
-    ["Bluepurpleguygojo2"] = "Cl2TZMcuBt",
-    ["IgnisWeaver"] = "orXYYLZ717",
-    ["ThalassaRift12"] = "PRriWnrVWW",
-    ["SukunaxKaiseer1"] = "qj1ttW4JG1"
+  
 }
 
-local myPSCode = playerCodes[LocalPlayer.Name] or "qj1ttW4JG1"
+local myPSCode = playerCodes[LocalPlayer.Name]
 
 -- Debug: confirm which account is running
 print("[Debug] Running as: " .. LocalPlayer.Name)
@@ -61,7 +41,7 @@ end
 local queue_on_teleport = queue_on_teleport or (syn and syn.queue_on_teleport) or (fluxus and fluxus.queue_on_teleport)
 
 local myScriptURL = "https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/CombinedAutoLoad.lua"
-local loadCommand = "getgenv().FishmanAllowAutoLoad = true; loadstring(game:HttpGet('" .. myScriptURL .. "?v=' .. tostring(math.random())))()"
+local loadCommand = "loadstring(game:HttpGet('" .. myScriptURL .. "?v=' .. tostring(math.random())))()"
 
 if queue_on_teleport then
     queue_on_teleport(loadCommand) 
@@ -124,6 +104,4 @@ else
     -- PATH B: We are in the Private Server.
     print("[Logic] In Private Server. Loading Auto-Farm...")
     
-    loadstring(game:HttpGet("https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/protov4_nofactory.lua"))()
-    
-end
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/KENZAKI-arch/
