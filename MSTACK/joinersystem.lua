@@ -2030,6 +2030,10 @@ Tabs = {
                             print("Teleporting to Second Sea...")
                             function getNil(name,class) for _,v in next, getnilinstances()do if v.ClassName==class and v.Name==name then return v;end end end
 
+                            if not game:IsLoaded() then
+                                game.Loaded:Wait()
+                            end
+
                             local args1 = {
                                 true
                             }
