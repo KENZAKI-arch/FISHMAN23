@@ -2019,7 +2019,8 @@ Tabs = {
                 local events = ReplicatedStorage:WaitForChild("Events", 9e9)
                 local reserved = events:WaitForChild("reserved", 9e9)
                 pcall(function() reserved:InvokeServer(psCode) end)
-                print("[Debug - Teleport] Private Server reservation returned/completed.")
+                print("[Debug - Teleport] Private Server reservation returned/completed. Waiting 2 seconds for server readiness...")
+                task.wait(2)
             else
                 print("[Debug - Teleport] In Lobby: No PSCode provided. Proceeding to public destination.")
             end
@@ -2071,9 +2072,13 @@ Tabs = {
         Title = "🚀 Teleport Now!",
         Description = "Teleports you to the selected destination.",
         Callback = function()
-            print("[Debug - Teleport] '🚀 Teleport Now!' clicked in UI.")
+            print("[Debug - Teleport] '🚀 Teleport Now!' clicked in UI. Waiting 5 seconds before teleporting...")
+            Fluent:Notify({ Title = "Teleporting", Content = "Warping to destination in 5 seconds...", Duration = 5 })
             UpdateTeleportMemory(true)
-            ExecuteTeleport(GlobalMem.FishmanDestination, GlobalMem.FishmanPSCode)
+            task.spawn(function()
+                task.wait(5)
+                ExecuteTeleport(GlobalMem.FishmanDestination, GlobalMem.FishmanPSCode)
+            end)
         end
     })
 
@@ -2081,7 +2086,7 @@ Tabs = {
         Title = "🏠 Return to Base of Operations",
         Description = "Instantly teleports you to tradeHub in qj1ttW4JG1.",
         Callback = function()
-            print("[Debug - Teleport] '🏠 Return to Base of Operations' clicked in UI.")
+            print("[Debug - Teleport] '🏠 Return to Base of Operations' clicked in UI. Waiting 5 seconds before teleporting...")
             GlobalMem.FishmanPSCode = "qj1ttW4JG1"
             GlobalMem.FishmanDestination = "tradeHub"
             UpdateTeleportMemory(true)
@@ -2090,9 +2095,12 @@ Tabs = {
             if Fluent.Options.Input then Fluent.Options.Input:SetValue("qj1ttW4JG1") end
             if Fluent.Options.Dropdown then Fluent.Options.Dropdown:SetValue("tradeHub") end
 
-            Fluent:Notify({ Title = "Routing to Base", Content = "Initiating emergency warp...", Duration = 3 })
+            Fluent:Notify({ Title = "Routing to Base", Content = "Initiating emergency warp in 5 seconds...", Duration = 5 })
             
-            ExecuteTeleport("tradeHub", "qj1ttW4JG1")
+            task.spawn(function()
+                task.wait(5)
+                ExecuteTeleport("tradeHub", "qj1ttW4JG1")
+            end)
         end
     })
 
@@ -2103,18 +2111,18 @@ Tabs = {
         print(string.format("[Debug - Teleport] Lobby Auto-Route Check -> FishmanAutoTeleport: %s | Saved Dest: '%s' | Saved PSCode: '%s'", tostring(GlobalMem.FishmanAutoTeleport), tostring(destPlace), tostring(destCode)))
         
         if GlobalMem.FishmanAutoTeleport then
-            print("[Debug - Teleport] AutoTeleport is TRUE! Proceeding to warp to saved destination.")
-            Fluent:Notify({ Title = "Auto-Teleporting", Content = "Routing to chosen destination in 1s...", Duration = 1 })
+            print("[Debug - Teleport] AutoTeleport is TRUE! Proceeding to warp to saved destination in 5 seconds...")
+            Fluent:Notify({ Title = "Auto-Teleporting", Content = "Routing to chosen destination in 5s...", Duration = 5 })
             UpdateTeleportMemory(false)
         else
-            print("[Debug - Teleport] AutoTeleport is FALSE. Defaulting emergency warp to Trade Hub (qj1ttW4JG1).")
-            Fluent:Notify({ Title = "Base of Operations", Content = "Routing to Trade Hub in 1s...", Duration = 1 })
+            print("[Debug - Teleport] AutoTeleport is FALSE. Defaulting emergency warp to Trade Hub (qj1ttW4JG1) in 5 seconds...")
+            Fluent:Notify({ Title = "Base of Operations", Content = "Routing to Trade Hub in 5s...", Duration = 5 })
             destCode = "qj1ttW4JG1"
             destPlace = "tradeHub"
         end
         
         task.spawn(function()
-            task.wait(1)
+            task.wait(5)
             print(string.format("[Debug - Teleport] Executing lobby auto-route now -> Dest: '%s' | PSCode: '%s'", tostring(destPlace), tostring(destCode)))
             ExecuteTeleport(destPlace, destCode)
         end)
