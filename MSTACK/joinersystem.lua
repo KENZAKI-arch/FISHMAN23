@@ -2531,6 +2531,15 @@ Tabs.Teleport:AddButton({
         if isLobby then if Value then Fluent:Notify({ Title = "Error", Content = "Cannot use in Lobby!", Duration = 3 }); Fluent.Options.T_ManualMegStackLoc:SetValue(false) end return end
         
         if Value then
+            -- Temporarily turn off Auto Return to Hoverboard if it was on
+            if Fluent and Fluent.Options and Fluent.Options.T_AutoReturn then
+                getgenv()._wasAutoReturnOn = Fluent.Options.T_AutoReturn.Value
+                if getgenv()._wasAutoReturnOn then
+                    Fluent.Options.T_AutoReturn:SetValue(false)
+                    Fluent:Notify({ Title = "System", Content = "Auto Return paused during Manual Travel", Duration = 3 })
+                end
+            end
+
             manualTravelInitialized = true
             task.spawn(function()
                 local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
@@ -2551,6 +2560,13 @@ Tabs.Teleport:AddButton({
                 Fluent:Notify({ Title = "Manual Travel", Content = "Arrived at Meg Stack Island!", Duration = 3 })
             end)
         else
+            -- Restore Auto Return if it was previously on
+            if getgenv()._wasAutoReturnOn and Fluent and Fluent.Options and Fluent.Options.T_AutoReturn then
+                Fluent.Options.T_AutoReturn:SetValue(true)
+                getgenv()._wasAutoReturnOn = false
+                Fluent:Notify({ Title = "System", Content = "Auto Return resumed", Duration = 3 })
+            end
+
             if not manualTravelInitialized then return end
             task.spawn(function()
                 Model.State.isRefillingMegBait = true -- REQUIRED for flight loop
