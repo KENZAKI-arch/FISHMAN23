@@ -2086,29 +2086,34 @@ Tabs = {
     if isLobby then
         local destCode = GlobalMem.FishmanPSCode
         local destPlace = GlobalMem.FishmanDestination
+        local shouldTeleport = false
         
         if GlobalMem.FishmanAutoTeleport then
             GlobalMem.FishmanAutoTeleport = false
             SaveConfig()
             if destPlace == "Lobby" then
                 Fluent:Notify({ Title = "Arrived at Lobby", Content = "You have arrived at the Lobby.", Duration = 3 })
-                return
+            else
+                Fluent:Notify({ Title = "Auto-Teleporting", Content = "Routing to chosen destination in 3s...", Duration = 3 })
+                shouldTeleport = true
             end
-            Fluent:Notify({ Title = "Auto-Teleporting", Content = "Routing to chosen destination in 3s...", Duration = 3 })
         else
             if destPlace == "Lobby" then
                 Fluent:Notify({ Title = "Lobby", Content = "Destination is Lobby. Staying in Lobby.", Duration = 3 })
-                return
+            else
+                Fluent:Notify({ Title = "Base of Operations", Content = "Routing to Trade Hub in 3s...", Duration = 3 })
+                destCode = "qj1ttW4JG1"
+                destPlace = "tradeHub"
+                shouldTeleport = true
             end
-            Fluent:Notify({ Title = "Base of Operations", Content = "Routing to Trade Hub in 3s...", Duration = 3 })
-            destCode = "qj1ttW4JG1"
-            destPlace = "tradeHub"
         end
         
-        task.spawn(function()
-            task.wait(3)
-            ExecuteTeleport(destPlace, destCode)
-        end)
+        if shouldTeleport then
+            task.spawn(function()
+                task.wait(3)
+                ExecuteTeleport(destPlace, destCode)
+            end)
+        end
     end
 
 -- ======================================================================
