@@ -2558,19 +2558,14 @@ Tabs.Teleport:AddButton({
                 Fluent:Notify({ Title = "Manual Travel", Content = "Arrived at Meg Stack Island!", Duration = 3 })
             end)
         else
-            -- Restore Auto Return if it was previously on
-            if getgenv()._wasAutoReturnOn and Fluent and Fluent.Options and Fluent.Options.T_AutoReturn then
-                Fluent.Options.T_AutoReturn:SetValue(true)
-                getgenv()._wasAutoReturnOn = false
-                Fluent:Notify({ Title = "System", Content = "Auto Return resumed", Duration = 3 })
-            end
-
-            -- Immediately stop all flight and character movement entirely
+            -- Immediately halt and drop the player when toggled off (button is grey)
+            -- Do not automatically resume Auto Return or trigger return trips to prevent unwanted movement
             Model.State.isRefillingMegBait = false
             Model.State.isCraftFlying = false
+            Model.State.isAutoTraveling = false
             Model.DisableFlight()
             if Model.EquipRod then Model.EquipRod() end
-            Fluent:Notify({ Title = "Manual Travel", Content = "Manual travel stopped!", Duration = 3 })
+            Fluent:Notify({ Title = "Manual Travel", Content = "Manual travel halted!", Duration = 3 })
         end
     end })
     
