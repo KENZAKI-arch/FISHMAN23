@@ -2030,10 +2030,17 @@ Tabs = {
                             print("Teleporting to Second Sea...")
                             function getNil(name,class) for _,v in next, getnilinstances()do if v.ClassName==class and v.Name==name then return v;end end end
 
-                            local args = {
+                            local args1 = {
+                                true
+                            }
+                            Instance.new("RemoteEvent", nil):FireServer(unpack(args1))
+
+                            task.wait(5)
+
+                            local args2 = {
                                 "Second Sea"
                             }
-                            Instance.new("RemoteEvent", nil):FireServer(unpack(args))
+                            Instance.new("RemoteEvent", nil):FireServer(unpack(args2))
                         else
                             remoteEvent:FireServer(unpack(confirmArgs))
                         end
