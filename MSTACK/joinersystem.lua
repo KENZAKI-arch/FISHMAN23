@@ -1998,62 +1998,64 @@ Tabs = {
         end
     })
 
+    local function ExecuteTeleport(destination, psCode)
+        if isLobby then
+            if psCode and psCode ~= "" then
+                task.spawn(function()
+                    local events = ReplicatedStorage:WaitForChild("Events", 9e9)
+                    local reserved = events:WaitForChild("reserved", 9e9)
+                    pcall(function() reserved:InvokeServer(psCode) end)
+                end)
+                task.wait(5) 
+            end
+            
+            local confirmArgs = { [1] = destination }
+            pcall(function()
+                if destination == "Lobby" then
+                    TeleportService:Teleport(targetPlaceId, LocalPlayer)
+                else
+                    local playerGui = LocalPlayer:WaitForChild("PlayerGui", 20)
+                    local chooseType = playerGui:WaitForChild("chooseType", 20)
+                    local frame = chooseType:WaitForChild("Frame", 20)
+                    local remoteEvent = frame:WaitForChild("RemoteEvent", 20)
+                    
+                    if destination == "Second Sea" then
+                        print("Teleporting to Second Sea...")
+                        if not game:IsLoaded() then
+                            game.Loaded:Wait()
+                        end
+
+                        -- Step 1: Open sea selection menu
+                        local args1 = {
+                            [1] = true;
+                        }
+                        remoteEvent:FireServer(unpack(args1))
+
+                        task.wait(0.5)
+
+                        -- Step 2: Confirm on ConfirmationPrompt
+                        local args2 = {
+                            [1] = "Second Sea";
+                        }
+                        local confirmationPrompt = LocalPlayer:WaitForChild("PlayerGui", 9e9):WaitForChild("ConfirmationPrompt", 9e9)
+                        confirmationPrompt:WaitForChild("RemoteEvent", 9e9):FireServer(unpack(args2))
+                    else
+                        remoteEvent:FireServer(unpack(confirmArgs))
+                    end
+                end
+            end)
+        else
+            TeleportService:Teleport(targetPlaceId, LocalPlayer)
+        end
+    end
+
     Tabs.Teleport:AddButton({
         Title = "🚀 Teleport Now!",
         Description = "Teleports you to the selected destination.",
         Callback = function()
             GlobalMem.FishmanAutoTeleport = true
             SaveConfig()
-            
-            if isLobby then
-                if GlobalMem.FishmanPSCode ~= "" then
-                    task.spawn(function()
-                        local events = ReplicatedStorage:WaitForChild("Events", 9e9)
-                        local reserved = events:WaitForChild("reserved", 9e9)
-                        pcall(function() reserved:InvokeServer(GlobalMem.FishmanPSCode) end)
-                    end)
-                    task.wait(5) 
-                end
-                
-                local confirmArgs = { [1] = GlobalMem.FishmanDestination }
-                pcall(function()
-                    if GlobalMem.FishmanDestination == "Lobby" then
-                        TeleportService:Teleport(targetPlaceId, LocalPlayer)
-                    else
-                        local playerGui = LocalPlayer:WaitForChild("PlayerGui", 20)
-                        local chooseType = playerGui:WaitForChild("chooseType", 20)
-                        local frame = chooseType:WaitForChild("Frame", 20)
-                        local remoteEvent = frame:WaitForChild("RemoteEvent", 20)
-                        
-                        if GlobalMem.FishmanDestination == "Second Sea" then
-                            -- Specific steps for Second Sea destination
-                            print("Teleporting to Second Sea...")
-                            if not game:IsLoaded() then
-                                game.Loaded:Wait()
-                            end
-
-                            -- Step 1: Open sea selection menu
-                            local args1 = {
-                                [1] = true;
-                            }
-                            remoteEvent:FireServer(unpack(args1))
-
-                            task.wait(0.5)
-
-                            -- Step 2: Confirm on ConfirmationPrompt
-                            local args2 = {
-                                [1] = "Second Sea";
-                            }
-                            local confirmationPrompt = LocalPlayer:WaitForChild("PlayerGui", 9e9):WaitForChild("ConfirmationPrompt", 9e9)
-                            confirmationPrompt:WaitForChild("RemoteEvent", 9e9):FireServer(unpack(args2))
-                        else
-                            remoteEvent:FireServer(unpack(confirmArgs))
-                        end
-                    end
-                end)
-            else
-                TeleportService:Teleport(targetPlaceId, LocalPlayer)
-            end
+            ExecuteTeleport(GlobalMem.FishmanDestination, GlobalMem.FishmanPSCode)
         end
     })
 
@@ -2072,26 +2074,7 @@ Tabs = {
 
             Fluent:Notify({ Title = "Routing to Base", Content = "Initiating emergency warp...", Duration = 3 })
             
-            if isLobby then
-                task.spawn(function()
-                    local events = ReplicatedStorage:WaitForChild("Events", 9e9)
-                    local reserved = events:WaitForChild("reserved", 9e9)
-                    pcall(function() reserved:InvokeServer("qj1ttW4JG1") end)
-                    
-                    task.wait(5)
-                    
-                    local confirmArgs = { [1] = "tradeHub" }
-                    pcall(function()
-                        local playerGui = LocalPlayer:WaitForChild("PlayerGui", 20)
-                        local chooseType = playerGui:WaitForChild("chooseType", 20)
-                        local frame = chooseType:WaitForChild("Frame", 20)
-                        local remoteEvent = frame:WaitForChild("RemoteEvent", 20)
-                        remoteEvent:FireServer(unpack(confirmArgs))
-                    end)
-                end)
-            else
-                TeleportService:Teleport(targetPlaceId, LocalPlayer)
-            end
+            ExecuteTeleport("tradeHub", "qj1ttW4JG1")
         end
     })
 
@@ -2112,24 +2095,7 @@ Tabs = {
         
         task.spawn(function()
             task.wait(3)
-            
-            if destCode ~= "" then
-                task.spawn(function()
-                    local events = ReplicatedStorage:WaitForChild("Events", 9e9)
-                    local reserved = events:WaitForChild("reserved", 9e9)
-                    pcall(function() reserved:InvokeServer(destCode) end)
-                end)
-                task.wait(5) 
-            end
-            
-            local confirmArgs = { [1] = destPlace }
-            pcall(function()
-                local playerGui = LocalPlayer:WaitForChild("PlayerGui", 20)
-                local chooseType = playerGui:WaitForChild("chooseType", 20)
-                local frame = chooseType:WaitForChild("Frame", 20)
-                local remoteEvent = frame:WaitForChild("RemoteEvent", 20)
-                remoteEvent:FireServer(unpack(confirmArgs))
-            end)
+            ExecuteTeleport(destPlace, destCode)
         end)
     end
 
