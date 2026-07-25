@@ -30,7 +30,7 @@ end
 
 local isRunning = true
 local isAutoRolling = false
-local DESIRED_RACE = "SKYPIAN"
+local DESIRED_RACE = "CYBORG"
 
 -- ======================================================================
 -- 🎨 FLUENT UI INTEGRATION
@@ -65,8 +65,8 @@ end
 local StatusPara = Tabs.Main:AddParagraph({ Title = "Current Status", Content = "Waiting..." })
 
 Tabs.Main:AddInput("TargetRace", {
-    Title = "Target Race",
-    Default = "SKYPIAN",
+    Title = "Race",
+    Default = "CYBORG",
     Placeholder = "Enter race name...",
     Numeric = false,
     Finished = false,
@@ -130,6 +130,6 @@ task.spawn(function()
         end
         
         -- Wait a moment before rerolling again to allow the server to process and UI to update
-        task.wait(1.5)
+        task.wait()
     end
 end)
