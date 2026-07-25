@@ -61,6 +61,7 @@ pcall(function()
         local data = HttpService:JSONDecode(readfile(configFileName))
         if data then
             if GlobalMem.FishmanPSCode == nil then GlobalMem.FishmanPSCode = data.FishmanPSCode end
+            if GlobalMem.FishmanPSCodeHistory == nil then GlobalMem.FishmanPSCodeHistory = data.FishmanPSCodeHistory end
             if GlobalMem.FishmanDestination == nil then GlobalMem.FishmanDestination = data.FishmanDestination end
             if GlobalMem.FishmanAutoTeleport == nil then GlobalMem.FishmanAutoTeleport = data.FishmanAutoTeleport end
             if GlobalMem.FishmanAutoJoin == nil then GlobalMem.FishmanAutoJoin = data.FishmanAutoJoin end
@@ -71,6 +72,12 @@ pcall(function()
 end)
 
 GlobalMem.FishmanPSCode = GlobalMem.FishmanPSCode or "qj1ttW4JG1"
+if type(GlobalMem.FishmanPSCodeHistory) ~= "table" or #GlobalMem.FishmanPSCodeHistory == 0 then
+    GlobalMem.FishmanPSCodeHistory = {GlobalMem.FishmanPSCode}
+end
+if not table.find(GlobalMem.FishmanPSCodeHistory, GlobalMem.FishmanPSCode) and GlobalMem.FishmanPSCode ~= "" then
+    table.insert(GlobalMem.FishmanPSCodeHistory, 1, GlobalMem.FishmanPSCode)
+end
 GlobalMem.FishmanDestination = GlobalMem.FishmanDestination or "tradeHub" 
 GlobalMem.FishmanAutoTeleport = GlobalMem.FishmanAutoTeleport or false 
 GlobalMem.FishmanAutoJoin = GlobalMem.FishmanAutoJoin or false
@@ -81,6 +88,7 @@ local function SaveConfig()
         if writefile then
             local data = {
                 FishmanPSCode = GlobalMem.FishmanPSCode,
+                FishmanPSCodeHistory = GlobalMem.FishmanPSCodeHistory,
                 FishmanDestination = GlobalMem.FishmanDestination,
                 FishmanAutoTeleport = GlobalMem.FishmanAutoTeleport,
                 FishmanAutoJoin = GlobalMem.FishmanAutoJoin,
@@ -1983,7 +1991,33 @@ Tabs = {
         Finished = false,
         Callback = function(Value)
             GlobalMem.FishmanPSCode = Value
+            if Value and Value ~= "" and not table.find(GlobalMem.FishmanPSCodeHistory, Value) then
+                table.insert(GlobalMem.FishmanPSCodeHistory, 1, Value)
+                while #GlobalMem.FishmanPSCodeHistory > 10 do
+                    table.remove(GlobalMem.FishmanPSCodeHistory, #GlobalMem.FishmanPSCodeHistory)
+                end
+                if Fluent.Options.D_PSCodeHistory then
+                    Fluent.Options.D_PSCodeHistory:SetValues(GlobalMem.FishmanPSCodeHistory)
+                end
+            end
             SaveConfig()
+        end
+    })
+
+    Tabs.Teleport:AddDropdown("D_PSCodeHistory", {
+        Title = "PS Code History",
+        Description = "Click to select a saved PS code",
+        Values = GlobalMem.FishmanPSCodeHistory,
+        Multi = false,
+        Default = GlobalMem.FishmanPSCode,
+        Callback = function(Value)
+            if Value and Value ~= "" then
+                GlobalMem.FishmanPSCode = Value
+                SaveConfig()
+                if Fluent.Options.Input and Fluent.Options.Input.Value ~= Value then
+                    Fluent.Options.Input:SetValue(Value)
+                end
+            end
         end
     })
 
@@ -2057,6 +2091,17 @@ Tabs = {
         Title = "🚀 Teleport Now!",
         Description = "Teleports you to the selected destination.",
         Callback = function()
+            if GlobalMem.FishmanPSCode and GlobalMem.FishmanPSCode ~= "" then
+                if not table.find(GlobalMem.FishmanPSCodeHistory, GlobalMem.FishmanPSCode) then
+                    table.insert(GlobalMem.FishmanPSCodeHistory, 1, GlobalMem.FishmanPSCode)
+                    while #GlobalMem.FishmanPSCodeHistory > 10 do
+                        table.remove(GlobalMem.FishmanPSCodeHistory, #GlobalMem.FishmanPSCodeHistory)
+                    end
+                    if Fluent.Options.D_PSCodeHistory then
+                        Fluent.Options.D_PSCodeHistory:SetValues(GlobalMem.FishmanPSCodeHistory)
+                    end
+                end
+            end
             GlobalMem.FishmanAutoTeleport = true
             SaveConfig()
             ExecuteTeleport(GlobalMem.FishmanDestination, GlobalMem.FishmanPSCode)
