@@ -2006,7 +2006,7 @@ Tabs = {
                     local reserved = events:WaitForChild("reserved", 9e9)
                     pcall(function() reserved:InvokeServer(psCode) end)
                 end)
-                task.wait(5) 
+                task.wait(1.5) 
             end
             
             local confirmArgs = { [1] = destination }
@@ -2021,9 +2021,6 @@ Tabs = {
                     
                     if destination == "Second Sea" then
                         print("Teleporting to Second Sea...")
-                        if not game:IsLoaded() then
-                            game.Loaded:Wait()
-                        end
 
                         -- Step 1: Open sea selection menu
                         local args1 = {
@@ -2031,7 +2028,7 @@ Tabs = {
                         }
                         remoteEvent:FireServer(unpack(args1))
 
-                        task.wait(0.5)
+                        task.wait(0.2)
 
                         -- Step 2: Confirm on ConfirmationPrompt
                         local args = {
@@ -2084,17 +2081,17 @@ Tabs = {
         local destPlace = GlobalMem.FishmanDestination
         
         if GlobalMem.FishmanAutoTeleport then
-            Fluent:Notify({ Title = "Auto-Teleporting", Content = "Routing to chosen destination in 3s...", Duration = 3 })
+            Fluent:Notify({ Title = "Auto-Teleporting", Content = "Routing to chosen destination in 1s...", Duration = 1 })
             GlobalMem.FishmanAutoTeleport = false
             SaveConfig()
         else
-            Fluent:Notify({ Title = "Base of Operations", Content = "Routing to Trade Hub in 3s...", Duration = 3 })
+            Fluent:Notify({ Title = "Base of Operations", Content = "Routing to Trade Hub in 1s...", Duration = 1 })
             destCode = "qj1ttW4JG1"
             destPlace = "tradeHub"
         end
         
         task.spawn(function()
-            task.wait(3)
+            task.wait(1)
             ExecuteTeleport(destPlace, destCode)
         end)
     end
