@@ -4,26 +4,19 @@ local Model = loadstring(game:HttpGet("https://raw.githubusercontent.com/KENZAKI
 local View = loadstring(game:HttpGet("https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/View.lua"))()
 
 local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+local CoreGui = game:GetService("CoreGui")
+
+-- Clean up any previously running instance of this script
+if typeof(getgenv().StopAutofarm) == "function" then
+    pcall(getgenv().StopAutofarm)
+end
 
 local isRunning = true
 local steppedConnection
 local heartbeatConnection
 
--- 1. Setup UI and handle the toggle button
-View.Build(function(isFarming)
-    Model.State.isAutoFarming = isFarming
-
-    if not isFarming then
-        Model.ResetPhysics()
-    else
-        -- Start Combat Loop
-        task.spawn(function()
-            while Model.State.isAutoFarming and isRunning do
-                Model.DoCombatCombo()
-            end
-        end)
-    end
-end, function() -- onCloseCallback (Clean up)
+local function cleanupAutoFarm()
     isRunning = false
     Model.State.isAutoFarming = false
     Model.State.isQuesting = false
@@ -42,8 +35,42 @@ end, function() -- onCloseCallback (Clean up)
     if getgenv().FishmanAutoFarmRunning ~= nil then
         getgenv().FishmanAutoFarmRunning = false
     end
-    print("[Controller] Auto-Farm cleaned up and terminated.")
-end)
+
+    -- Attempt to clear the exploit teleport queue so it stops following you across servers
+    local clear_queue = clear_teleport_queue or (syn and syn.clear_teleport_queue) or (fluxus and fluxus.clear_teleport_queue) or (queue_on_teleport and function() queue_on_teleport("") end)
+    if clear_queue then
+        pcall(clear_queue)
+    end
+
+    -- Destroy any existing UI instances
+    local coreGui = CoreGui:FindFirstChild("AutoFarmGui")
+    if coreGui then coreGui:Destroy() end
+    local pGui = Players.LocalPlayer and Players.LocalPlayer:FindFirstChild("PlayerGui")
+    if pGui and pGui:FindFirstChild("AutoFarmGui") then 
+        pGui.AutoFarmGui:Destroy() 
+    end
+
+    print("[Controller] Auto-Farm cleaned up, memory cleared, and UI destroyed.")
+end
+
+-- Assign to global so Joiner System's "Stop Autofarm / Halt" button can invoke this cleanup
+getgenv().StopAutofarm = cleanupAutoFarm
+
+-- 1. Setup UI and handle the toggle button
+View.Build(function(isFarming)
+    Model.State.isAutoFarming = isFarming
+
+    if not isFarming then
+        Model.ResetPhysics()
+    else
+        -- Start Combat Loop
+        task.spawn(function()
+            while Model.State.isAutoFarming and isRunning do
+                Model.DoCombatCombo()
+            end
+        end)
+    end
+end, cleanupAutoFarm)
 
 -- 2. Hook into Roblox Engine Loops
 steppedConnection = RunService.Stepped:Connect(function()
