@@ -2027,6 +2027,7 @@ Tabs = {
                         
                         if GlobalMem.FishmanDestination == "Second Sea" then
                             -- Specific steps for Second Sea destination
+                            print("Teleporting to Second Sea...")
                             function getNil(name,class) for _,v in next, getnilinstances()do if v.ClassName==class and v.Name==name then return v;end end end
 
                             local args = {
