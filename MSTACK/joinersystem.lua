@@ -2028,7 +2028,7 @@ Tabs = {
                         }
                         remoteEvent:FireServer(unpack(args1))
 
-                        task.wait(1.5)
+                        task.wait(0.5)
 
                         -- Step 2: Confirm on ConfirmationPrompt
                         local args = {
