@@ -95,3 +95,14 @@ task.spawn(function()
         end
     end
 end)
+
+-- 4. Background Auto-Stats Loop (Every 1 second)
+task.spawn(function()
+    while isRunning do
+        task.wait(1)
+        if Model.State.isAutoFarming and isRunning then 
+            Model.UpgradeStats()
+        end
+    end
+end)
+

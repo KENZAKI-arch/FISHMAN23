@@ -7,6 +7,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local LocalPlayer = Players.LocalPlayer
 local combatRegister = ReplicatedStorage:WaitForChild("Events", 9e9):WaitForChild("CombatRegister", 9e9)
 local questEvent = ReplicatedStorage:WaitForChild("Events", 9e9):WaitForChild("Quest", 9e9)
+local statsEvent = ReplicatedStorage:WaitForChild("Events", 9e9):WaitForChild("stats", 9e9)
 local npcsFolder = workspace:WaitForChild("NPCs", 9e9)
 
 -- ADDED: isQuesting switch
@@ -269,6 +270,19 @@ function Model.DoCombatCombo()
         task.wait(0.2)
     end
     if Model.State.isAutoFarming then task.wait(0.1) end
+end
+
+function Model.UpgradeStats()
+    pcall(function()
+        local args = {
+            "Strength",
+            nil,
+            1
+        }
+        if statsEvent then
+            statsEvent:FireServer(unpack(args))
+        end
+    end)
 end
 
 return Model
