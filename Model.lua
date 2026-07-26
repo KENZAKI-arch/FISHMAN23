@@ -19,8 +19,6 @@ Model.State = {
 local flySpeed = 35
 local currentEnemy = nil
 local absoluteFloorHeight = nil 
-local targetSwitchTimer = 2
-local switchInterval = 2
 
 function Model.ResetPhysics()
     local character = LocalPlayer.Character
@@ -42,6 +40,9 @@ function Model.UpdateTracking(deltaTime)
     local character = LocalPlayer.Character
     if not character or not character:FindFirstChild("HumanoidRootPart") or not character:FindFirstChild("Humanoid") then return end
     
+    -- Prevent combat tracking from fighting against questing or recovery flight loops
+    if Model.State.isQuesting or Model.State.isRecovering then return end
+
     local rootPart = character.HumanoidRootPart
     local humanoid = character.Humanoid
     
@@ -57,34 +58,33 @@ function Model.UpdateTracking(deltaTime)
         rootPart.Anchored = false
     end
 
-    if currentEnemy and (currentEnemy.Parent == nil or not currentEnemy:FindFirstChild("Humanoid") or currentEnemy.Humanoid.Health <= 0) then
+    -- Clear enemy if it is dead, destroyed, or missing its RootPart
+    if currentEnemy and (currentEnemy.Parent == nil or not currentEnemy:FindFirstChild("HumanoidRootPart") or not currentEnemy:FindFirstChild("Humanoid") or currentEnemy.Humanoid.Health <= 0) then
         currentEnemy = nil
-        targetSwitchTimer = switchInterval
     end
 
-    targetSwitchTimer = targetSwitchTimer + deltaTime
-    if targetSwitchTimer >= switchInterval and npcsFolder then
-        targetSwitchTimer = 0
-        local validEnemies = {}
+    -- Select the CLOSEST valid enemy instead of picking randomly every 2 seconds
+    if not currentEnemy and npcsFolder then
+        local closestEnemy = nil
+        local shortestDistance = math.huge
         for _, npc in pairs(npcsFolder:GetChildren()) do
             if npc.Name == "Fishman Karate User" and npc:FindFirstChild("HumanoidRootPart") and npc:FindFirstChild("Humanoid") and npc.Humanoid.Health > 0 then
-                if npc ~= currentEnemy then table.insert(validEnemies, npc) end
+                local dist = (rootPart.Position - npc.HumanoidRootPart.Position).Magnitude
+                if dist < shortestDistance then
+                    shortestDistance = dist
+                    closestEnemy = npc
+                end
             end
         end
-        if #validEnemies > 0 then currentEnemy = validEnemies[math.random(1, #validEnemies)] end
+        currentEnemy = closestEnemy
     end
 
     if currentEnemy then
         local targetRoot = currentEnemy.HumanoidRootPart
         if absoluteFloorHeight == nil then absoluteFloorHeight = targetRoot.Position.Y + 7.5 end
         
-        local dynamicAltitude = absoluteFloorHeight
-        for _, npc in pairs(npcsFolder:GetChildren()) do
-            if npc.Name == "Fishman Karate User" and npc:FindFirstChild("HumanoidRootPart") and npc.Humanoid.Health > 0 then
-                local h = npc.HumanoidRootPart.Position.Y + 7.5
-                if h > dynamicAltitude then dynamicAltitude = h end
-            end
-        end
+        -- Hover directly above current target rather than highest NPC across the entire map
+        local dynamicAltitude = targetRoot.Position.Y + 7.5
 
         local bv = rootPart:FindFirstChild("AntiGravity") or Instance.new("BodyVelocity")
         bv.Name = "AntiGravity"
@@ -181,7 +181,7 @@ function Model.GetEnemiesInRange()
     local enemiesList = {}
     for _, npc in pairs(npcsFolder:GetChildren()) do
         if npc.Name == "Fishman Karate User" and npc:FindFirstChild("HumanoidRootPart") and npc:FindFirstChild("Humanoid") and npc.Humanoid.Health > 0 then
-            if (character.HumanoidRootPart.Position - npc.HumanoidRootPart.Position).Magnitude <= 15 then
+            if (character.HumanoidRootPart.Position - npc.HumanoidRootPart.Position).Magnitude <= 22 then
                 table.insert(enemiesList, npc)
             end
         end
