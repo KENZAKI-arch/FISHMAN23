@@ -24,6 +24,25 @@ function View.Build(onToggleCallback, onCloseCallback)
 
     Instance.new("UICorner", toggleBtn).CornerRadius = UDim.new(0, 8)
 
+    -- Version Label
+    local versionLabel = Instance.new("TextLabel")
+    versionLabel.Name = "VersionLabel"
+    versionLabel.Size = UDim2.new(1, 0, 0, 20)
+    versionLabel.Position = UDim2.new(0, 0, 0, -22)
+    versionLabel.BackgroundTransparency = 1
+    versionLabel.Active = true
+    versionLabel.Text = "AUTOFARM V1.0"
+    versionLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    versionLabel.Font = Enum.Font.GothamBold
+    versionLabel.TextSize = 12
+    versionLabel.TextXAlignment = Enum.TextXAlignment.Center
+    versionLabel.Parent = toggleBtn
+
+    local labelStroke = Instance.new("UIStroke", versionLabel)
+    labelStroke.Color = Color3.fromRGB(0, 0, 0)
+    labelStroke.Thickness = 1.2
+    labelStroke.Transparency = 0.3
+
     -- Close / Cleanup Button ("X")
     local closeBtn = Instance.new("TextButton")
     closeBtn.Name = "CloseButton"
@@ -67,6 +86,7 @@ function View.Build(onToggleCallback, onCloseCallback)
 
     setupDragging(toggleBtn)
     setupDragging(closeBtn)
+    setupDragging(versionLabel)
 
     UserInputService.InputChanged:Connect(function(input)
         if input == dragInput and dragging then
