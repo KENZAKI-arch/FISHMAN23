@@ -1142,7 +1142,7 @@ env.Fishman_StopPrevious = ShutdownEverything
 Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
 local Window = Fluent:CreateWindow({
     Title = "🐟 Fishman Hub",
-    SubTitle = "Unified Auto-Fisher",
+    SubTitle = "Unified Auto-Fisher 1.0.3 v2.7",
     TabWidth = 160,
     Size = UDim2.fromOffset(500, 350),
     Theme = "Darker",
@@ -1470,6 +1470,8 @@ Tabs.Teleport:AddButton({
             if Fluent.Options.T_DeepSea then Fluent.Options.T_DeepSea:SetValue(true) end
             if Fluent.Options.T_Buy then Fluent.Options.T_Buy:SetValue(true) end
             if Fluent.Options.T_MegStackLoc then Fluent.Options.T_MegStackLoc:SetValue(true) end
+            if Fluent.Options.T_AutoStoreFruit then Fluent.Options.T_AutoStoreFruit:SetValue(true) end
+            if Fluent.Options.T_AutoReturn then Fluent.Options.T_AutoReturn:SetValue(true) end
             print("🌊 [MegStack] Meg stack starting now! Enabling deep sea catcher for 10 megalodons.")
             task.spawn(function()
                 while Model.State.isMegStacking do
@@ -1485,18 +1487,32 @@ Tabs.Teleport:AddButton({
                             end)
                             task.wait(1)
                         end
-                        if getgenv().ToggleCyborgAutofarm then
+                        if Fluent and Fluent.Options and Fluent.Options.T_CyborgAuto then
+                            Fluent.Options.T_CyborgAuto:SetValue(true)
+                        elseif getgenv().ToggleCyborgAutofarm then
                             getgenv().ToggleCyborgAutofarm(true)
                         end
-                        while Model.countMegalodons() > 0 and Model.State.isMegStacking do
+                        local waitTime = 0
+                        local lastCount = Model.countMegalodons()
+                        while Model.countMegalodons() > 0 and Model.State.isMegStacking and waitTime < 180 do
                             task.wait(1)
+                            waitTime = waitTime + 1
+                            local curCount = Model.countMegalodons()
+                            if curCount < lastCount then
+                                waitTime = 0
+                                lastCount = curCount
+                            end
                         end
                         print("✅ [MegStack] Stack cleared! Turning off Cyborg and resuming fishing...")
-                        if getgenv().ToggleCyborgAutofarm then
+                        if Fluent and Fluent.Options and Fluent.Options.T_CyborgAuto then
+                            Fluent.Options.T_CyborgAuto:SetValue(false)
+                        elseif getgenv().ToggleCyborgAutofarm then
                             getgenv().ToggleCyborgAutofarm(false)
                         end
                         if Model.State.isMegStacking then
-                            Fluent.Options.T_DeepSea:SetValue(true)
+                            if Fluent and Fluent.Options and Fluent.Options.T_DeepSea then
+                                Fluent.Options.T_DeepSea:SetValue(true)
+                            end
                         end
                     end
                     task.wait(1)
@@ -1504,8 +1520,14 @@ Tabs.Teleport:AddButton({
             end)
         else
             print("🛑 [MegStack] Stacking aborted. Shutting down deep sea catcher.")
-            if Fluent.Options.T_DeepSea.Value == true then
+            if Fluent.Options.T_DeepSea and Fluent.Options.T_DeepSea.Value == true then
                 Fluent.Options.T_DeepSea:SetValue(false)
+            end
+            if Fluent.Options.T_AutoStoreFruit and Fluent.Options.T_AutoStoreFruit.Value == true then
+                Fluent.Options.T_AutoStoreFruit:SetValue(false)
+            end
+            if Fluent.Options.T_AutoReturn and Fluent.Options.T_AutoReturn.Value == true then
+                Fluent.Options.T_AutoReturn:SetValue(false)
             end
         end
     end })

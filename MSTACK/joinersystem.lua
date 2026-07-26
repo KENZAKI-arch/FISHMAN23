@@ -1493,21 +1493,11 @@ if not isLobby then
                     
                     if targetVector and (hrp.Position - targetVector).Magnitude > 20 then
                         print("🚀 [Auto Return] Distance > 20 studs! Flying back to the hoverboard now...")
-                        -- Temporarily turn off Meg Stack if it was on
-                        local wasMegStackOn = Model.State.megStack
-                        if wasMegStackOn and Fluent and Fluent.Options and Fluent.Options.T_MegStack then
-                            Fluent.Options.T_MegStack:SetValue(false)
-                        end
-                        
                         -- Trigger return!
                         local success = Model.ReturnToShip()
                         
                         if success then 
                             print("✅ [Auto Return] Safely landed on the hoverboard platform!")
-                            -- Turn Meg Stack back on since we are safe on the hoverboard
-                            if wasMegStackOn and Fluent and Fluent.Options and Fluent.Options.T_MegStack then
-                                Fluent.Options.T_MegStack:SetValue(true)
-                            end
                             task.wait(1) 
                         end
                     end
@@ -1611,6 +1601,26 @@ local function checkFruits(fruitList)
     end
 end
 
+local function isFruitAlreadyStored(fruitName)
+    local pGui = LocalPlayer:FindFirstChild("PlayerGui")
+    if not pGui then return false end
+    local invGui = pGui:FindFirstChild("Inventory")
+    if not invGui then return false end
+    local main = invGui:FindFirstChild("Main")
+    if not main then return false end
+    local inv = main:FindFirstChild("Inventory")
+    if not inv then return false end
+    local list = inv:FindFirstChild("List")
+    if not list then return false end
+
+    for _, child in ipairs(list:GetChildren()) do
+        if string.find(string.lower(child.Name), string.lower(fruitName)) then
+            return true
+        end
+    end
+    return false
+end
+
 local function storeFruits(fruitList)
     local character = LocalPlayer.Character
     local humanoid = character and character:FindFirstChild("Humanoid")
@@ -1624,6 +1634,9 @@ local function storeFruits(fruitList)
             local toolName = string.lower(tool.Name)
             for _, fruitName in ipairs(fruitList) do
                 if string.find(toolName, string.lower(fruitName)) then
+                    if isFruitAlreadyStored(fruitName) then
+                        break -- Already stored in PlayerGui.Inventory.Main.Inventory.List!
+                    end
                     local isSpecial = false
                     if tool:GetAttribute("Category") == "Special" then
                         isSpecial = true
@@ -1642,7 +1655,7 @@ local function storeFruits(fruitList)
         end
     end
     
-    if not hasFruits then return end -- No need to pause if no fruits
+    if not hasFruits then return end -- No need to pause if no unstored fruits
 
     -- PAUSE FISHING/KILLING
     local tempSavedState = {}
@@ -1652,10 +1665,7 @@ local function storeFruits(fruitList)
             autoBuy = Model.State.autoBuy,
             autoSell = Model.State.autoSell,
             isAutoTraveling = Model.State.isAutoTraveling,
-            autoCraft = Model.State.autoCraft,
-            deepSea = (Fluent and Fluent.Options and Fluent.Options.T_DeepSea) and Fluent.Options.T_DeepSea.Value or false,
-            megStack = (Fluent and Fluent.Options and Fluent.Options.T_MegStack) and Fluent.Options.T_MegStack.Value or false,
-            megStackLoc = (Fluent and Fluent.Options and Fluent.Options.T_MegStackLoc) and Fluent.Options.T_MegStackLoc.Value or false
+            autoCraft = Model.State.autoCraft
         }
         
         -- Force stop them
@@ -1672,9 +1682,6 @@ local function storeFruits(fruitList)
             if Fluent.Options.T_Sell then Fluent.Options.T_Sell:SetValue(false) end
             if Fluent.Options.T_Travel then Fluent.Options.T_Travel:SetValue(false) end
             if Fluent.Options.T_Craft then Fluent.Options.T_Craft:SetValue(false) end
-            if Fluent.Options.T_DeepSea then Fluent.Options.T_DeepSea:SetValue(false) end
-            if Fluent.Options.T_MegStack then Fluent.Options.T_MegStack:SetValue(false) end
-            if Fluent.Options.T_MegStackLoc then Fluent.Options.T_MegStackLoc:SetValue(false) end
         end
         
         -- Wait a moment for any current actions (like reeling) to finish
@@ -1689,8 +1696,13 @@ local function storeFruits(fruitList)
         if tool:IsA("Tool") then
             local toolName = string.lower(tool.Name)
             local isTargetFruit = false
+            local matchedFruitName = nil
             for _, fruitName in ipairs(fruitList) do
                 if string.find(toolName, string.lower(fruitName)) then
+                    if isFruitAlreadyStored(fruitName) then
+                        if Fluent then Fluent:Notify({ Title = "Already Stored", Content = tool.Name .. " is already in storage! Skipping.", Duration = 3 }) end
+                        break
+                    end
                     local isSpecial = false
                     if tool:GetAttribute("Category") == "Special" then
                         isSpecial = true
@@ -1702,16 +1714,19 @@ local function storeFruits(fruitList)
                     
                     if isSpecial then
                         isTargetFruit = true
+                        matchedFruitName = fruitName
                     end
                     break
                 end
             end
             
-            if isTargetFruit then
+            if isTargetFruit and not isFruitAlreadyStored(matchedFruitName) then
                 humanoid:EquipTool(tool)
                 task.wait(0.2)
                 
-                ReplicatedStorage.Events.FruitStorage:InvokeServer(true)
+                pcall(function()
+                    ReplicatedStorage.Events.FruitStorage:InvokeServer(true)
+                end)
                 task.wait(0.5)
                 
                 if tool.Parent == character or tool.Parent == backpack then
@@ -1740,9 +1755,6 @@ local function storeFruits(fruitList)
             if Fluent.Options.T_Sell then Fluent.Options.T_Sell:SetValue(Model.State.autoSell) end
             if Fluent.Options.T_Travel then Fluent.Options.T_Travel:SetValue(Model.State.isAutoTraveling) end
             if Fluent.Options.T_Craft then Fluent.Options.T_Craft:SetValue(Model.State.autoCraft) end
-            if Fluent.Options.T_DeepSea then Fluent.Options.T_DeepSea:SetValue(tempSavedState.deepSea) end
-            if Fluent.Options.T_MegStack then Fluent.Options.T_MegStack:SetValue(tempSavedState.megStack) end
-            if Fluent.Options.T_MegStackLoc then Fluent.Options.T_MegStackLoc:SetValue(tempSavedState.megStackLoc) end
         end
 
         if Model.State.isAutoTraveling and Model.StartTraveling then
@@ -1792,10 +1804,7 @@ local function dropFruits(fruitList)
             autoBuy = Model.State.autoBuy,
             autoSell = Model.State.autoSell,
             isAutoTraveling = Model.State.isAutoTraveling,
-            autoCraft = Model.State.autoCraft,
-            deepSea = (Fluent and Fluent.Options and Fluent.Options.T_DeepSea) and Fluent.Options.T_DeepSea.Value or false,
-            megStack = (Fluent and Fluent.Options and Fluent.Options.T_MegStack) and Fluent.Options.T_MegStack.Value or false,
-            megStackLoc = (Fluent and Fluent.Options and Fluent.Options.T_MegStackLoc) and Fluent.Options.T_MegStackLoc.Value or false
+            autoCraft = Model.State.autoCraft
         }
         
         -- Force stop them
@@ -1812,9 +1821,6 @@ local function dropFruits(fruitList)
             if Fluent.Options.T_Sell then Fluent.Options.T_Sell:SetValue(false) end
             if Fluent.Options.T_Travel then Fluent.Options.T_Travel:SetValue(false) end
             if Fluent.Options.T_Craft then Fluent.Options.T_Craft:SetValue(false) end
-            if Fluent.Options.T_DeepSea then Fluent.Options.T_DeepSea:SetValue(false) end
-            if Fluent.Options.T_MegStack then Fluent.Options.T_MegStack:SetValue(false) end
-            if Fluent.Options.T_MegStackLoc then Fluent.Options.T_MegStackLoc:SetValue(false) end
         end
         
         -- Wait a moment for any current actions (like reeling) to finish
@@ -1874,9 +1880,6 @@ local function dropFruits(fruitList)
             if Fluent.Options.T_Sell then Fluent.Options.T_Sell:SetValue(Model.State.autoSell) end
             if Fluent.Options.T_Travel then Fluent.Options.T_Travel:SetValue(Model.State.isAutoTraveling) end
             if Fluent.Options.T_Craft then Fluent.Options.T_Craft:SetValue(Model.State.autoCraft) end
-            if Fluent.Options.T_DeepSea then Fluent.Options.T_DeepSea:SetValue(tempSavedState.deepSea) end
-            if Fluent.Options.T_MegStack then Fluent.Options.T_MegStack:SetValue(tempSavedState.megStack) end
-            if Fluent.Options.T_MegStackLoc then Fluent.Options.T_MegStackLoc:SetValue(tempSavedState.megStackLoc) end
         end
 
         if Model.State.isAutoTraveling and Model.StartTraveling then
@@ -1892,7 +1895,7 @@ end
 Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
 local Window = Fluent:CreateWindow({
     Title = "🐟 Fishman Hub",
-    SubTitle = "Unified Auto-Fisher 1.0.3 v2.6",
+    SubTitle = "Unified Auto-Fisher 1.0.3 v2.7",
     TabWidth = 160,
     Size = UDim2.fromOffset(500, 350),
     Theme = "Darker",
@@ -2534,6 +2537,8 @@ Tabs.Teleport:AddButton({
             if Fluent.Options.T_DeepSea then Fluent.Options.T_DeepSea:SetValue(true) end
             if Fluent.Options.T_Buy then Fluent.Options.T_Buy:SetValue(true) end
             if Fluent.Options.T_MegStackLoc then Fluent.Options.T_MegStackLoc:SetValue(true) end
+            if Fluent.Options.T_AutoStoreFruit then Fluent.Options.T_AutoStoreFruit:SetValue(true) end
+            if Fluent.Options.T_AutoReturn then Fluent.Options.T_AutoReturn:SetValue(true) end
             print("🌊 [MegStack] Meg stack starting now! Enabling deep sea catcher for 10 megalodons.")
             task.spawn(function()
                 while Model.State.isMegStacking do
@@ -2548,8 +2553,16 @@ Tabs.Teleport:AddButton({
                             Fluent.Options.T_CyborgAuto:SetValue(true)
                         end
                         
-                        while Model.countMegalodons() > 0 and Model.State.isMegStacking do
+                        local waitTime = 0
+                        local lastCount = Model.countMegalodons()
+                        while Model.countMegalodons() > 0 and Model.State.isMegStacking and waitTime < 180 do
                             task.wait(1)
+                            waitTime = waitTime + 1
+                            local curCount = Model.countMegalodons()
+                            if curCount < lastCount then
+                                waitTime = 0
+                                lastCount = curCount
+                            end
                         end
                         
                         print("✅ [MegStack] Stack cleared! Toggling Cyborg Autofarm OFF and resuming fishing...")
@@ -2567,8 +2580,14 @@ Tabs.Teleport:AddButton({
             end)
         else
             print("🛑 [MegStack] Stacking aborted. Shutting down deep sea catcher.")
-            if Fluent.Options.T_DeepSea.Value == true then
+            if Fluent.Options.T_DeepSea and Fluent.Options.T_DeepSea.Value == true then
                 Fluent.Options.T_DeepSea:SetValue(false)
+            end
+            if Fluent.Options.T_AutoStoreFruit and Fluent.Options.T_AutoStoreFruit.Value == true then
+                Fluent.Options.T_AutoStoreFruit:SetValue(false)
+            end
+            if Fluent.Options.T_AutoReturn and Fluent.Options.T_AutoReturn.Value == true then
+                Fluent.Options.T_AutoReturn:SetValue(false)
             end
         end
     end })
@@ -2579,17 +2598,14 @@ Tabs.Teleport:AddButton({
     end })
     
     local manualTravelInitialized = false
-    Tabs.Fishing:AddToggle("T_ManualMegStackLoc", { Title = "Manual Meg Stack Travel", Default = false, Callback = function(Value) 
+    Tabs.Fishing:AddToggle("T_ManualMegStackLoc", { Title = "Manual Meg Stack Island", Default = false, Callback = function(Value) 
         if isLobby then if Value then Fluent:Notify({ Title = "Error", Content = "Cannot use in Lobby!", Duration = 3 }); Fluent.Options.T_ManualMegStackLoc:SetValue(false) end return end
         
         if Value then
-            -- Temporarily turn off Auto Return to Hoverboard if it was on
-            if Fluent and Fluent.Options and Fluent.Options.T_AutoReturn then
-                getgenv()._wasAutoReturnOn = Fluent.Options.T_AutoReturn.Value
-                if getgenv()._wasAutoReturnOn then
-                    Fluent.Options.T_AutoReturn:SetValue(false)
-                    Fluent:Notify({ Title = "System", Content = "Auto Return paused during Manual Travel", Duration = 3 })
-                end
+            -- Turn off Auto Return to Hoverboard so it doesn't fly us back after arriving at Meg Stack Island
+            if Fluent and Fluent.Options and Fluent.Options.T_AutoReturn and Fluent.Options.T_AutoReturn.Value then
+                Fluent.Options.T_AutoReturn:SetValue(false)
+                Fluent:Notify({ Title = "System", Content = "Auto Return Hoverboard turned OFF for Manual Travel", Duration = 3 })
             end
 
             manualTravelInitialized = true
@@ -2619,13 +2635,6 @@ Tabs.Teleport:AddButton({
                 end
             end)
         else
-            -- Restore Auto Return if it was previously on
-            if getgenv()._wasAutoReturnOn and Fluent and Fluent.Options and Fluent.Options.T_AutoReturn then
-                Fluent.Options.T_AutoReturn:SetValue(true)
-                getgenv()._wasAutoReturnOn = false
-                Fluent:Notify({ Title = "System", Content = "Auto Return resumed", Duration = 3 })
-            end
-
             if not manualTravelInitialized then return end
             
             if Model.State.isManualTraveling then
