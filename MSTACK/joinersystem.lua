@@ -66,6 +66,7 @@ pcall(function()
             if GlobalMem.FishmanAutoTeleport == nil then GlobalMem.FishmanAutoTeleport = data.FishmanAutoTeleport end
             if GlobalMem.FishmanAutoJoin == nil then GlobalMem.FishmanAutoJoin = data.FishmanAutoJoin end
             if GlobalMem.FishmanAutoReconnect == nil then GlobalMem.FishmanAutoReconnect = data.FishmanAutoReconnect end
+            if GlobalMem.FishmanAutoRouteLobby == nil then GlobalMem.FishmanAutoRouteLobby = data.FishmanAutoRouteLobby end
             print("[Fishman] Loaded Config from file.")
         end
     end
@@ -82,6 +83,7 @@ GlobalMem.FishmanDestination = GlobalMem.FishmanDestination or "tradeHub"
 GlobalMem.FishmanAutoTeleport = GlobalMem.FishmanAutoTeleport or false 
 GlobalMem.FishmanAutoJoin = GlobalMem.FishmanAutoJoin or false
 if GlobalMem.FishmanAutoReconnect == nil then GlobalMem.FishmanAutoReconnect = true end
+if GlobalMem.FishmanAutoRouteLobby == nil then GlobalMem.FishmanAutoRouteLobby = true end
 
 local function SaveConfig()
     pcall(function()
@@ -92,7 +94,8 @@ local function SaveConfig()
                 FishmanDestination = GlobalMem.FishmanDestination,
                 FishmanAutoTeleport = GlobalMem.FishmanAutoTeleport,
                 FishmanAutoJoin = GlobalMem.FishmanAutoJoin,
-                FishmanAutoReconnect = GlobalMem.FishmanAutoReconnect
+                FishmanAutoReconnect = GlobalMem.FishmanAutoReconnect,
+                FishmanAutoRouteLobby = GlobalMem.FishmanAutoRouteLobby
             }
             writefile(configFileName, HttpService:JSONEncode(data))
         end
@@ -2035,6 +2038,16 @@ Tabs = {
         end
     })
 
+    Tabs.Teleport:AddToggle("T_AutoRouteLobby", {
+        Title = "Auto-Route from Lobby on Join",
+        Description = "Automatically teleport to your chosen Destination & PS Code when entering Lobby",
+        Default = GlobalMem.FishmanAutoRouteLobby,
+        Callback = function(Value)
+            GlobalMem.FishmanAutoRouteLobby = Value
+            SaveConfig()
+        end
+    })
+
     local function ExecuteTeleport(destination, psCode)
         if isLobby then
             if destination == "Lobby" then
@@ -2112,21 +2125,15 @@ Tabs = {
     })
 
     Tabs.Teleport:AddButton({
-        Title = "🏠 Return to Base of Operations",
-        Description = "Instantly teleports you to tradeHub in qj1ttW4JG1.",
+        Title = "🏠 Return to Configured Base / Destination",
+        Description = "Instantly teleports you to your selected Destination and PS Code.",
         Callback = function()
-            GlobalMem.FishmanPSCode = "qj1ttW4JG1"
-            GlobalMem.FishmanDestination = "tradeHub"
             GlobalMem.FishmanAutoTeleport = true
             SaveConfig()
             
-            -- Update UI visually
-            if Fluent.Options.Input then Fluent.Options.Input:SetValue("qj1ttW4JG1") end
-            if Fluent.Options.Dropdown then Fluent.Options.Dropdown:SetValue("tradeHub") end
-
-            Fluent:Notify({ Title = "Routing to Base", Content = "Initiating emergency warp...", Duration = 3 })
+            Fluent:Notify({ Title = "Routing to Base", Content = "Initiating warp to " .. tostring(GlobalMem.FishmanDestination) .. "...", Duration = 3 })
             
-            ExecuteTeleport("tradeHub", "qj1ttW4JG1")
+            ExecuteTeleport(GlobalMem.FishmanDestination, GlobalMem.FishmanPSCode)
         end
     })
 
@@ -2145,15 +2152,15 @@ Tabs = {
                 Fluent:Notify({ Title = "Auto-Teleporting", Content = "Routing to chosen destination in 3s...", Duration = 3 })
                 shouldTeleport = true
             end
-        else
+        elseif GlobalMem.FishmanAutoRouteLobby then
             if destPlace == "Lobby" then
-                Fluent:Notify({ Title = "Lobby", Content = "Destination is Lobby. Staying in Lobby.", Duration = 3 })
+                Fluent:Notify({ Title = "Lobby", Content = "Destination is set to Lobby. Staying here.", Duration = 3 })
             else
-                Fluent:Notify({ Title = "Base of Operations", Content = "Routing to Trade Hub in 3s...", Duration = 3 })
-                destCode = "qj1ttW4JG1"
-                destPlace = "tradeHub"
+                Fluent:Notify({ Title = "Auto-Route", Content = "Routing to " .. tostring(destPlace) .. " in 3s...", Duration = 3 })
                 shouldTeleport = true
             end
+        else
+            Fluent:Notify({ Title = "Lobby", Content = "Auto-Route is OFF. Staying in Lobby.", Duration = 3 })
         end
         
         if shouldTeleport then
@@ -2872,8 +2879,8 @@ Tabs.Teleport:AddButton({
         end
     end)
     
-    if not isLobby and GetCurrentPSCode() == "qj1ttW4JG1" then
-        Fluent:Notify({ Title = "Detection", Content = "Target Server qj1ttW4JG1 Detected.", Duration = 5 })
+    if not isLobby and GetCurrentPSCode() == GlobalMem.FishmanPSCode and GlobalMem.FishmanPSCode ~= "" then
+        Fluent:Notify({ Title = "Detection", Content = "Target Server " .. tostring(GlobalMem.FishmanPSCode) .. " Detected.", Duration = 5 })
     end
 
 -- ======================================================================
