@@ -31,7 +31,7 @@ function View.Build(onToggleCallback, onCloseCallback)
     versionLabel.Position = UDim2.new(0, 0, 0, -22)
     versionLabel.BackgroundTransparency = 1
     versionLabel.Active = true
-    versionLabel.Text = "AUTOFARM V1.0"
+    versionLabel.Text = "AUTOFARM V1.1"
     versionLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
     versionLabel.Font = Enum.Font.GothamBold
     versionLabel.TextSize = 12

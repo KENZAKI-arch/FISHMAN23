@@ -19,6 +19,8 @@ Model.State = {
 local flySpeed = 35
 local currentEnemy = nil
 local absoluteFloorHeight = nil 
+local targetSwitchTimer = 2
+local switchInterval = 2
 
 function Model.ResetPhysics()
     local character = LocalPlayer.Character
@@ -61,9 +63,27 @@ function Model.UpdateTracking(deltaTime)
     -- Clear enemy if it is dead, destroyed, or missing its RootPart
     if currentEnemy and (currentEnemy.Parent == nil or not currentEnemy:FindFirstChild("HumanoidRootPart") or not currentEnemy:FindFirstChild("Humanoid") or currentEnemy.Humanoid.Health <= 0) then
         currentEnemy = nil
+        targetSwitchTimer = switchInterval
     end
 
-    -- Select the CLOSEST valid enemy instead of picking randomly every 2 seconds
+    targetSwitchTimer = targetSwitchTimer + deltaTime
+    if targetSwitchTimer >= switchInterval and npcsFolder then
+        targetSwitchTimer = 0
+        -- Switch between NEARBY valid enemies (within 40 studs) to keep combat dynamic without causing slow cross-map floating
+        local nearbyEnemies = {}
+        for _, npc in pairs(npcsFolder:GetChildren()) do
+            if npc.Name == "Fishman Karate User" and npc:FindFirstChild("HumanoidRootPart") and npc:FindFirstChild("Humanoid") and npc.Humanoid.Health > 0 then
+                if npc ~= currentEnemy and (rootPart.Position - npc.HumanoidRootPart.Position).Magnitude <= 40 then
+                    table.insert(nearbyEnemies, npc)
+                end
+            end
+        end
+        if #nearbyEnemies > 0 then
+            currentEnemy = nearbyEnemies[math.random(1, #nearbyEnemies)]
+        end
+    end
+
+    -- Select the CLOSEST valid enemy if we don't have a target
     if not currentEnemy and npcsFolder then
         local closestEnemy = nil
         local shortestDistance = math.huge
