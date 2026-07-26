@@ -1340,6 +1340,42 @@ Tabs = {
         end
     })
 
+    Tabs.Teleport:AddButton({
+        Title = "📈 Trade Hub",
+        Description = "Instantly teleports you to tradeHub in private server qj1ttW4JG1.",
+        Callback = function()
+            GlobalMem.FishmanPSCode = "qj1ttW4JG1"
+            GlobalMem.FishmanDestination = "tradeHub"
+            GlobalMem.FishmanAutoTeleport = true
+            SaveConfig()
+            
+            if Fluent.Options.Input then Fluent.Options.Input:SetValue("qj1ttW4JG1") end
+            if Fluent.Options.Dropdown then Fluent.Options.Dropdown:SetValue("tradeHub") end
+
+            Fluent:Notify({ Title = "Trade Hub", Content = "Initiating warp to Trade Hub (qj1ttW4JG1)...", Duration = 3 })
+            
+            if isLobby then
+                task.spawn(function()
+                    local events = ReplicatedStorage:WaitForChild("Events", 9e9)
+                    local reserved = events:WaitForChild("reserved", 9e9)
+                    pcall(function() reserved:InvokeServer("qj1ttW4JG1") end)
+                    task.wait(5)
+                    
+                    local confirmArgs = { [1] = "tradeHub" }
+                    pcall(function()
+                        local playerGui = LocalPlayer:WaitForChild("PlayerGui", 20)
+                        local chooseType = playerGui:WaitForChild("chooseType", 20)
+                        local frame = chooseType:WaitForChild("Frame", 20)
+                        local remoteEvent = frame:WaitForChild("RemoteEvent", 20)
+                        remoteEvent:FireServer(unpack(confirmArgs))
+                    end)
+                end)
+            else
+                TeleportService:Teleport(targetPlaceId, LocalPlayer)
+            end
+        end
+    })
+
     if isLobby then
         local destCode = GlobalMem.FishmanPSCode
         local destPlace = GlobalMem.FishmanDestination

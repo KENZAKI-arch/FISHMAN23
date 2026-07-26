@@ -2137,6 +2137,24 @@ Tabs = {
         end
     })
 
+    Tabs.Teleport:AddButton({
+        Title = "📈 Trade Hub",
+        Description = "Instantly teleports you to tradeHub in private server qj1ttW4JG1.",
+        Callback = function()
+            GlobalMem.FishmanPSCode = "qj1ttW4JG1"
+            GlobalMem.FishmanDestination = "tradeHub"
+            GlobalMem.FishmanAutoTeleport = true
+            SaveConfig()
+            
+            if Fluent.Options.Input then Fluent.Options.Input:SetValue("qj1ttW4JG1") end
+            if Fluent.Options.Dropdown then Fluent.Options.Dropdown:SetValue("tradeHub") end
+
+            Fluent:Notify({ Title = "Trade Hub", Content = "Initiating warp to Trade Hub (qj1ttW4JG1)...", Duration = 3 })
+            
+            ExecuteTeleport("tradeHub", "qj1ttW4JG1")
+        end
+    })
+
     -- Check if we should automatically route
     if isLobby then
         local destCode = GlobalMem.FishmanPSCode
