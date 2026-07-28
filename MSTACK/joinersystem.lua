@@ -802,12 +802,13 @@ if not isLobby then
         Model.State.isCraftFlying = true
         local speed = Model.State.shipSpeed or 175 
         
-        local function TweenTo(point)
+        local function TweenTo(point, customSpeed)
+            local currentSpeed = customSpeed or speed
             if not Model.State.isCraftFlying then return end
             local dist = (rootPart.Position - point).Magnitude
             if dist < 1 then return end
             
-            local tweenInfo = TweenInfo.new(dist / speed, Enum.EasingStyle.Linear)
+            local tweenInfo = TweenInfo.new(dist / currentSpeed, Enum.EasingStyle.Linear)
             local tween = TweenService:Create(rootPart, tweenInfo, {CFrame = CFrame.new(point) * rootPart.CFrame.Rotation})
             tween:Play()
             
@@ -826,7 +827,7 @@ if not isLobby then
         local upPoint = Vector3.new(cur.X, math.max(cur.Y, targetVector.Y) + 500, cur.Z)
         local overPoint = Vector3.new(targetVector.X, upPoint.Y, targetVector.Z)
         
-        TweenTo(upPoint)
+        TweenTo(upPoint, speed * 0.5) -- 50% slower for going up
         TweenTo(overPoint)
         TweenTo(targetVector)
         
@@ -864,12 +865,13 @@ if not isLobby then
         Model.EnableFlight()
         local speed = Model.State.shipSpeed or 300 
         
-        local function TweenTo(point)
+        local function TweenTo(point, customSpeed)
+            local currentSpeed = customSpeed or speed
             if not Model.State.isCraftFlying then return end
             local dist = (rootPart.Position - point).Magnitude
             if dist < 1 then return end
             
-            local tweenInfo = TweenInfo.new(dist / speed, Enum.EasingStyle.Linear)
+            local tweenInfo = TweenInfo.new(dist / currentSpeed, Enum.EasingStyle.Linear)
             local tween = TweenService:Create(rootPart, tweenInfo, {CFrame = CFrame.new(point) * rootPart.CFrame.Rotation})
             tween:Play()
             
@@ -887,7 +889,7 @@ if not isLobby then
         local upPoint = Vector3.new(cur.X, math.max(cur.Y, targetVector.Y) + 500, cur.Z)
         local overPoint = Vector3.new(targetVector.X, upPoint.Y, targetVector.Z)
         
-        TweenTo(upPoint)
+        TweenTo(upPoint, speed * 0.5) -- 50% slower for going up
         TweenTo(overPoint)
         TweenTo(targetVector)
         
