@@ -2238,22 +2238,33 @@ Tabs.Teleport:AddButton({
     end
 })
 
-Tabs.Teleport:AddButton({
+Tabs.Teleport:AddToggle("T_AutoSpawnShip", {
     Title = "🛳️ Auto Spawn Ship",
     Description = "Flies to spawn, spawns hoverboard, and sets flight height.",
-    Callback = function()
-        print("[Hub] 'Auto Spawn Ship' clicked!")
-        EnsureHoverboardLoaded()
-        if getgenv().HoverboardController and getgenv().HoverboardController.AutoSpawn then
-            print("[Hub] Calling HoverboardController.AutoSpawn()...")
-            getgenv().HoverboardController.AutoSpawn(function()
-                if Fluent and Fluent.Options and Fluent.Options.T_MegStack then
-                    print("[Hub] Automatically enabling Megalodon Stack after final move...")
-                    Fluent.Options.T_MegStack:SetValue(true)
-                end
-            end)
+    Default = false,
+    Callback = function(Value)
+        print("[Hub] 'Auto Spawn Ship' toggled " .. tostring(Value))
+        if Value then
+            EnsureHoverboardLoaded()
+            if getgenv().HoverboardController and getgenv().HoverboardController.AutoSpawn then
+                print("[Hub] Calling HoverboardController.AutoSpawn()...")
+                getgenv().HoverboardController.AutoSpawn(function()
+                    if Fluent and Fluent.Options and Fluent.Options.T_MegStack then
+                        print("[Hub] Automatically enabling Megalodon Stack after final move...")
+                        Fluent.Options.T_MegStack:SetValue(true)
+                    end
+                end)
+            else
+                print("[Hub] ERROR: HoverboardController.AutoSpawn not found!")
+            end
         else
-            print("[Hub] ERROR: HoverboardController.AutoSpawn not found!")
+            if Model and Model.DisableFlight then
+                pcall(Model.DisableFlight)
+            end
+            if getgenv().HoverboardController and getgenv().HoverboardController.Reset then
+                print("[Hub] Calling HoverboardController.Reset() to drop...")
+                getgenv().HoverboardController.Reset()
+            end
         end
     end
 })
