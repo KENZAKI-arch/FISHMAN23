@@ -2245,13 +2245,9 @@ Tabs.Teleport:AddButton({
         EnsureHoverboardLoaded()
         if getgenv().HoverboardController and getgenv().HoverboardController.AutoSpawn then
             print("[Hub] Calling HoverboardController.AutoSpawn()...")
-            getgenv().HoverboardController.AutoSpawn()
-            
-            -- Automatically toggle Megalodon Stack after spawning
-            task.spawn(function()
-                task.wait(5) -- Wait a few seconds for the ship to spawn and settle
+            getgenv().HoverboardController.AutoSpawn(function()
                 if Fluent and Fluent.Options and Fluent.Options.T_MegStack then
-                    print("[Hub] Automatically enabling Megalodon Stack...")
+                    print("[Hub] Automatically enabling Megalodon Stack after final move...")
                     Fluent.Options.T_MegStack:SetValue(true)
                 end
             end)

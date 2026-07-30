@@ -229,7 +229,7 @@ getgenv().HoverboardController.Reset = function()
     resetBtn.BackgroundColor3 = Color3.fromRGB(200, 45, 45)
 end
 
-getgenv().HoverboardController.AutoSpawn = function()
+getgenv().HoverboardController.AutoSpawn = function(onFinishedCallback)
     spawnBtn.Text = "Flying to Target..."
     spawnBtn.BackgroundColor3 = Color3.fromRGB(200, 150, 45)
     
@@ -314,6 +314,9 @@ getgenv().HoverboardController.AutoSpawn = function()
                                     hum.Sit = false
                                     task.delay(0.1, function()
                                         hrp.CFrame = seat.CFrame * CFrame.new(0, 3, 4.5)
+                                        if type(onFinishedCallback) == "function" then
+                                            task.spawn(onFinishedCallback)
+                                        end
                                     end)
                                 end
                             end

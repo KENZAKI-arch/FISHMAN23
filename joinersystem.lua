@@ -39,6 +39,7 @@ local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local GuiService = game:GetService("GuiService")
+local VirtualInputManager = game:GetService("VirtualInputManager")
 local LocalPlayer = Players.LocalPlayer
 
 while not LocalPlayer do 
@@ -60,6 +61,7 @@ pcall(function()
         local data = HttpService:JSONDecode(readfile(configFileName))
         if data then
             if GlobalMem.FishmanPSCode == nil then GlobalMem.FishmanPSCode = data.FishmanPSCode end
+            if GlobalMem.FishmanPSCodeHistory == nil then GlobalMem.FishmanPSCodeHistory = data.FishmanPSCodeHistory end
             if GlobalMem.FishmanDestination == nil then GlobalMem.FishmanDestination = data.FishmanDestination end
             if GlobalMem.FishmanAutoTeleport == nil then GlobalMem.FishmanAutoTeleport = data.FishmanAutoTeleport end
             if GlobalMem.FishmanAutoJoin == nil then GlobalMem.FishmanAutoJoin = data.FishmanAutoJoin end
@@ -71,6 +73,12 @@ pcall(function()
 end)
 
 GlobalMem.FishmanPSCode = GlobalMem.FishmanPSCode or "qj1ttW4JG1"
+if type(GlobalMem.FishmanPSCodeHistory) ~= "table" or #GlobalMem.FishmanPSCodeHistory == 0 then
+    GlobalMem.FishmanPSCodeHistory = {GlobalMem.FishmanPSCode}
+end
+if not table.find(GlobalMem.FishmanPSCodeHistory, GlobalMem.FishmanPSCode) and GlobalMem.FishmanPSCode ~= "" then
+    table.insert(GlobalMem.FishmanPSCodeHistory, 1, GlobalMem.FishmanPSCode)
+end
 GlobalMem.FishmanDestination = GlobalMem.FishmanDestination or "tradeHub" 
 GlobalMem.FishmanAutoTeleport = GlobalMem.FishmanAutoTeleport or false 
 GlobalMem.FishmanAutoJoin = GlobalMem.FishmanAutoJoin or false
@@ -82,6 +90,7 @@ local function SaveConfig()
         if writefile then
             local data = {
                 FishmanPSCode = GlobalMem.FishmanPSCode,
+                FishmanPSCodeHistory = GlobalMem.FishmanPSCodeHistory,
                 FishmanDestination = GlobalMem.FishmanDestination,
                 FishmanAutoTeleport = GlobalMem.FishmanAutoTeleport,
                 FishmanAutoJoin = GlobalMem.FishmanAutoJoin,
@@ -146,7 +155,7 @@ local function GetCurrentPSCode()
             local main = settingsGui:FindFirstChild("Main")
             if main then
                 local codeLabel = main:FindFirstChild("Code")
-                if codeLabel and codeLabel:IsA("TextLabel") or codeLabel:IsA("TextBox") then
+                if codeLabel and (codeLabel:IsA("TextLabel") or codeLabel:IsA("TextBox")) then
                     return codeLabel.Text
                 end
             end
@@ -227,6 +236,11 @@ local secondsSinceLastInput = 0
 local craftHeartbeatConn = nil
 local craftFlyTarget = nil
 
+    local EVASION_DIRECTIONS = {
+        Vector3.new(1, 0, 0),   -- 1. Slide Right
+        Vector3.new(0, 1, 0)    -- 2. Climb Up (Only if cornered/trapped)
+    }
+
     Model.State = {
         isFishing             = false,
         autoBuy               = false,
@@ -242,6 +256,7 @@ local craftFlyTarget = nil
         isCurrentlyCrafting   = false,
         waitingForArrivalToFish = false,
         isCraftFlying         = false,
+        activeNavigation      = nil,
     }
 
 if not isLobby then
@@ -258,8 +273,8 @@ if not isLobby then
     local LEGENDARY_FISHES  = { "Anglerfish", "Golden Ribbon Angelfish", "Golden Polka Puffer", "Golden Tigerfin" }
     local MAX_PELI            = 1000000
     local BAIT_NAME           = "Common Fish Bait"
-    local MIN_BAIT            = 10
-    local BUY_AMOUNT          = 290
+    local MIN_BAIT            = 1
+    local BUY_AMOUNT          = 300
     local BAIT_SEARCH_RADIUS  = 25
     local THROW_ANIMATION_ID  = "rbxassetid://140322334422224"
     local REEL_ANIMATION_ID   = "rbxassetid://136623058564703"
@@ -332,6 +347,307 @@ if not isLobby then
             if bv then bv:Destroy() end
         end
         if humanoid then humanoid.PlatformStand = false end
+    end
+    
+    function Model.NavigateTo(object, targetPosition, speed, arrivalDistance)
+        speed = speed or 100
+        arrivalDistance = arrivalDistance or 20
+        
+        local primaryPart = object:IsA("Model") and object.PrimaryPart or (object:IsA("BasePart") and object or nil)
+        if not primaryPart then return nil end
+
+        local startPosition = primaryPart.Position
+        local size = primaryPart.Size
+        if object:IsA("Model") then
+            local _, modelSize = object:GetBoundingBox()
+            size = modelSize
+        end
+
+        local downwardParams = RaycastParams.new()
+        downwardParams.FilterType = Enum.RaycastFilterType.Exclude
+        downwardParams.FilterDescendantsInstances = {object, LocalPlayer.Character}
+        downwardParams.IgnoreWater = false 
+
+        local forwardParams = RaycastParams.new()
+        forwardParams.FilterType = Enum.RaycastFilterType.Exclude
+        
+        local ignoreList = {object, LocalPlayer.Character}
+        local OCEAN_LEVEL = 0 
+        
+        local oceanModel = workspace:FindFirstChild("Ocean")
+        if oceanModel then 
+            table.insert(ignoreList, oceanModel) 
+            local highestWater = -math.huge
+            for _, part in ipairs(oceanModel:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    local topSurface = part.Position.Y + (part.Size.Y / 2)
+                    if topSurface > highestWater then
+                        highestWater = topSurface
+                    end
+                end
+            end
+            if highestWater ~= -math.huge then
+                OCEAN_LEVEL = highestWater
+            end
+        end
+        
+        local envFolder = workspace:FindFirstChild("Env")
+        if envFolder then
+            local waterStuff = envFolder:FindFirstChild("WaterStuff")
+            if waterStuff then
+                table.insert(ignoreList, waterStuff)
+                local highestWater = -math.huge
+                for _, part in ipairs(waterStuff:GetDescendants()) do
+                    if part:IsA("BasePart") then
+                        local topSurface = part.Position.Y + (part.Size.Y / 2)
+                        if topSurface > highestWater then
+                            highestWater = topSurface
+                        end
+                    end
+                end
+                if highestWater ~= -math.huge and highestWater > OCEAN_LEVEL then
+                    OCEAN_LEVEL = highestWater
+                end
+            end
+        end
+        
+        local npcsFolder = workspace:FindFirstChild("NPCs")
+        if npcsFolder then
+            table.insert(ignoreList, npcsFolder)
+            local downIgnore = downwardParams.FilterDescendantsInstances
+            table.insert(downIgnore, npcsFolder)
+            downwardParams.FilterDescendantsInstances = downIgnore
+        end
+        
+        forwardParams.FilterDescendantsInstances = ignoreList
+        forwardParams.IgnoreWater = true 
+
+        local humanoid = object:FindFirstChildOfClass("Humanoid")
+        if humanoid then humanoid.PlatformStand = true end
+
+        local bv = Instance.new("BodyVelocity")
+        bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+        bv.Velocity = Vector3.zero
+        bv.Parent = primaryPart
+
+        local bg = Instance.new("BodyGyro")
+        bg.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
+        bg.CFrame = primaryPart.CFrame
+        bg.Parent = primaryPart
+
+        local navigator = { 
+            _isNavigating = true,
+            _isPaused = false,
+            _evadingTimer = 0,
+            _evasionDir = nil,
+            _roboTarget = nil,
+            _lastScan = 0,
+            Distance = 0
+        }
+        local connection = nil
+        local noclipConnection = nil
+        
+        function navigator:Cancel()
+            self._isNavigating = false
+            if bv then bv:Destroy() end
+            if bg then bg:Destroy() end
+            if humanoid then humanoid.PlatformStand = false end
+            if connection then connection:Disconnect() end
+            if noclipConnection then noclipConnection:Disconnect() end
+        end
+        
+        function navigator:TogglePause()
+            self._isPaused = not self._isPaused
+            if self._isPaused then
+                if bv then bv.Velocity = Vector3.zero end
+            end
+            return self._isPaused
+        end
+
+        local function raycastSolid(origin, direction, params)
+            local result = workspace:Raycast(origin, direction, params)
+            local loops = 0
+            while result and not result.Instance.CanCollide and loops < 10 do
+                local currentList = params.FilterDescendantsInstances
+                table.insert(currentList, result.Instance)
+                params.FilterDescendantsInstances = currentList
+                loops = loops + 1
+                result = workspace:Raycast(origin, direction, params)
+            end
+            return result
+        end
+
+        local function blockcastSolid(cframe, extents, dir, params)
+            local result = workspace:Blockcast(cframe, extents, dir, params)
+            local loops = 0
+            while result and not result.Instance.CanCollide and loops < 10 do
+                local currentList = params.FilterDescendantsInstances
+                table.insert(currentList, result.Instance)
+                params.FilterDescendantsInstances = currentList
+                loops = loops + 1
+                result = workspace:Blockcast(cframe, extents, dir, params)
+            end
+            return result
+        end
+
+        noclipConnection = RunService.Stepped:Connect(function()
+            if not navigator._isNavigating or navigator._isPaused then return end
+            if object then
+                for _, part in ipairs(object:GetDescendants()) do
+                    if part:IsA("BasePart") then part.CanCollide = false end
+                end
+            end
+        end)
+
+        connection = RunService.Heartbeat:Connect(function(deltaTime)
+            if not navigator._isNavigating then
+                navigator:Cancel()
+                return
+            end
+            
+            if navigator._isPaused then return end
+            
+            local currentPos = primaryPart.Position
+            local flatCurrent = Vector3.new(currentPos.X, 0, currentPos.Z)
+            local flatTarget = Vector3.new(targetPosition.X, 0, targetPosition.Z)
+            
+            local directionToTarget = (flatTarget - flatCurrent)
+            local distToTarget = directionToTarget.Magnitude
+            
+            navigator.Distance = math.floor(distToTarget)
+            
+            if not navigator._roboTarget and distToTarget <= 1500 then
+                local now = tick()
+                if now - navigator._lastScan > 1 then
+                    navigator._lastScan = now
+                    if npcsFolder then
+                        local closestRobo = nil
+                        local shortestDist = 1500
+                        
+                        for _, npc in ipairs(npcsFolder:GetChildren()) do
+                            if string.find(string.lower(npc.Name), "robo") then
+                                local root = npc:FindFirstChild("HumanoidRootPart") or npc:FindFirstChildWhichIsA("BasePart")
+                                if root then
+                                    local distToDestination = (root.Position - targetPosition).Magnitude
+                                    local distToStart = (root.Position - startPosition).Magnitude
+                                    
+                                    if distToDestination < shortestDist and distToDestination < distToStart then
+                                        shortestDist = distToDestination
+                                        closestRobo = root
+                                    end
+                                end
+                            end
+                        end
+                        
+                        if closestRobo then
+                            navigator._roboTarget = closestRobo
+                        end
+                    end
+                end
+            end
+            
+            if navigator._roboTarget then
+                local roboPos = navigator._roboTarget.Position
+                local roboLook = navigator._roboTarget.CFrame.LookVector
+                targetPosition = roboPos + (roboLook * 15)
+                flatTarget = Vector3.new(targetPosition.X, 0, targetPosition.Z)
+                directionToTarget = (flatTarget - flatCurrent)
+                distToTarget = directionToTarget.Magnitude
+                arrivalDistance = 8 
+            end
+            
+            local moveDir = directionToTarget.Unit
+            if distToTarget == 0 then moveDir = primaryPart.CFrame.LookVector end
+            
+            local targetVelocity = (moveDir * speed)
+            local targetRotation = CFrame.lookAt(currentPos, currentPos + moveDir)
+            
+            local lookAheadPos = flatCurrent + (targetVelocity.Unit * 5)
+            local rayOrigin = Vector3.new(lookAheadPos.X, currentPos.Y + 500, lookAheadPos.Z)
+            local groundHit = raycastSolid(rayOrigin, Vector3.new(0, -1000, 0), downwardParams)
+            
+            if distToTarget <= arrivalDistance then
+                if navigator._roboTarget then
+                    navigator:Cancel()
+                    return
+                else
+                    if groundHit and groundHit.Position.Y > (OCEAN_LEVEL + 3) then
+                        navigator:Cancel()
+                        return
+                    end
+                    if distToTarget <= 20 then
+                        navigator:Cancel()
+                        return
+                    end
+                end
+            end
+            
+            local targetY = currentPos.Y
+            if groundHit then
+                targetY = groundHit.Position.Y + 5 + (size.Y / 2)
+            end
+            
+            local minAllowedHeight = OCEAN_LEVEL + 5 + (size.Y / 2)
+            if targetY < minAllowedHeight then targetY = minAllowedHeight end
+            
+            local wallCheckCFrame = primaryPart.CFrame + Vector3.new(0, 3, 0)
+            local isCloseToArrival = (distToTarget <= arrivalDistance + 15)
+            
+            if navigator._evadingTimer > 0 and not isCloseToArrival then
+                navigator._evadingTimer = navigator._evadingTimer - deltaTime
+                local evadeWallCast = blockcastSolid(wallCheckCFrame, size, navigator._evasionDir * 15, forwardParams)
+                if evadeWallCast and evadeWallCast.Distance <= 5 then
+                    navigator._evadingTimer = 0
+                else
+                    targetVelocity = (navigator._evasionDir * speed)
+                    if navigator._evasionDir.Y >= 0.99 or navigator._evasionDir.Y <= -0.99 then
+                        targetRotation = CFrame.lookAt(currentPos, currentPos + navigator._evasionDir + (moveDir * 0.01))
+                    else
+                        targetRotation = CFrame.lookAt(currentPos, currentPos + navigator._evasionDir)
+                    end
+                end
+            elseif not isCloseToArrival then
+                local wallCast = blockcastSolid(wallCheckCFrame, size, moveDir * 10, forwardParams)
+                if wallCast and wallCast.Distance <= 5 then
+                    if wallCast.Distance > 0.5 then
+                        local evaded = false
+                        local baseLook = CFrame.lookAt(currentPos, currentPos + moveDir)
+                        for _, evasionDir in ipairs(EVASION_DIRECTIONS) do
+                            local relativeVector = evasionDir
+                            if evasionDir.X ~= 0 then relativeVector = baseLook:VectorToWorldSpace(evasionDir) end
+                            local evadeCast = blockcastSolid(wallCheckCFrame, size, relativeVector * 15, forwardParams)
+                            if not evadeCast then
+                                navigator._evadingTimer = 0.3 
+                                navigator._evasionDir = relativeVector
+                                targetVelocity = (relativeVector * speed)
+                                if relativeVector.Y >= 0.99 or relativeVector.Y <= -0.99 then
+                                    targetRotation = CFrame.lookAt(currentPos, currentPos + relativeVector + (moveDir * 0.01))
+                                else
+                                    targetRotation = CFrame.lookAt(currentPos, currentPos + relativeVector)
+                                end
+                                evaded = true
+                                break
+                            end
+                        end
+                        if not evaded then
+                            navigator._evadingTimer = 0.3
+                            navigator._evasionDir = Vector3.new(0, 1, 0)
+                        end
+                    end
+                end
+            end
+            
+            if navigator._evadingTimer <= 0 or isCloseToArrival then
+                local heightDiff = targetY - currentPos.Y
+                local yVelocity = math.clamp(heightDiff * 5, -speed, speed)
+                targetVelocity = Vector3.new(targetVelocity.X, yVelocity, targetVelocity.Z)
+            end
+            
+            bv.Velocity = targetVelocity
+            bg.CFrame = targetRotation
+        end)
+        
+        return navigator
     end
     
     function Model.HandleMovement(deltaTime)
@@ -484,19 +800,20 @@ if not isLobby then
         if not rootPart then return end
         
         Model.State.isCraftFlying = true
-        local speed = Model.State.shipSpeed or 300 
+        local speed = Model.State.shipSpeed or 175 
         
-        local function TweenTo(point)
+        local function TweenTo(point, customSpeed)
+            local currentSpeed = customSpeed or speed
             if not Model.State.isCraftFlying then return end
             local dist = (rootPart.Position - point).Magnitude
             if dist < 1 then return end
             
-            local tweenInfo = TweenInfo.new(dist / speed, Enum.EasingStyle.Linear)
+            local tweenInfo = TweenInfo.new(dist / currentSpeed, Enum.EasingStyle.Linear)
             local tween = TweenService:Create(rootPart, tweenInfo, {CFrame = CFrame.new(point) * rootPart.CFrame.Rotation})
             tween:Play()
             
             while tween.PlaybackState == Enum.PlaybackState.Playing do
-                if not Model.State.autoCraft and not Model.State.isRefillingMegBait then 
+                if not Model.State.autoCraft and not Model.State.isRefillingMegBait and not Model.State.isManualTraveling then 
                     tween:Cancel()
                     Model.State.isCraftFlying = false
                     break 
@@ -510,7 +827,7 @@ if not isLobby then
         local upPoint = Vector3.new(cur.X, math.max(cur.Y, targetVector.Y) + 500, cur.Z)
         local overPoint = Vector3.new(targetVector.X, upPoint.Y, targetVector.Z)
         
-        TweenTo(upPoint)
+        TweenTo(upPoint, speed * 0.5) -- 50% slower for going up
         TweenTo(overPoint)
         TweenTo(targetVector)
         
@@ -519,14 +836,24 @@ if not isLobby then
 
     function Model.CraftFlyPath(pathTable)
         for _, targetPos in ipairs(pathTable) do 
-            if not Model.State.autoCraft and not Model.State.isRefillingMegBait then break end
+            if not Model.State.autoCraft and not Model.State.isRefillingMegBait and not Model.State.isManualTraveling then break end
             CraftFlyToAndWait(targetPos) 
         end
     end
     
     function Model.ReturnToShip()
         local hoverboard = Model.FindHoverboard()
-        if not hoverboard then return false end
+        local targetVector = nil
+        
+        if hoverboard then
+            local hbCFrame = hoverboard:IsA("Model") and hoverboard:GetPivot() or hoverboard.CFrame
+            targetVector = (hbCFrame * CFrame.new(0, 3, 4)).Position
+            Model.SaveHoverboardPos(targetVector)
+        elseif Model.LoadHoverboardPos() then
+            targetVector = Model.LoadHoverboardPos()
+        else
+            return false
+        end
         
         local character = LocalPlayer.Character
         local rootPart = character and character:FindFirstChild("HumanoidRootPart")
@@ -536,16 +863,15 @@ if not isLobby then
         Model.DisableFlight()
         task.wait(0.1)
         Model.EnableFlight()
-        
-        local targetVector = (hoverboard.CFrame * CFrame.new(0, 3, 4)).Position
         local speed = Model.State.shipSpeed or 300 
         
-        local function TweenTo(point)
+        local function TweenTo(point, customSpeed)
+            local currentSpeed = customSpeed or speed
             if not Model.State.isCraftFlying then return end
             local dist = (rootPart.Position - point).Magnitude
             if dist < 1 then return end
             
-            local tweenInfo = TweenInfo.new(dist / speed, Enum.EasingStyle.Linear)
+            local tweenInfo = TweenInfo.new(dist / currentSpeed, Enum.EasingStyle.Linear)
             local tween = TweenService:Create(rootPart, tweenInfo, {CFrame = CFrame.new(point) * rootPart.CFrame.Rotation})
             tween:Play()
             
@@ -563,7 +889,7 @@ if not isLobby then
         local upPoint = Vector3.new(cur.X, math.max(cur.Y, targetVector.Y) + 500, cur.Z)
         local overPoint = Vector3.new(targetVector.X, upPoint.Y, targetVector.Z)
         
-        TweenTo(upPoint)
+        TweenTo(upPoint, speed * 0.5) -- 50% slower for going up
         TweenTo(overPoint)
         TweenTo(targetVector)
         
@@ -772,27 +1098,72 @@ if not isLobby then
         Model.State.isBuying = false
     end
 
+    local hoverboardSaveFile = "FISHMAN23_HoverboardPos_" .. LocalPlayer.Name .. ".json"
+    
+    function Model.SaveHoverboardPos(pos)
+        getgenv().CachedHoverboardTailPos = pos
+        if writefile and HttpService then
+            local data = { X = pos.X, Y = pos.Y, Z = pos.Z }
+            pcall(function()
+                writefile(hoverboardSaveFile, HttpService:JSONEncode(data))
+            end)
+        end
+    end
+    
+    function Model.LoadHoverboardPos()
+        if getgenv().CachedHoverboardTailPos then
+            return getgenv().CachedHoverboardTailPos
+        end
+        if isfile and readfile and HttpService and isfile(hoverboardSaveFile) then
+            local success, decoded = pcall(function()
+                return HttpService:JSONDecode(readfile(hoverboardSaveFile))
+            end)
+            if success and type(decoded) == "table" and decoded.X and decoded.Y and decoded.Z then
+                local pos = Vector3.new(decoded.X, decoded.Y, decoded.Z)
+                getgenv().CachedHoverboardTailPos = pos
+                return pos
+            end
+        end
+        return nil
+    end
+
     function Model.FindHoverboard()
         if getgenv().CachedHoverboard and getgenv().CachedHoverboard.Parent then
             return getgenv().CachedHoverboard
         end
         local character = LocalPlayer.Character
-        local shipName = LocalPlayer.Name .. "Ship"
+        local possibleNames = {
+            LocalPlayer.Name .. "Ship",
+            LocalPlayer.Name .. "Striker",
+            LocalPlayer.Name .. "Hoverboard",
+            LocalPlayer.Name .. "Coffin",
+            LocalPlayer.Name .. "Boat"
+        }
         if character then
             local hum = character:FindFirstChild("Humanoid")
-            if hum and hum.SeatPart and hum.SeatPart.Name == "VehicleSeat" and hum.SeatPart.Parent and hum.SeatPart.Parent.Name == shipName then
-                getgenv().CachedHoverboard = hum.SeatPart
-                return hum.SeatPart
+            if hum and hum.SeatPart and hum.SeatPart.Name == "VehicleSeat" and hum.SeatPart.Parent then
+                local pName = hum.SeatPart.Parent.Name
+                if table.find(possibleNames, pName) or pName:find(LocalPlayer.Name) then
+                    getgenv().CachedHoverboard = hum.SeatPart
+                    return hum.SeatPart
+                end
             end
         end
         local shipsFolder = workspace:FindFirstChild("Ships")
         if shipsFolder then
-            local myShip = shipsFolder:FindFirstChild(shipName)
+            local myShip = nil
+            for _, name in ipairs(possibleNames) do
+                myShip = shipsFolder:FindFirstChild(name)
+                if myShip then break end
+            end
             if myShip then
                 local seat = myShip:FindFirstChild("VehicleSeat", true) or myShip:FindFirstChildOfClass("VehicleSeat")
                 if seat then
                     getgenv().CachedHoverboard = seat
                     return seat
+                else
+                    getgenv().CachedHoverboard = myShip
+                    return myShip
                 end
             end
         end
@@ -826,7 +1197,12 @@ if not isLobby then
         print("🚀 [MegStackLoc] Flying back to fishing spot...")
         local hoverboard = Model.FindHoverboard()
         if hoverboard then
-            Model.CraftFlyPath({ (hoverboard.CFrame * CFrame.new(0, 3, 4)).Position })
+            local hbCFrame = hoverboard:IsA("Model") and hoverboard:GetPivot() or hoverboard.CFrame
+            local tailPos = (hbCFrame * CFrame.new(0, 3, 4)).Position
+            Model.SaveHoverboardPos(tailPos)
+            Model.CraftFlyPath({ tailPos })
+        elseif Model.LoadHoverboardPos() then
+            Model.CraftFlyPath({ Model.LoadHoverboardPos() })
         else
             Model.CraftFlyPath({ originalPos })
         end
@@ -1092,6 +1468,49 @@ if not isLobby then
     task.spawn(function() while _running and task.wait(2) do if Model.State.autoBuy or Model.State.isMegStackLoc or Model.State.autoSell then Model.CheckInventory() end end end)
     task.spawn(function() while _running and task.wait() do if Model.State.isFishing or Model.State.isDeepSeaCatcher then Model.DoFishingCycle() end end end)
 
+    -- Auto-track hoverboard position to memory every 3 seconds to prevent StreamingEnabled drop-off
+    task.spawn(function()
+        while _running and task.wait(3) do
+            local hb = Model.FindHoverboard and Model.FindHoverboard()
+            if hb then
+                local hbCFrame = hb:IsA("Model") and hb:GetPivot() or hb.CFrame
+                getgenv().CachedHoverboardTailPos = (hbCFrame * CFrame.new(0, 3, 4)).Position
+            end
+        end
+    end)
+
+    -- Auto-return background loop
+    task.spawn(function()
+        while _running and task.wait(1) do
+            if Model.State.autoReturn and not Model.State.isCraftFlying and not Model.State.isAutoTraveling and not Model.State.isRefillingMegBait and not Model.State.isManualTraveling and not Model.State.isCurrentlyCrafting then
+                local character = LocalPlayer.Character
+                local hum = character and character:FindFirstChild("Humanoid")
+                local hrp = character and character:FindFirstChild("HumanoidRootPart")
+                if hum and hum.SeatPart == nil and hrp then
+                    local targetVector = nil
+                    local hb = Model.FindHoverboard and Model.FindHoverboard()
+                    if hb then
+                        local hbCFrame = hb:IsA("Model") and hb:GetPivot() or hb.CFrame
+                        targetVector = (hbCFrame * CFrame.new(0, 3, 4)).Position
+                    elseif Model.LoadHoverboardPos then
+                        targetVector = Model.LoadHoverboardPos()
+                    end
+                    
+                    if targetVector and (hrp.Position - targetVector).Magnitude > 20 then
+                        print("🚀 [Auto Return] Distance > 20 studs! Flying back to the hoverboard now...")
+                        -- Trigger return!
+                        local success = Model.ReturnToShip()
+                        
+                        if success then 
+                            print("✅ [Auto Return] Safely landed on the hoverboard platform!")
+                            task.wait(1) 
+                        end
+                    end
+                end
+            end
+        end
+    end)
+
     addConn(RunService.Heartbeat:Connect(function(dt)
         if _running and Model.State.isAutoTraveling then Model.HandleMovement(dt) end
     end))
@@ -1137,6 +1556,342 @@ local function ShutdownEverything()
     print("[Fishman] Successfully shut down.")
 end
 env.Fishman_StopPrevious = ShutdownEverything
+
+local targetFruits = {
+    "Dragon", "Venom", "Mochi", "Soul", "Pika", "Buddha", "Magu", "Goro", "Goru", "Gura",
+    "Hie", "Kage", "Mera", "Tori", "Pteranodon", "Smoke", "Yami", "Suna", "Yuki", "Ope", "Zushi", "Ito", "Paw"
+}
+
+local function checkFruits(fruitList)
+    local character = LocalPlayer.Character
+    local backpack = LocalPlayer:FindFirstChild("Backpack")
+    if not character or not backpack then return end
+    
+    local inventoryCounts = {}
+    local foundAny = false
+    
+    for _, tool in pairs(backpack:GetChildren()) do
+        if tool:IsA("Tool") then
+            local toolName = string.lower(tool.Name)
+            for _, fruitName in ipairs(fruitList) do
+                if string.find(toolName, string.lower(fruitName)) then
+                    local isSpecial = false
+                    if tool:GetAttribute("Category") == "Special" then
+                        isSpecial = true
+                    end
+                    local attrs = tool:FindFirstChild("Attributes")
+                    if attrs and attrs:FindFirstChild("Category") and attrs.Category.Value == "Special" then
+                        isSpecial = true
+                    end
+                    
+                    if isSpecial then
+                        inventoryCounts[tool.Name] = (inventoryCounts[tool.Name] or 0) + 1
+                        foundAny = true
+                    end
+                    break
+                end
+            end
+        end
+    end
+    
+    if foundAny then
+        local lines = {}
+        for name, count in pairs(inventoryCounts) do
+            table.insert(lines, count .. "x " .. name)
+        end
+        local message = table.concat(lines, ", ")
+        if Fluent then Fluent:Notify({ Title = "Fruits Found", Content = message, Duration = 5 }) end
+    else
+        if Fluent then Fluent:Notify({ Title = "Fruit Check", Content = "No target fruits found.", Duration = 3 }) end
+    end
+end
+
+local function isFruitAlreadyStored(fruitName)
+    local pGui = LocalPlayer:FindFirstChild("PlayerGui")
+    if not pGui then return false end
+    local invGui = pGui:FindFirstChild("Inventory")
+    if not invGui then return false end
+    local main = invGui:FindFirstChild("Main")
+    if not main then return false end
+    local inv = main:FindFirstChild("Inventory")
+    if not inv then return false end
+    local list = inv:FindFirstChild("List")
+    if not list then return false end
+
+    for _, child in ipairs(list:GetChildren()) do
+        if string.find(string.lower(child.Name), string.lower(fruitName)) then
+            return true
+        end
+    end
+    return false
+end
+
+local function storeFruits(fruitList)
+    local character = LocalPlayer.Character
+    local humanoid = character and character:FindFirstChild("Humanoid")
+    local backpack = LocalPlayer:FindFirstChild("Backpack")
+    if not character or not humanoid or not backpack then return end
+    
+    -- Check if we even have any target fruits before pausing
+    local hasFruits = false
+    for _, tool in pairs(backpack:GetChildren()) do
+        if tool:IsA("Tool") then
+            local toolName = string.lower(tool.Name)
+            for _, fruitName in ipairs(fruitList) do
+                if string.find(toolName, string.lower(fruitName)) then
+                    if isFruitAlreadyStored(fruitName) then
+                        break -- Already stored in PlayerGui.Inventory.Main.Inventory.List!
+                    end
+                    local isSpecial = false
+                    if tool:GetAttribute("Category") == "Special" then
+                        isSpecial = true
+                    end
+                    local attrs = tool:FindFirstChild("Attributes")
+                    if attrs and attrs:FindFirstChild("Category") and attrs.Category.Value == "Special" then
+                        isSpecial = true
+                    end
+                    
+                    if isSpecial then
+                        hasFruits = true
+                    end
+                    break
+                end
+            end
+        end
+    end
+    
+    if not hasFruits then return end -- No need to pause if no unstored fruits
+
+    -- PAUSE FISHING/KILLING
+    local tempSavedState = {}
+    if Model and Model.State then
+        tempSavedState = {
+            isFishing = Model.State.isFishing,
+            autoBuy = Model.State.autoBuy,
+            autoSell = Model.State.autoSell,
+            isAutoTraveling = Model.State.isAutoTraveling,
+            autoCraft = Model.State.autoCraft
+        }
+        
+        -- Force stop them
+        Model.State.isFishing = false
+        Model.State.autoBuy = false
+        Model.State.autoSell = false
+        Model.State.isAutoTraveling = false
+        Model.State.autoCraft = false
+        
+        -- Update toggles visually
+        if Fluent and Fluent.Options then
+            if Fluent.Options.T_Fish then Fluent.Options.T_Fish:SetValue(false) end
+            if Fluent.Options.T_Buy then Fluent.Options.T_Buy:SetValue(false) end
+            if Fluent.Options.T_Sell then Fluent.Options.T_Sell:SetValue(false) end
+            if Fluent.Options.T_Travel then Fluent.Options.T_Travel:SetValue(false) end
+            if Fluent.Options.T_Craft then Fluent.Options.T_Craft:SetValue(false) end
+        end
+        
+        -- Wait a moment for any current actions (like reeling) to finish
+        task.wait(2)
+        
+        -- Unequip current tools (rod/sword) so we can equip fruits properly
+        humanoid:UnequipTools()
+        task.wait(0.5)
+    end
+    
+    for _, tool in pairs(backpack:GetChildren()) do
+        if tool:IsA("Tool") then
+            local toolName = string.lower(tool.Name)
+            local isTargetFruit = false
+            local matchedFruitName = nil
+            for _, fruitName in ipairs(fruitList) do
+                if string.find(toolName, string.lower(fruitName)) then
+                    if isFruitAlreadyStored(fruitName) then
+                        if Fluent then Fluent:Notify({ Title = "Already Stored", Content = tool.Name .. " is already in storage! Skipping.", Duration = 3 }) end
+                        break
+                    end
+                    local isSpecial = false
+                    if tool:GetAttribute("Category") == "Special" then
+                        isSpecial = true
+                    end
+                    local attrs = tool:FindFirstChild("Attributes")
+                    if attrs and attrs:FindFirstChild("Category") and attrs.Category.Value == "Special" then
+                        isSpecial = true
+                    end
+                    
+                    if isSpecial then
+                        isTargetFruit = true
+                        matchedFruitName = fruitName
+                    end
+                    break
+                end
+            end
+            
+            if isTargetFruit and not isFruitAlreadyStored(matchedFruitName) then
+                humanoid:EquipTool(tool)
+                task.wait(0.2)
+                
+                pcall(function()
+                    ReplicatedStorage.Events.FruitStorage:InvokeServer(true)
+                end)
+                task.wait(0.5)
+                
+                if tool.Parent == character or tool.Parent == backpack then
+                    humanoid:UnequipTools()
+                    if Fluent then Fluent:Notify({ Title = "Storage Full", Content = "Couldn't store: " .. tool.Name .. " (kept in inventory)", Duration = 3 }) end
+                else
+                    if Fluent then Fluent:Notify({ Title = "Fruit Stored", Content = "Successfully stored: " .. tool.Name, Duration = 3 }) end
+                end
+                task.wait(0.5)
+            end
+        end
+    end
+
+    -- RESUME FISHING/KILLING
+    if Model and Model.State then
+        Model.State.isFishing = tempSavedState.isFishing or false
+        Model.State.autoBuy = tempSavedState.autoBuy or false
+        Model.State.autoSell = tempSavedState.autoSell or false
+        Model.State.isAutoTraveling = tempSavedState.isAutoTraveling or false
+        Model.State.autoCraft = tempSavedState.autoCraft or false
+        
+        -- Update UI toggles visually to match restored state
+        if Fluent and Fluent.Options then
+            if Fluent.Options.T_Fish then Fluent.Options.T_Fish:SetValue(Model.State.isFishing) end
+            if Fluent.Options.T_Buy then Fluent.Options.T_Buy:SetValue(Model.State.autoBuy) end
+            if Fluent.Options.T_Sell then Fluent.Options.T_Sell:SetValue(Model.State.autoSell) end
+            if Fluent.Options.T_Travel then Fluent.Options.T_Travel:SetValue(Model.State.isAutoTraveling) end
+            if Fluent.Options.T_Craft then Fluent.Options.T_Craft:SetValue(Model.State.autoCraft) end
+        end
+
+        if Model.State.isAutoTraveling and Model.StartTraveling then
+            Model.StartTraveling()
+        end
+    end
+end
+
+local function dropFruits(fruitList)
+    local character = LocalPlayer.Character
+    local humanoid = character and character:FindFirstChild("Humanoid")
+    local backpack = LocalPlayer:FindFirstChild("Backpack")
+    if not character or not humanoid or not backpack then return end
+    
+    -- Check if we even have any target fruits before pausing
+    local hasFruits = false
+    for _, tool in pairs(backpack:GetChildren()) do
+        if tool:IsA("Tool") then
+            local toolName = string.lower(tool.Name)
+            for _, fruitName in ipairs(fruitList) do
+                if string.find(toolName, string.lower(fruitName)) then
+                    local isSpecial = false
+                    if tool:GetAttribute("Category") == "Special" then
+                        isSpecial = true
+                    end
+                    local attrs = tool:FindFirstChild("Attributes")
+                    if attrs and attrs:FindFirstChild("Category") and attrs.Category.Value == "Special" then
+                        isSpecial = true
+                    end
+                    
+                    if isSpecial then
+                        hasFruits = true
+                    end
+                    break
+                end
+            end
+        end
+    end
+    
+    if not hasFruits then return end -- No need to pause if no fruits
+
+    -- PAUSE FISHING/KILLING
+    local tempSavedState = {}
+    if Model and Model.State then
+        tempSavedState = {
+            isFishing = Model.State.isFishing,
+            autoBuy = Model.State.autoBuy,
+            autoSell = Model.State.autoSell,
+            isAutoTraveling = Model.State.isAutoTraveling,
+            autoCraft = Model.State.autoCraft
+        }
+        
+        -- Force stop them
+        Model.State.isFishing = false
+        Model.State.autoBuy = false
+        Model.State.autoSell = false
+        Model.State.isAutoTraveling = false
+        Model.State.autoCraft = false
+        
+        -- Update toggles visually
+        if Fluent and Fluent.Options then
+            if Fluent.Options.T_Fish then Fluent.Options.T_Fish:SetValue(false) end
+            if Fluent.Options.T_Buy then Fluent.Options.T_Buy:SetValue(false) end
+            if Fluent.Options.T_Sell then Fluent.Options.T_Sell:SetValue(false) end
+            if Fluent.Options.T_Travel then Fluent.Options.T_Travel:SetValue(false) end
+            if Fluent.Options.T_Craft then Fluent.Options.T_Craft:SetValue(false) end
+        end
+        
+        -- Wait a moment for any current actions (like reeling) to finish
+        task.wait(2)
+        
+        -- Unequip current tools (rod/sword) so we can equip fruits properly
+        humanoid:UnequipTools()
+        task.wait(0.5)
+    end
+    
+    for _, tool in pairs(backpack:GetChildren()) do
+        if tool:IsA("Tool") then
+            local toolName = string.lower(tool.Name)
+            local isTargetFruit = false
+            for _, fruitName in ipairs(fruitList) do
+                if string.find(toolName, string.lower(fruitName)) then
+                    local isSpecial = false
+                    if tool:GetAttribute("Category") == "Special" then
+                        isSpecial = true
+                    end
+                    local attrs = tool:FindFirstChild("Attributes")
+                    if attrs and attrs:FindFirstChild("Category") and attrs.Category.Value == "Special" then
+                        isSpecial = true
+                    end
+                    
+                    if isSpecial then
+                        isTargetFruit = true
+                    end
+                    break
+                end
+            end
+            
+            if isTargetFruit then
+                humanoid:EquipTool(tool)
+                task.wait(0.2)
+                VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Backspace, false, game)
+                task.wait(0.1)
+                VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Backspace, false, game)
+                if Fluent then Fluent:Notify({ Title = "Dropping Fruit", Content = "Dropped: " .. tool.Name, Duration = 3 }) end
+                task.wait(0.5)
+            end
+        end
+    end
+
+    -- RESUME FISHING/KILLING
+    if Model and Model.State then
+        Model.State.isFishing = tempSavedState.isFishing or false
+        Model.State.autoBuy = tempSavedState.autoBuy or false
+        Model.State.autoSell = tempSavedState.autoSell or false
+        Model.State.isAutoTraveling = tempSavedState.isAutoTraveling or false
+        Model.State.autoCraft = tempSavedState.autoCraft or false
+        
+        -- Update UI toggles visually to match restored state
+        if Fluent and Fluent.Options then
+            if Fluent.Options.T_Fish then Fluent.Options.T_Fish:SetValue(Model.State.isFishing) end
+            if Fluent.Options.T_Buy then Fluent.Options.T_Buy:SetValue(Model.State.autoBuy) end
+            if Fluent.Options.T_Sell then Fluent.Options.T_Sell:SetValue(Model.State.autoSell) end
+            if Fluent.Options.T_Travel then Fluent.Options.T_Travel:SetValue(Model.State.isAutoTraveling) end
+            if Fluent.Options.T_Craft then Fluent.Options.T_Craft:SetValue(Model.State.autoCraft) end
+        end
+
+        if Model.State.isAutoTraveling and Model.StartTraveling then
+            Model.StartTraveling()
+        end
+    end
+end
 
 
 -- ======================================================================
@@ -1227,6 +1982,7 @@ end)
 
 Tabs = {
     Teleport = Window:AddTab({ Title = "Teleport", Icon = "plane" }),
+    Navigation = Window:AddTab({ Title = "Navigation", Icon = "map" }),
     Fishing = Window:AddTab({ Title = "Fishing", Icon = "anchor" }),
     Autofarm = Window:AddTab({ Title = "Autofarm", Icon = "swords" }),
     Settings = Window:AddTab({ Title = "Settings", Icon = "settings" })
@@ -1243,7 +1999,33 @@ Tabs = {
         Finished = false,
         Callback = function(Value)
             GlobalMem.FishmanPSCode = Value
+            if Value and Value ~= "" and not table.find(GlobalMem.FishmanPSCodeHistory, Value) then
+                table.insert(GlobalMem.FishmanPSCodeHistory, 1, Value)
+                while #GlobalMem.FishmanPSCodeHistory > 10 do
+                    table.remove(GlobalMem.FishmanPSCodeHistory, #GlobalMem.FishmanPSCodeHistory)
+                end
+                if Fluent.Options.D_PSCodeHistory then
+                    Fluent.Options.D_PSCodeHistory:SetValues(GlobalMem.FishmanPSCodeHistory)
+                end
+            end
             SaveConfig()
+        end
+    })
+
+    Tabs.Teleport:AddDropdown("D_PSCodeHistory", {
+        Title = "PS Code History",
+        Description = "Click to select a saved PS code",
+        Values = GlobalMem.FishmanPSCodeHistory,
+        Multi = false,
+        Default = GlobalMem.FishmanPSCode,
+        Callback = function(Value)
+            if Value and Value ~= "" then
+                GlobalMem.FishmanPSCode = Value
+                SaveConfig()
+                if Fluent.Options.Input and Fluent.Options.Input.Value ~= Value then
+                    Fluent.Options.Input:SetValue(Value)
+                end
+            end
         end
     })
 
@@ -1268,38 +2050,79 @@ Tabs = {
         end
     })
 
+    local function ExecuteTeleport(destination, psCode)
+        if isLobby then
+            if destination == "Lobby" then
+                Fluent:Notify({ Title = "Lobby", Content = "You are already in the Lobby!", Duration = 3 })
+                return
+            end
+            if psCode and psCode ~= "" then
+                task.spawn(function()
+                    local events = ReplicatedStorage:WaitForChild("Events", 9e9)
+                    local reserved = events:WaitForChild("reserved", 9e9)
+                    pcall(function() reserved:InvokeServer(psCode) end)
+                end)
+                task.wait(5) 
+            end
+            
+            local confirmArgs = { [1] = destination }
+            pcall(function()
+                if destination == "Lobby" then
+                    TeleportService:Teleport(targetPlaceId, LocalPlayer)
+                else
+                    local playerGui = LocalPlayer:WaitForChild("PlayerGui", 20)
+                    local chooseType = playerGui:WaitForChild("chooseType", 20)
+                    local frame = chooseType:WaitForChild("Frame", 20)
+                    local remoteEvent = frame:WaitForChild("RemoteEvent", 20)
+                    
+                    if destination == "Second Sea" then
+                        print("Teleporting to Second Sea...")
+                        if not game:IsLoaded() then
+                            game.Loaded:Wait()
+                        end
+
+                        -- Step 1: Open sea selection menu
+                        local args1 = {
+                            [1] = true;
+                        }
+                        remoteEvent:FireServer(unpack(args1))
+
+                        task.wait(0.5)
+
+                        -- Step 2: Confirm on ConfirmationPrompt
+                        local args2 = {
+                            [1] = "Second Sea";
+                        }
+                        local confirmationPrompt = LocalPlayer:WaitForChild("PlayerGui", 9e9):WaitForChild("ConfirmationPrompt", 9e9)
+                        confirmationPrompt:WaitForChild("RemoteEvent", 9e9):FireServer(unpack(args2))
+                    else
+                        remoteEvent:FireServer(unpack(confirmArgs))
+                    end
+                end
+            end)
+        else
+            TeleportService:Teleport(targetPlaceId, LocalPlayer)
+        end
+    end
+
     Tabs.Teleport:AddButton({
         Title = "🚀 Teleport Now!",
         Description = "Teleports you to the selected destination.",
         Callback = function()
+            if GlobalMem.FishmanPSCode and GlobalMem.FishmanPSCode ~= "" then
+                if not table.find(GlobalMem.FishmanPSCodeHistory, GlobalMem.FishmanPSCode) then
+                    table.insert(GlobalMem.FishmanPSCodeHistory, 1, GlobalMem.FishmanPSCode)
+                    while #GlobalMem.FishmanPSCodeHistory > 10 do
+                        table.remove(GlobalMem.FishmanPSCodeHistory, #GlobalMem.FishmanPSCodeHistory)
+                    end
+                    if Fluent.Options.D_PSCodeHistory then
+                        Fluent.Options.D_PSCodeHistory:SetValues(GlobalMem.FishmanPSCodeHistory)
+                    end
+                end
+            end
             GlobalMem.FishmanAutoTeleport = true
             SaveConfig()
-            
-            if isLobby then
-                if GlobalMem.FishmanPSCode ~= "" then
-                    task.spawn(function()
-                        local events = ReplicatedStorage:WaitForChild("Events", 9e9)
-                        local reserved = events:WaitForChild("reserved", 9e9)
-                        pcall(function() reserved:InvokeServer(GlobalMem.FishmanPSCode) end)
-                    end)
-                    task.wait(5) 
-                end
-                
-                local confirmArgs = { [1] = GlobalMem.FishmanDestination }
-                pcall(function()
-                    if GlobalMem.FishmanDestination == "Lobby" then
-                        TeleportService:Teleport(targetPlaceId, LocalPlayer)
-                    else
-                        local playerGui = LocalPlayer:WaitForChild("PlayerGui", 20)
-                        local chooseType = playerGui:WaitForChild("chooseType", 20)
-                        local frame = chooseType:WaitForChild("Frame", 20)
-                        local remoteEvent = frame:WaitForChild("RemoteEvent", 20)
-                        remoteEvent:FireServer(unpack(confirmArgs))
-                    end
-                end)
-            else
-                TeleportService:Teleport(targetPlaceId, LocalPlayer)
-            end
+            ExecuteTeleport(GlobalMem.FishmanDestination, GlobalMem.FishmanPSCode)
         end
     })
 
@@ -1309,34 +2132,10 @@ Tabs = {
         Callback = function()
             GlobalMem.FishmanAutoTeleport = true
             SaveConfig()
-
+            
             Fluent:Notify({ Title = "Routing to Base", Content = "Initiating warp to " .. tostring(GlobalMem.FishmanDestination) .. "...", Duration = 3 })
             
-            if isLobby then
-                task.spawn(function()
-                    if GlobalMem.FishmanPSCode ~= "" then
-                        local events = ReplicatedStorage:WaitForChild("Events", 9e9)
-                        local reserved = events:WaitForChild("reserved", 9e9)
-                        pcall(function() reserved:InvokeServer(GlobalMem.FishmanPSCode) end)
-                        task.wait(5)
-                    end
-                    
-                    local confirmArgs = { [1] = GlobalMem.FishmanDestination }
-                    pcall(function()
-                        if GlobalMem.FishmanDestination == "Lobby" then
-                            TeleportService:Teleport(targetPlaceId, LocalPlayer)
-                        else
-                            local playerGui = LocalPlayer:WaitForChild("PlayerGui", 20)
-                            local chooseType = playerGui:WaitForChild("chooseType", 20)
-                            local frame = chooseType:WaitForChild("Frame", 20)
-                            local remoteEvent = frame:WaitForChild("RemoteEvent", 20)
-                            remoteEvent:FireServer(unpack(confirmArgs))
-                        end
-                    end)
-                end)
-            else
-                TeleportService:Teleport(targetPlaceId, LocalPlayer)
-            end
+            ExecuteTeleport(GlobalMem.FishmanDestination, GlobalMem.FishmanPSCode)
         end
     })
 
@@ -1354,38 +2153,25 @@ Tabs = {
 
             Fluent:Notify({ Title = "Trade Hub", Content = "Initiating warp to Trade Hub (qj1ttW4JG1)...", Duration = 3 })
             
-            if isLobby then
-                task.spawn(function()
-                    local events = ReplicatedStorage:WaitForChild("Events", 9e9)
-                    local reserved = events:WaitForChild("reserved", 9e9)
-                    pcall(function() reserved:InvokeServer("qj1ttW4JG1") end)
-                    task.wait(5)
-                    
-                    local confirmArgs = { [1] = "tradeHub" }
-                    pcall(function()
-                        local playerGui = LocalPlayer:WaitForChild("PlayerGui", 20)
-                        local chooseType = playerGui:WaitForChild("chooseType", 20)
-                        local frame = chooseType:WaitForChild("Frame", 20)
-                        local remoteEvent = frame:WaitForChild("RemoteEvent", 20)
-                        remoteEvent:FireServer(unpack(confirmArgs))
-                    end)
-                end)
-            else
-                TeleportService:Teleport(targetPlaceId, LocalPlayer)
-            end
+            ExecuteTeleport("tradeHub", "qj1ttW4JG1")
         end
     })
 
+    -- Check if we should automatically route
     if isLobby then
         local destCode = GlobalMem.FishmanPSCode
         local destPlace = GlobalMem.FishmanDestination
         local shouldTeleport = false
         
         if GlobalMem.FishmanAutoTeleport then
-            Fluent:Notify({ Title = "Auto-Teleporting", Content = "Routing to chosen destination in 3s...", Duration = 3 })
             GlobalMem.FishmanAutoTeleport = false
             SaveConfig()
-            shouldTeleport = true
+            if destPlace == "Lobby" then
+                Fluent:Notify({ Title = "Arrived at Lobby", Content = "You have arrived at the Lobby.", Duration = 3 })
+            else
+                Fluent:Notify({ Title = "Auto-Teleporting", Content = "Routing to chosen destination in 3s...", Duration = 3 })
+                shouldTeleport = true
+            end
         elseif GlobalMem.FishmanAutoRouteLobby then
             if destPlace == "Lobby" then
                 Fluent:Notify({ Title = "Lobby", Content = "Destination is set to Lobby. Staying here.", Duration = 3 })
@@ -1400,28 +2186,7 @@ Tabs = {
         if shouldTeleport then
             task.spawn(function()
                 task.wait(3)
-                
-                if destCode ~= "" then
-                    task.spawn(function()
-                        local events = ReplicatedStorage:WaitForChild("Events", 9e9)
-                        local reserved = events:WaitForChild("reserved", 9e9)
-                        pcall(function() reserved:InvokeServer(destCode) end)
-                    end)
-                    task.wait(5) 
-                end
-                
-                local confirmArgs = { [1] = destPlace }
-                pcall(function()
-                    if destPlace == "Lobby" then
-                        TeleportService:Teleport(targetPlaceId, LocalPlayer)
-                    else
-                        local playerGui = LocalPlayer:WaitForChild("PlayerGui", 20)
-                        local chooseType = playerGui:WaitForChild("chooseType", 20)
-                        local frame = chooseType:WaitForChild("Frame", 20)
-                        local remoteEvent = frame:WaitForChild("RemoteEvent", 20)
-                        remoteEvent:FireServer(unpack(confirmArgs))
-                    end
-                end)
+                ExecuteTeleport(destPlace, destCode)
             end)
         end
     end
@@ -1432,12 +2197,12 @@ Tabs = {
 
 Tabs.Teleport:AddInput("I_HoverHeight", {
     Title = "Flight Altitude",
-    Default = "400",
+    Default = "440",
     Placeholder = "Enter Altitude...",
     Numeric = true,
     Finished = false,
     Callback = function(Value)
-        local height = tonumber(Value) or 400
+        local height = tonumber(Value) or 440
         getgenv().HoverboardTargetHeight = height
         if getgenv().HoverboardController and getgenv().HoverboardController.SetHeightValue then
             getgenv().HoverboardController.SetHeightValue(height)
@@ -1480,7 +2245,12 @@ Tabs.Teleport:AddButton({
         EnsureHoverboardLoaded()
         if getgenv().HoverboardController and getgenv().HoverboardController.AutoSpawn then
             print("[Hub] Calling HoverboardController.AutoSpawn()...")
-            getgenv().HoverboardController.AutoSpawn()
+            getgenv().HoverboardController.AutoSpawn(function()
+                if Fluent and Fluent.Options and Fluent.Options.T_MegStack then
+                    print("[Hub] Automatically enabling Megalodon Stack after final move...")
+                    Fluent.Options.T_MegStack:SetValue(true)
+                end
+            end)
         else
             print("[Hub] ERROR: HoverboardController.AutoSpawn not found!")
         end
@@ -1501,6 +2271,275 @@ Tabs.Teleport:AddButton({
         end
     end
 })
+
+-- ======================================================================
+-- 🗺️ NAVIGATION TAB UI
+-- ======================================================================
+
+    local islandNames = {}
+    local islandPositions = {}
+    
+    local function refreshIslands()
+        table.clear(islandNames)
+        table.clear(islandPositions)
+        local guider = game.ReplicatedStorage:FindFirstChild("CompassGuider")
+        if guider then
+            for _, island in ipairs(guider:GetChildren()) do
+                table.insert(islandNames, island.Name)
+                islandPositions[island.Name] = island.Value
+            end
+        end
+        if #islandNames == 0 then table.insert(islandNames, "None") end
+    end
+    refreshIslands()
+
+    local selectedIslandPos = nil
+
+    local D_Island = Tabs.Navigation:AddDropdown("D_Island", {
+        Title = "Select Island",
+        Values = islandNames,
+        Multi = false,
+        Default = islandNames[1],
+        Callback = function(Value)
+            selectedIslandPos = islandPositions[Value]
+        end
+    })
+    
+    Tabs.Navigation:AddButton({
+        Title = "🔄 Refresh Islands",
+        Description = "Refreshes the island list if CompassGuider was slow to load.",
+        Callback = function()
+            refreshIslands()
+            D_Island:SetValues(islandNames)
+            Fluent:Notify({ Title = "Refreshed", Content = "Island list updated.", Duration = 3 })
+        end
+    })
+    
+    local flightStatus = Tabs.Navigation:AddParagraph({ Title = "Flight Status", Content = "Idle" })
+    
+    Tabs.Navigation:AddButton({
+        Title = "🛫 Start Flight",
+        Description = "Begins advanced auto-navigation to the selected island.",
+        Callback = function()
+            local character = LocalPlayer.Character
+            if not character or not character.PrimaryPart then return end
+            
+            if Model.State.activeNavigation and Model.State.activeNavigation._isNavigating then
+                Fluent:Notify({ Title = "Already Flying", Content = "Cancel or Pause current flight first.", Duration = 3 })
+                return
+            end
+            
+            if not selectedIslandPos then
+                Fluent:Notify({ Title = "No Island", Content = "Please select a valid island first.", Duration = 3 })
+                return
+            end
+            
+            Model.State.activeNavigation = Model.NavigateTo(character, selectedIslandPos, 90, 20)
+            
+            task.spawn(function()
+                while Model.State.activeNavigation and Model.State.activeNavigation._isNavigating do
+                    local nav = Model.State.activeNavigation
+                    if nav._isPaused then
+                        flightStatus:SetDesc("Paused (" .. tostring(nav.Distance) .. " studs)")
+                    elseif nav._roboTarget then
+                        flightStatus:SetDesc("Lock: Robo! (" .. tostring(nav.Distance) .. " studs)")
+                    else
+                        flightStatus:SetDesc("Flying... (" .. tostring(nav.Distance) .. " studs)")
+                    end
+                    task.wait(0.1)
+                end
+                flightStatus:SetDesc("Idle")
+            end)
+        end
+    })
+
+    Tabs.Navigation:AddButton({
+        Title = "⏸️ Pause / Resume Flight",
+        Description = "Toggles the current flight state.",
+        Callback = function()
+            if Model.State.activeNavigation and Model.State.activeNavigation._isNavigating then
+                local isPaused = Model.State.activeNavigation:TogglePause()
+                if isPaused then
+                    Fluent:Notify({ Title = "Paused", Content = "Flight paused.", Duration = 3 })
+                else
+                    Fluent:Notify({ Title = "Resumed", Content = "Flight resumed.", Duration = 3 })
+                end
+            end
+        end
+    })
+
+    Tabs.Navigation:AddButton({
+        Title = "🛑 Cancel Flight",
+        Description = "Immediately stops the current flight.",
+        Callback = function()
+            if Model.State.activeNavigation and Model.State.activeNavigation._isNavigating then
+                Model.State.activeNavigation:Cancel()
+                Model.State.activeNavigation = nil
+                flightStatus:SetDesc("Idle")
+                Fluent:Notify({ Title = "Cancelled", Content = "Flight cancelled.", Duration = 3 })
+            end
+        end
+    })
+
+    Tabs.Navigation:AddToggle("T_IslandESP", { Title = "Islands ESP", Default = false, Callback = function(Value) 
+        Model.State.isIslandESP = Value
+        if Value then
+            task.spawn(function()
+                while _running and Model.State.isIslandESP do
+                    local islandsFolder = workspace:FindFirstChild("Islands")
+                    if islandsFolder then
+                        for _, island in ipairs(islandsFolder:GetChildren()) do
+                            if island:IsA("Model") or island:IsA("BasePart") then
+                                local rootPart = island:IsA("Model") and (island.PrimaryPart or island:FindFirstChildWhichIsA("BasePart")) or island
+                                if rootPart then
+                                    local espName = "IslandESP_" .. island.Name
+                                    if not rootPart:FindFirstChild(espName) then
+                                        local bgui = Instance.new("BillboardGui")
+                                        bgui.Name = espName
+                                        bgui.AlwaysOnTop = true
+                                        bgui.Size = UDim2.new(0, 100, 0, 50)
+                                        bgui.StudsOffset = Vector3.new(0, 50, 0)
+                                        
+                                        local txt = Instance.new("TextLabel")
+                                        txt.Size = UDim2.new(1, 0, 1, 0)
+                                        txt.BackgroundTransparency = 1
+                                        txt.Text = island.Name
+                                        txt.TextColor3 = Color3.fromRGB(0, 255, 255)
+                                        txt.TextStrokeTransparency = 0
+                                        txt.TextScaled = true
+                                        txt.Parent = bgui
+                                        
+                                        bgui.Parent = rootPart
+                                        
+                                        if not island:FindFirstChild("IslandESP_HL") then
+                                            local hl = Instance.new("Highlight")
+                                            hl.Name = "IslandESP_HL"
+                                            hl.FillColor = Color3.fromRGB(0, 255, 255)
+                                            hl.OutlineColor = Color3.fromRGB(255, 255, 255)
+                                            hl.FillTransparency = 0.5
+                                            hl.Parent = island
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                    end
+                    task.wait(2)
+                end
+                
+                local islandsFolder = workspace:FindFirstChild("Islands")
+                if islandsFolder then
+                    for _, island in ipairs(islandsFolder:GetChildren()) do
+                        local rootPart = island:IsA("Model") and (island.PrimaryPart or island:FindFirstChildWhichIsA("BasePart")) or island
+                        if rootPart then
+                            local bgui = rootPart:FindFirstChild("IslandESP_" .. island.Name)
+                            if bgui then bgui:Destroy() end
+                        end
+                        local hl = island:FindFirstChild("IslandESP_HL")
+                        if hl then hl:Destroy() end
+                    end
+                end
+            end)
+        else
+            local islandsFolder = workspace:FindFirstChild("Islands")
+            if islandsFolder then
+                for _, island in ipairs(islandsFolder:GetChildren()) do
+                    local rootPart = island:IsA("Model") and (island.PrimaryPart or island:FindFirstChildWhichIsA("BasePart")) or island
+                    if rootPart then
+                        local bgui = rootPart:FindFirstChild("IslandESP_" .. island.Name)
+                        if bgui then bgui:Destroy() end
+                    end
+                    local hl = island:FindFirstChild("IslandESP_HL")
+                    if hl then hl:Destroy() end
+                end
+            end
+        end
+    end })
+
+    Tabs.Navigation:AddToggle("T_FruitESP", { Title = "Fruit ESP", Default = false, Callback = function(Value) 
+        Model.State.isFruitESP = Value
+        local targetFruits = {
+            "Dragon", "Venom", "Mochi", "Soul", "Pika", "Buddha", "Magu", "Goro", "Goru",
+            "Hie", "Kage", "Mera", "Tori", "Pteranodon", "Smoke", "Yami", "Suna", "Yuki", "Ope", "Zushi", "Ito", "Paw"
+        }
+        
+        local function isTarget(objName)
+            local lowerName = string.lower(objName)
+            for _, fName in ipairs(targetFruits) do
+                if string.find(lowerName, string.lower(fName)) then
+                    return true
+                end
+            end
+            return false
+        end
+
+        if Value then
+            task.spawn(function()
+                while _running and Model.State.isFruitESP do
+                    for _, obj in ipairs(workspace:GetChildren()) do
+                        if (obj:IsA("Tool") or obj:IsA("Model")) and isTarget(obj.Name) then
+                            local rootPart = (obj:IsA("Model") and (obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart"))) or (obj:IsA("Tool") and obj:FindFirstChild("Handle"))
+                            if rootPart then
+                                local espName = "FruitESP_" .. obj.Name
+                                if not rootPart:FindFirstChild(espName) then
+                                    local bgui = Instance.new("BillboardGui")
+                                    bgui.Name = espName
+                                    bgui.AlwaysOnTop = true
+                                    bgui.Size = UDim2.new(0, 100, 0, 50)
+                                    bgui.StudsOffset = Vector3.new(0, 5, 0)
+                                    
+                                    local txt = Instance.new("TextLabel")
+                                    txt.Size = UDim2.new(1, 0, 1, 0)
+                                    txt.BackgroundTransparency = 1
+                                    txt.Text = obj.Name
+                                    txt.TextColor3 = Color3.fromRGB(255, 0, 255)
+                                    txt.TextStrokeTransparency = 0
+                                    txt.TextScaled = true
+                                    txt.Parent = bgui
+                                    
+                                    bgui.Parent = rootPart
+                                    
+                                    if not obj:FindFirstChild("FruitESP_HL") then
+                                        local hl = Instance.new("Highlight")
+                                        hl.Name = "FruitESP_HL"
+                                        hl.FillColor = Color3.fromRGB(255, 0, 255)
+                                        hl.OutlineColor = Color3.fromRGB(255, 255, 255)
+                                        hl.FillTransparency = 0.5
+                                        hl.Parent = obj
+                                    end
+                                end
+                            end
+                        end
+                    end
+                    task.wait(2)
+                end
+                
+                for _, obj in ipairs(workspace:GetChildren()) do
+                    if (obj:IsA("Tool") or obj:IsA("Model")) and isTarget(obj.Name) then
+                        local rootPart = (obj:IsA("Model") and (obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart"))) or (obj:IsA("Tool") and obj:FindFirstChild("Handle"))
+                        if rootPart then
+                            local bgui = rootPart:FindFirstChild("FruitESP_" .. obj.Name)
+                            if bgui then bgui:Destroy() end
+                        end
+                        local hl = obj:FindFirstChild("FruitESP_HL")
+                        if hl then hl:Destroy() end
+                    end
+                end
+            end)
+        else
+            for _, obj in ipairs(workspace:GetChildren()) do
+                if (obj:IsA("Tool") or obj:IsA("Model")) and isTarget(obj.Name) then
+                    local rootPart = (obj:IsA("Model") and (obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart"))) or (obj:IsA("Tool") and obj:FindFirstChild("Handle"))
+                    if rootPart then
+                        local bgui = rootPart:FindFirstChild("FruitESP_" .. obj.Name)
+                        if bgui then bgui:Destroy() end
+                    end
+                    local hl = obj:FindFirstChild("FruitESP_HL")
+                    if hl then hl:Destroy() end
+                end
+            end
+        end
+    end })
 
 -- ======================================================================
 -- 🎣 FISHING TAB UI
@@ -1537,21 +2576,15 @@ Tabs.Teleport:AddButton({
                 while Model.State.isMegStacking do
                     local megCount = Model.countMegalodons()
                     if megCount >= 10 then
-                        print("🔥 [MegStack] 10 Megalodons reached! Disabling fishing and unleashing Cyborg Autofarm...")
+                        print("🔥 [MegStack] 10 Megalodons reached! Disabling fishing and automatically toggling Cyborg Autofarm ON...")
                         if Fluent.Options.T_DeepSea.Value == true then
                             Fluent.Options.T_DeepSea:SetValue(false)
                         end
-                        if not getgenv().ToggleCyborgAutofarm then
-                            pcall(function()
-                                loadstring(game:HttpGet("https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/main/protov4_nofactory.lua?t="..tostring(tick())))()
-                            end)
-                            task.wait(1)
-                        end
-                        if Fluent and Fluent.Options and Fluent.Options.T_CyborgAuto then
+                        
+                        if Fluent.Options.T_CyborgAuto then
                             Fluent.Options.T_CyborgAuto:SetValue(true)
-                        elseif getgenv().ToggleCyborgAutofarm then
-                            getgenv().ToggleCyborgAutofarm(true)
                         end
+                        
                         local waitTime = 0
                         local lastCount = Model.countMegalodons()
                         while Model.countMegalodons() > 0 and Model.State.isMegStacking and waitTime < 180 do
@@ -1563,16 +2596,15 @@ Tabs.Teleport:AddButton({
                                 lastCount = curCount
                             end
                         end
-                        print("✅ [MegStack] Stack cleared! Turning off Cyborg and resuming fishing...")
-                        if Fluent and Fluent.Options and Fluent.Options.T_CyborgAuto then
+                        
+                        print("✅ [MegStack] Stack cleared! Toggling Cyborg Autofarm OFF and resuming fishing...")
+                        
+                        if Fluent.Options.T_CyborgAuto then
                             Fluent.Options.T_CyborgAuto:SetValue(false)
-                        elseif getgenv().ToggleCyborgAutofarm then
-                            getgenv().ToggleCyborgAutofarm(false)
                         end
+                        
                         if Model.State.isMegStacking then
-                            if Fluent and Fluent.Options and Fluent.Options.T_DeepSea then
-                                Fluent.Options.T_DeepSea:SetValue(true)
-                            end
+                            Fluent.Options.T_DeepSea:SetValue(true)
                         end
                     end
                     task.wait(1)
@@ -1595,6 +2627,57 @@ Tabs.Teleport:AddButton({
     Tabs.Fishing:AddToggle("T_MegStackLoc", { Title = "Meg Stack Location (Auto Refill)", Default = false, Callback = function(Value) 
         if isLobby then if Value then Fluent:Notify({ Title = "Error", Content = "Cannot use in Lobby!", Duration = 3 }); Fluent.Options.T_MegStackLoc:SetValue(false) end return end
         Model.State.isMegStackLoc = Value 
+    end })
+    
+    local manualTravelInitialized = false
+    Tabs.Fishing:AddToggle("T_ManualMegStackLoc", { Title = "Manual Meg Stack Island", Default = false, Callback = function(Value) 
+        if isLobby then if Value then Fluent:Notify({ Title = "Error", Content = "Cannot use in Lobby!", Duration = 3 }); Fluent.Options.T_ManualMegStackLoc:SetValue(false) end return end
+        
+        if Value then
+            -- Turn off Auto Return to Hoverboard so it doesn't fly us back after arriving at Meg Stack Island
+            if Fluent and Fluent.Options and Fluent.Options.T_AutoReturn and Fluent.Options.T_AutoReturn.Value then
+                Fluent.Options.T_AutoReturn:SetValue(false)
+                Fluent:Notify({ Title = "System", Content = "Auto Return Hoverboard turned OFF for Manual Travel", Duration = 3 })
+            end
+
+            manualTravelInitialized = true
+            task.spawn(function()
+                local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+                if hrp then getgenv().CachedOriginalPos = hrp.Position end
+                
+                Model.State.isAutoTraveling = false
+                Model.DisableFlight()
+                if Model.UnequipRod then Model.UnequipRod() end
+                task.wait(1)
+                
+                if not Fluent.Options.T_ManualMegStackLoc.Value then return end
+                
+                Model.State.isManualTraveling = true
+                Model.EnableFlight()
+                Fluent:Notify({ Title = "Manual Travel", Content = "Flying to Meg Stack Island...", Duration = 3 })
+                Model.CraftFlyPath({ Vector3.new(-6760, 27, 9191) })
+                
+                if Model.State.isManualTraveling then
+                    Model.State.isManualTraveling = false
+                    Model.DisableFlight()
+                    Fluent:Notify({ Title = "Manual Travel", Content = "Arrived at Meg Stack Island!", Duration = 3 })
+                    if Fluent and Fluent.Options and Fluent.Options.T_ManualMegStackLoc then
+                        Fluent.Options.T_ManualMegStackLoc:SetValue(false)
+                    end
+                end
+            end)
+        else
+            if not manualTravelInitialized then return end
+            
+            if Model.State.isManualTraveling then
+                Model.State.isManualTraveling = false
+                Model.State.isRefillingMegBait = false
+                Model.State.isCraftFlying = false
+                Model.DisableFlight()
+                if Model.EquipRod then Model.EquipRod() end
+                Fluent:Notify({ Title = "Manual Travel", Content = "Travel paused - flight disabled.", Duration = 3 })
+            end
+        end
     end })
     
     Tabs.Fishing:AddToggle("T_HoverboardESP", { Title = "Ship ESP", Default = false, Callback = function(Value) 
@@ -1706,6 +2789,15 @@ Tabs.Teleport:AddButton({
         end
     })
 
+    Tabs.Fishing:AddToggle("T_AutoReturn", { 
+        Title = "Auto Return to Hoverboard", 
+        Description = "Automatically flies back to your hoverboard if you fall off.",
+        Default = false, 
+        Callback = function(Value) 
+            Model.State.autoReturn = Value 
+        end 
+    })
+
     Tabs.Fishing:AddSlider("S_ShipSpeed", {
         Title = "Return To Ship Speed",
         Description = "Adjusts flight speed (300 is recommended)",
@@ -1753,6 +2845,41 @@ Tabs.Teleport:AddButton({
         isAFKModeActive = Value; secondsSinceLastInput = 0 
     end })
 
+    Tabs.Fishing:AddButton({
+        Title = "Check Fruits",
+        Description = "Check your inventory for target fruits.",
+        Callback = function() checkFruits(targetFruits) end
+    })
+    
+    Tabs.Fishing:AddButton({
+        Title = "Store Fruits",
+        Description = "Store target fruits (keeps in inventory if full).",
+        Callback = function() storeFruits(targetFruits) end
+    })
+    
+    Tabs.Fishing:AddButton({
+        Title = "Drop Fruits",
+        Description = "Force drop all target fruits.",
+        Callback = function() dropFruits(targetFruits) end
+    })
+    
+    local autoStoreEnabled = false
+    Tabs.Fishing:AddToggle("T_AutoStoreFruit", { 
+        Title = "Auto Store Fruit (10 Minutes)", 
+        Default = false, 
+        Callback = function(Value)
+            autoStoreEnabled = Value
+            if autoStoreEnabled then
+                task.spawn(function()
+                    while autoStoreEnabled do
+                        storeFruits(targetFruits)
+                        task.wait(600)
+                    end
+                end)
+            end
+        end 
+    })
+
     -- Status Monitor
     local StatusPara = Tabs.Fishing:AddParagraph({ Title = "Status", Content = "Idle" })
     local statusParts = {}
@@ -1777,7 +2904,7 @@ Tabs.Teleport:AddButton({
         end
     end)
     
-    if GetCurrentPSCode() == GlobalMem.FishmanPSCode and GlobalMem.FishmanPSCode ~= "" and not isLobby then
+    if not isLobby and GetCurrentPSCode() == GlobalMem.FishmanPSCode and GlobalMem.FishmanPSCode ~= "" then
         Fluent:Notify({ Title = "Detection", Content = "Target Server " .. tostring(GlobalMem.FishmanPSCode) .. " Detected.", Duration = 5 })
     end
 
@@ -1788,6 +2915,32 @@ Tabs.Autofarm:AddToggle("T_CyborgAuto", {
     Title = "Toggle Cyborg Autofarm", 
     Default = false, 
     Callback = function(Value)
+        if isLobby then 
+            if Value then 
+                Fluent:Notify({ Title = "Error", Content = "Cannot farm in Lobby!", Duration = 3 }) 
+                if Fluent.Options.T_CyborgAuto then Fluent.Options.T_CyborgAuto:SetValue(false) end 
+            end 
+            return 
+        end
+
+        if Value then
+            -- Temporarily turn off auto store fruit if it was on
+            if Fluent and Fluent.Options and Fluent.Options.T_AutoStoreFruit then
+                getgenv()._wasAutoStoreFruitOn = Fluent.Options.T_AutoStoreFruit.Value
+                if getgenv()._wasAutoStoreFruitOn then
+                    Fluent.Options.T_AutoStoreFruit:SetValue(false)
+                    Fluent:Notify({ Title = "System", Content = "Auto Store Fruit paused during Cyborg Autofarm", Duration = 3 })
+                end
+            end
+        else
+            -- Restore auto store fruit if it was previously on
+            if getgenv()._wasAutoStoreFruitOn and Fluent and Fluent.Options and Fluent.Options.T_AutoStoreFruit then
+                Fluent.Options.T_AutoStoreFruit:SetValue(true)
+                getgenv()._wasAutoStoreFruitOn = false
+                Fluent:Notify({ Title = "System", Content = "Auto Store Fruit resumed", Duration = 3 })
+            end
+        end
+
         task.spawn(function()
             if Value then
                 print("triggering title: \"Megalodon Slayer\"")
@@ -1798,7 +2951,7 @@ Tabs.Autofarm:AddToggle("T_CyborgAuto", {
             end
         end)
 
-        if not getgenv().ToggleCyborgAutofarm then
+        if Value and not getgenv().ToggleCyborgAutofarm then
             pcall(function()
                 loadstring(game:HttpGet("https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/main/protov4_nofactory.lua"))()
             end)
@@ -1808,6 +2961,26 @@ Tabs.Autofarm:AddToggle("T_CyborgAuto", {
             getgenv().ToggleCyborgAutofarm(Value)
         end
     end 
+})
+
+Tabs.Autofarm:AddButton({                   
+    Title = "Load MeleeFactory",
+    Description = "Executes the Melee Factory script.",
+    Callback = function()
+        local scriptURL = "https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/main/MSTACK/meleefactory.lua?t="..tostring(tick())
+        loadstring(game:HttpGet(scriptURL))()
+        Fluent:Notify({ Title = "MeleeFactory Loaded", Content = "MeleeFactory script initialized.", Duration = 3 })
+    end
+})
+
+Tabs.Autofarm:AddButton({                   
+    Title = "Auto Reroll Skypian",
+    Description = "Executes the auto reroll skypian script.",
+    Callback = function()
+        local scriptURL = "https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/main/MSTACK/auto_reroll_skypian.lua?t="..tostring(tick())
+        loadstring(game:HttpGet(scriptURL))()
+        Fluent:Notify({ Title = "Skypian Reroll Loaded", Content = "Auto reroll script initialized.", Duration = 3 })
+    end
 })
 
 Tabs.Autofarm:AddButton({                   
@@ -1883,6 +3056,19 @@ Tabs.Settings:AddButton({
     end
 })
 
+Tabs.Settings:AddButton({
+    Title = "🔄 Update / Load Latest Version",
+    Description = "Destroys the current UI and executes the latest joinersystem from GitHub.",
+    Callback = function()
+        Fluent:Notify({ Title = "Updating", Content = "Fetching latest script from GitHub...", Duration = 3 })
+        ShutdownEverything()
+        if Window and Window.Destroy then
+            Window:Destroy()
+        end
+        task.wait(1)
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/main/MSTACK/joinersystem.lua?t="..tostring(tick())))()
+    end
+})
 
 Tabs.Settings:AddButton({
     Title = "Destroy UI & Shutdown",
@@ -1925,7 +3111,10 @@ addConn(UserInputService.InputBegan:Connect(function(input, gameProcessed)
                     isAutoTraveling = Model.State.isAutoTraveling,
                     autoCraft = Model.State.autoCraft,
                     isCurrentlyCrafting = Model.State.isCurrentlyCrafting,
-                    antiLag = (Fluent.Options and Fluent.Options.T_AntiLag) and Fluent.Options.T_AntiLag.Value or false
+                    antiLag = (Fluent.Options and Fluent.Options.T_AntiLag) and Fluent.Options.T_AntiLag.Value or false,
+                    deepSea = (Fluent and Fluent.Options and Fluent.Options.T_DeepSea) and Fluent.Options.T_DeepSea.Value or false,
+                    megStack = (Fluent and Fluent.Options and Fluent.Options.T_MegStack) and Fluent.Options.T_MegStack.Value or false,
+                    megStackLoc = (Fluent and Fluent.Options and Fluent.Options.T_MegStackLoc) and Fluent.Options.T_MegStackLoc.Value or false
                 }
 
                 -- Force stop everything instantly
@@ -1946,11 +3135,17 @@ addConn(UserInputService.InputBegan:Connect(function(input, gameProcessed)
                     if Fluent.Options.T_Travel then Fluent.Options.T_Travel:SetValue(false) end
                     if Fluent.Options.T_Craft then Fluent.Options.T_Craft:SetValue(false) end
                     if Fluent.Options.T_AntiLag then Fluent.Options.T_AntiLag:SetValue(false) end
+                    if Fluent.Options.T_DeepSea then Fluent.Options.T_DeepSea:SetValue(false) end
+                    if Fluent.Options.T_MegStack then Fluent.Options.T_MegStack:SetValue(false) end
+                    if Fluent.Options.T_MegStackLoc then Fluent.Options.T_MegStackLoc:SetValue(false) end
                 end
 
                 -- Abort actions
                 if Model.DisableFlight then pcall(Model.DisableFlight) end
                 if Model.UnequipRod then pcall(Model.UnequipRod) end
+                if Model.State.activeNavigation and Model.State.activeNavigation._isNavigating then
+                    Model.State.activeNavigation:Cancel()
+                end
 
                 -- Close any dialogue
                 pcall(function()
@@ -1978,6 +3173,9 @@ addConn(UserInputService.InputBegan:Connect(function(input, gameProcessed)
                     if Fluent.Options.T_Travel then Fluent.Options.T_Travel:SetValue(Model.State.isAutoTraveling) end
                     if Fluent.Options.T_Craft then Fluent.Options.T_Craft:SetValue(Model.State.autoCraft) end
                     if Fluent.Options.T_AntiLag and savedState.antiLag then Fluent.Options.T_AntiLag:SetValue(true) end
+                    if Fluent.Options.T_DeepSea then Fluent.Options.T_DeepSea:SetValue(savedState.deepSea) end
+                    if Fluent.Options.T_MegStack then Fluent.Options.T_MegStack:SetValue(savedState.megStack) end
+                    if Fluent.Options.T_MegStackLoc then Fluent.Options.T_MegStackLoc:SetValue(savedState.megStackLoc) end
                 end
 
                 -- Resume traveling if needed
