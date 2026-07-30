@@ -3060,7 +3060,7 @@ Tabs.Settings:AddToggle("T_AntiLag", {
 Tabs.Settings:AddSlider("S_FPSCap", {
     Title = "FPS Cap",
     Description = "Limits your FPS to reduce CPU/GPU usage when AFKing.",
-    Default = 25,
+    Default = 35,
     Min = 5,
     Max = 240,
     Rounding = 0,
