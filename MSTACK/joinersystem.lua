@@ -2197,12 +2197,12 @@ Tabs = {
 
 Tabs.Teleport:AddInput("I_HoverHeight", {
     Title = "Flight Altitude",
-    Default = "400",
+    Default = "440",
     Placeholder = "Enter Altitude...",
     Numeric = true,
     Finished = false,
     Callback = function(Value)
-        local height = tonumber(Value) or 400
+        local height = tonumber(Value) or 440
         getgenv().HoverboardTargetHeight = height
         if getgenv().HoverboardController and getgenv().HoverboardController.SetHeightValue then
             getgenv().HoverboardController.SetHeightValue(height)
