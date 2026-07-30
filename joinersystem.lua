@@ -346,6 +346,12 @@ if not isLobby then
             if bg then bg:Destroy() end
             local bv = rootPart:FindFirstChild("AutoTravel_Velocity")
             if bv then bv:Destroy() end
+            
+            -- Also clean up Hoverboard flyToWithGeppo forces
+            local bg2 = rootPart:FindFirstChild("AntiRotation")
+            if bg2 then bg2:Destroy() end
+            local bv2 = rootPart:FindFirstChild("AntiGravity")
+            if bv2 then bv2:Destroy() end
         end
         if humanoid then humanoid.PlatformStand = false end
     end
