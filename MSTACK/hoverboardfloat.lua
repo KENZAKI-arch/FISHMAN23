@@ -181,14 +181,18 @@ getgenv().HoverboardController.SetHeight = function()
             task.wait(0.1)
             sitTimeout = sitTimeout + 1
         end
+        if hum.SeatPart then
+            hum.Sit = false
+            task.delay(0.1, function()
+                hrp.CFrame = seat.CFrame * CFrame.new(0, 3, 4.5)
+            end)
+        end
     end
     
     local bodyPos = myShip:FindFirstChild("m") and myShip.m:FindFirstChild("BodyPosition")
     if not bodyPos then return end
     
     absoluteTargetY = bodyPos.Position.Y
-
-    local hasReachedHeight = false
 
     pcall(function() RunService:UnbindFromRenderStep("CustomHoverboardLaser") end)
     RunService:BindToRenderStep("CustomHoverboardLaser", 2000, function()
@@ -198,16 +202,6 @@ getgenv().HoverboardController.SetHeight = function()
             absoluteTargetY = absoluteTargetY - 2
         else
             absoluteTargetY = desiredHeight + (math.sin(tick() * 4) * 0.8)
-            
-            if not hasReachedHeight then
-                hasReachedHeight = true
-                if hum and hrp then
-                    hum.Sit = false
-                    task.delay(0.1, function()
-                        hrp.CFrame = seat.CFrame * CFrame.new(0, 3, 4.5)
-                    end)
-                end
-            end
         end
         
         bodyPos.Position = Vector3.new(bodyPos.Position.X, absoluteTargetY, bodyPos.Position.Z)
@@ -294,6 +288,14 @@ getgenv().HoverboardController.AutoSpawn = function(onFinishedCallback)
                 
                 if hum.SeatPart then
                     print("[Auto Spawn] Successfully seated!")
+                    hum.Sit = false
+                    task.delay(0.1, function()
+                        hrp.CFrame = seat.CFrame * CFrame.new(0, 3, 4.5)
+                        if type(onFinishedCallback) == "function" then
+                            task.spawn(onFinishedCallback)
+                        end
+                    end)
+
                     local desiredHeight = tonumber(heightInput.Text)
                     
                     if desiredHeight then
@@ -302,8 +304,6 @@ getgenv().HoverboardController.AutoSpawn = function(onFinishedCallback)
                         if bodyPos then
                             print("[Auto Spawn] BodyPosition found. Lifting off to height:", desiredHeight)
                             absoluteTargetY = bodyPos.Position.Y
-                    
-                    local hasReachedHeight = false
                     
                     pcall(function() RunService:UnbindFromRenderStep("CustomHoverboardLaser") end)
                 RunService:BindToRenderStep("CustomHoverboardLaser", 2000, function()
@@ -317,19 +317,6 @@ getgenv().HoverboardController.AutoSpawn = function(onFinishedCallback)
                             absoluteTargetY = absoluteTargetY - 2
                         else
                             absoluteTargetY = desiredHeight + (math.sin(tick() * 4) * 0.8)
-                            
-                            if not hasReachedHeight then
-                                hasReachedHeight = true
-                                if hum and hrp then
-                                    hum.Sit = false
-                                    task.delay(0.1, function()
-                                        hrp.CFrame = seat.CFrame * CFrame.new(0, 3, 4.5)
-                                        if type(onFinishedCallback) == "function" then
-                                            task.spawn(onFinishedCallback)
-                                        end
-                                    end)
-                                end
-                            end
                         end
                         bodyPos.Position = Vector3.new(bodyPos.Position.X, absoluteTargetY, bodyPos.Position.Z)
                     end)
