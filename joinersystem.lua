@@ -2258,6 +2258,9 @@ Tabs.Teleport:AddToggle("T_AutoSpawnShip", {
                 print("[Hub] ERROR: HoverboardController.AutoSpawn not found!")
             end
         else
+            if getgenv().HoverboardController then
+                getgenv().HoverboardController.CancelAutoSpawn = true
+            end
             if Model and Model.DisableFlight then
                 pcall(Model.DisableFlight)
             end

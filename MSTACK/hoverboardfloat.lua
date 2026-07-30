@@ -89,6 +89,7 @@ local function flyToWithGeppo(targetPos)
     
     local lastGeppoTick = 0
     while (hrp.Position - targetPos).Magnitude > 5 do
+        if getgenv().HoverboardController and getgenv().HoverboardController.CancelAutoSpawn then break end
         local currentTick = tick()
         if currentTick - lastGeppoTick >= 1.5 then
             lastGeppoTick = currentTick
@@ -230,6 +231,7 @@ getgenv().HoverboardController.Reset = function()
 end
 
 getgenv().HoverboardController.AutoSpawn = function(onFinishedCallback)
+    if getgenv().HoverboardController then getgenv().HoverboardController.CancelAutoSpawn = false end
     spawnBtn.Text = "Flying to Target..."
     spawnBtn.BackgroundColor3 = Color3.fromRGB(200, 150, 45)
     
@@ -242,6 +244,8 @@ getgenv().HoverboardController.AutoSpawn = function(onFinishedCallback)
     task.spawn(function()
         local ReplicatedStorage = game:GetService("ReplicatedStorage")
         local events = ReplicatedStorage:FindFirstChild("Events")
+        
+        if getgenv().HoverboardController and getgenv().HoverboardController.CancelAutoSpawn then return end
 
         local myShip = getMyShip()
         print("[Auto Spawn] Initial ship check result:", myShip and myShip.Name or "Not found")
@@ -257,6 +261,7 @@ getgenv().HoverboardController.AutoSpawn = function(onFinishedCallback)
                 print("[Auto Spawn] Waiting for ship to appear in workspace...")
                 local timeout = 0
                 while not getMyShip() and timeout < 50 do
+                    if getgenv().HoverboardController and getgenv().HoverboardController.CancelAutoSpawn then return end
                     task.wait(0.1)
                     timeout = timeout + 1
                 end
@@ -281,6 +286,7 @@ getgenv().HoverboardController.AutoSpawn = function(onFinishedCallback)
                 print("[Auto Spawn] Forcing seat teleport...")
                 local sitTimeout = 0
                 while not hum.SeatPart and sitTimeout < 50 do
+                    if getgenv().HoverboardController and getgenv().HoverboardController.CancelAutoSpawn then return end
                     hrp.CFrame = seat.CFrame * CFrame.new(0, 1.5, 0)
                     task.wait(0.1)
                     sitTimeout = sitTimeout + 1
@@ -300,10 +306,14 @@ getgenv().HoverboardController.AutoSpawn = function(onFinishedCallback)
                     local hasReachedHeight = false
                     
                     pcall(function() RunService:UnbindFromRenderStep("CustomHoverboardLaser") end)
-                    RunService:BindToRenderStep("CustomHoverboardLaser", 2000, function()
-                        if absoluteTargetY < desiredHeight - 2 then
-                            absoluteTargetY = absoluteTargetY + 2
-                        elseif absoluteTargetY > desiredHeight + 2 then
+                RunService:BindToRenderStep("CustomHoverboardLaser", 2000, function()
+                    if getgenv().HoverboardController and getgenv().HoverboardController.CancelAutoSpawn then
+                        pcall(function() RunService:UnbindFromRenderStep("CustomHoverboardLaser") end)
+                        return
+                    end
+                    if absoluteTargetY < desiredHeight - 2 then
+                        absoluteTargetY = absoluteTargetY + 2
+                    elseif absoluteTargetY > desiredHeight + 2 then
                             absoluteTargetY = absoluteTargetY - 2
                         else
                             absoluteTargetY = desiredHeight + (math.sin(tick() * 4) * 0.8)
