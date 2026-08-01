@@ -1,4 +1,4 @@
--- Version 3.1
+-- Version 3.2
 -- ======================================================================
 -- 🛑 GLOBAL SETUP & DUPLICATE PREVENTION
 -- ======================================================================
@@ -244,7 +244,7 @@ local craftFlyTarget = nil
 
     Model.State = {
         isFishing             = false,
-        autoBuy               = false,
+        autoBuy               = true,
         autoSell              = false,
         isBuying              = false,
         isAutoTraveling       = false,
@@ -915,7 +915,7 @@ if not isLobby then
         local originalPos = hrp.Position
         
         Model.State.isFishing = false
-        Model.State.autoBuy = false
+        -- Model.State.autoBuy = false
         Model.State.autoSell = false
         Model.State.isAutoTraveling = false
         Model.State.travelMessage = "Crafting..."
@@ -1682,7 +1682,7 @@ local function storeFruits(fruitList)
         
         -- Force stop them
         Model.State.isFishing = false
-        Model.State.autoBuy = false
+        -- Model.State.autoBuy = false
         Model.State.autoSell = false
         Model.State.isAutoTraveling = false
         Model.State.autoCraft = false
@@ -1690,7 +1690,7 @@ local function storeFruits(fruitList)
         -- Update toggles visually
         if Fluent and Fluent.Options then
             if Fluent.Options.T_Fish then Fluent.Options.T_Fish:SetValue(false) end
-            if Fluent.Options.T_Buy then Fluent.Options.T_Buy:SetValue(false) end
+            -- if Fluent.Options.T_Buy then Fluent.Options.T_Buy:SetValue(false) end
             if Fluent.Options.T_Sell then Fluent.Options.T_Sell:SetValue(false) end
             if Fluent.Options.T_Travel then Fluent.Options.T_Travel:SetValue(false) end
             if Fluent.Options.T_Craft then Fluent.Options.T_Craft:SetValue(false) end
@@ -1821,7 +1821,7 @@ local function dropFruits(fruitList)
         
         -- Force stop them
         Model.State.isFishing = false
-        Model.State.autoBuy = false
+        -- Model.State.autoBuy = false
         Model.State.autoSell = false
         Model.State.isAutoTraveling = false
         Model.State.autoCraft = false
@@ -1829,7 +1829,7 @@ local function dropFruits(fruitList)
         -- Update toggles visually
         if Fluent and Fluent.Options then
             if Fluent.Options.T_Fish then Fluent.Options.T_Fish:SetValue(false) end
-            if Fluent.Options.T_Buy then Fluent.Options.T_Buy:SetValue(false) end
+            -- if Fluent.Options.T_Buy then Fluent.Options.T_Buy:SetValue(false) end
             if Fluent.Options.T_Sell then Fluent.Options.T_Sell:SetValue(false) end
             if Fluent.Options.T_Travel then Fluent.Options.T_Travel:SetValue(false) end
             if Fluent.Options.T_Craft then Fluent.Options.T_Craft:SetValue(false) end
@@ -2834,7 +2834,7 @@ Tabs.Teleport:AddButton({
     Tabs.Fishing:AddToggle("T_StrictReel", { Title = "Only Reel > 1.0 Multiplier", Default = false, Callback = function(Value) 
         Model.State.strictReel = Value 
     end })
-    Tabs.Fishing:AddToggle("T_Buy", { Title = "Auto Buy Bait", Default = false, Callback = function(Value) 
+    Tabs.Fishing:AddToggle("T_Buy", { Title = "Auto Buy Bait", Default = true, Callback = function(Value) 
         if isLobby then if Value then Fluent:Notify({ Title = "Error", Content = "Cannot buy in Lobby!", Duration = 3 }); Fluent.Options.T_Buy:SetValue(false) end return end
         Model.State.autoBuy = Value; if Value then Model.CheckInventory() end 
     end })
@@ -3140,7 +3140,7 @@ addConn(UserInputService.InputBegan:Connect(function(input, gameProcessed)
 
                 -- Force stop everything instantly
                 Model.State.isFishing = false
-                Model.State.autoBuy = false
+                -- Model.State.autoBuy = false
                 Model.State.autoSell = false
                 Model.State.isAutoTraveling = false
                 Model.State.autoCraft = false
@@ -3151,7 +3151,7 @@ addConn(UserInputService.InputBegan:Connect(function(input, gameProcessed)
                 -- Update UI toggles to visually show they are off
                 if Fluent.Options then
                     if Fluent.Options.T_Fish then Fluent.Options.T_Fish:SetValue(false) end
-                    if Fluent.Options.T_Buy then Fluent.Options.T_Buy:SetValue(false) end
+                    -- if Fluent.Options.T_Buy then Fluent.Options.T_Buy:SetValue(false) end
                     if Fluent.Options.T_Sell then Fluent.Options.T_Sell:SetValue(false) end
                     if Fluent.Options.T_Travel then Fluent.Options.T_Travel:SetValue(false) end
                     if Fluent.Options.T_Craft then Fluent.Options.T_Craft:SetValue(false) end
