@@ -244,7 +244,7 @@ local craftFlyTarget = nil
 
     Model.State = {
         isFishing             = false,
-        autoBuy               = true,
+        autoBuy               = not isLobby,
         autoSell              = false,
         isBuying              = false,
         isAutoTraveling       = false,
@@ -2834,7 +2834,7 @@ Tabs.Teleport:AddButton({
     Tabs.Fishing:AddToggle("T_StrictReel", { Title = "Only Reel > 1.0 Multiplier", Default = false, Callback = function(Value) 
         Model.State.strictReel = Value 
     end })
-    Tabs.Fishing:AddToggle("T_Buy", { Title = "Auto Buy Bait", Default = true, Callback = function(Value) 
+    Tabs.Fishing:AddToggle("T_Buy", { Title = "Auto Buy Bait", Default = not isLobby, Callback = function(Value) 
         if isLobby then if Value then Fluent:Notify({ Title = "Error", Content = "Cannot buy in Lobby!", Duration = 3 }); Fluent.Options.T_Buy:SetValue(false) end return end
         Model.State.autoBuy = Value; if Value then Model.CheckInventory() end 
     end })
