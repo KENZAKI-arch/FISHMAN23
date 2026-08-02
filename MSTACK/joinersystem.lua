@@ -1473,7 +1473,7 @@ if not isLobby then
     end)
 
     task.spawn(function() while _running and task.wait(2) do if Model.State.autoBuy or Model.State.isMegStackLoc or Model.State.autoSell then Model.CheckInventory() end end end)
-    task.spawn(function() while _running and task.wait() do if Model.State.isFishing or Model.State.isDeepSeaCatcher then Model.DoFishingCycle() end end end)
+    task.spawn(function() while _running and task.wait() do if (Model.State.isFishing or Model.State.isDeepSeaCatcher) and not Model.State.isBuying and not Model.State.isAutoTraveling and not Model.State.isRefillingMegBait and not Model.State.isManualTraveling then Model.DoFishingCycle() end end end)
 
     -- Auto-track hoverboard position to memory every 3 seconds to prevent StreamingEnabled drop-off
     task.spawn(function()
@@ -2596,7 +2596,7 @@ Tabs.Teleport:AddButton({
             task.spawn(function()
                 while Model.State.isMegStacking do
                     local megCount = Model.countMegalodons()
-                    if megCount >= 10 then
+                    if megCount >= 10 and not Model.State.isBuying and not Model.State.isAutoTraveling and not Model.State.isRefillingMegBait and not Model.State.isManualTraveling then
                         print("🔥 [MegStack] 10 Megalodons reached! Disabling fishing and automatically toggling Cyborg Autofarm ON...")
                         if Fluent.Options.T_DeepSea.Value == true then
                             Fluent.Options.T_DeepSea:SetValue(false)
