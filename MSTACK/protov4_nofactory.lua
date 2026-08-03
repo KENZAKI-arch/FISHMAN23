@@ -10,6 +10,10 @@ local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
 local LocalPlayer = Players.LocalPlayer
+while not LocalPlayer do
+    task.wait(0.1)
+    LocalPlayer = Players.LocalPlayer
+end
 
 if getgenv().StopAutofarm then
     pcall(getgenv().StopAutofarm)
