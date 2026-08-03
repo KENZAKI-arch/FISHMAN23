@@ -363,19 +363,9 @@ function Model.UpdateTracking(deltaTime)
             targetSpot = getgenv().CachedHoverboard.Position - Vector3.new(0, 5, 0)
         else
             if currentEnemy.Name == "Megalodon" then
-                local myShip = workspace:FindFirstChild("Ships") and workspace.Ships:FindFirstChild(LocalPlayer.Name .. "Ship")
-                if myShip then
-                    local refPart = myShip.PrimaryPart or myShip:FindFirstChildWhichIsA("BasePart", true)
-                    if refPart then
-                        print("🚢 [DEBUG] Ship Detected! Anchoring 5 studs below ship.")
-                        targetSpot = refPart.Position - Vector3.new(0, 5, 0)
-                    else
-                        targetSpot = rootPart.Position
-                    end
-                else
-                    print("❌ [DEBUG] No Hoverboard and No Ship Detected! Staying in place.")
-                    targetSpot = rootPart.Position
-                end
+                print("❌ [DEBUG] Hoverboard NOT Detected! Anchoring to Megalodon.")
+                -- Remove the height thing completely! Just stay 5 studs above the Megalodon's root.
+                targetSpot = targetRoot.Position + Vector3.new(0, 5, 0)
             else
                 -- Apply orbital anti-gravity positioning (custom studs above target) for other enemies
                 local alt = getgenv().CyborgFlyAltitude or 250
@@ -581,17 +571,7 @@ View.Build(function(isFarming)
                                 end
                             else
                                 if currentEnemy.Name == "Megalodon" then
-                                    local myShip = workspace:FindFirstChild("Ships") and workspace.Ships:FindFirstChild(LocalPlayer.Name .. "Ship")
-                                    if myShip then
-                                        local refPart = myShip.PrimaryPart or myShip:FindFirstChildWhichIsA("BasePart", true)
-                                        if refPart then
-                                            targetSpot = refPart.Position - Vector3.new(0, 5, 0)
-                                        else
-                                            targetSpot = rootPart.Position
-                                        end
-                                    else
-                                        targetSpot = rootPart.Position
-                                    end
+                                    targetSpot = targetRoot.Position + Vector3.new(0, 5, 0)
                                 else
                                     targetSpot = Vector3.new(targetRoot.Position.X, alt, targetRoot.Position.Z)
                                 end
