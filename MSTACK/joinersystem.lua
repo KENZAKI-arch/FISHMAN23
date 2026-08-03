@@ -1,4 +1,4 @@
--- Version 3.6
+-- Version 3.3
 -- ======================================================================
 -- 🛑 GLOBAL SETUP & DUPLICATE PREVENTION
 -- ======================================================================
@@ -1556,25 +1556,8 @@ end
 local function ShutdownEverything()
     _running = false
     disconnectAll()
-    if not isLobby and Model and Model.State then
-        Model.State.isFishing = false
-        Model.State.autoBuy = false
-        Model.State.autoSell = false
-        Model.State.isAutoTraveling = false
-        Model.State.autoCraft = false
-        Model.State.isCurrentlyCrafting = false
-        Model.State.isCraftFlying = false
-        Model.State.isBuying = false
-        Model.State.isMegStacking = false
-        Model.State.isDeepSeaCatcher = false
-        
-        pcall(function()
-            if Model.DisableFlight then Model.DisableFlight() end
-            if Model.UnequipRod then Model.UnequipRod() end
-            if Model.State.activeNavigation and Model.State.activeNavigation._isNavigating then
-                Model.State.activeNavigation:Cancel()
-            end
-        end)
+    if not isLobby then
+        Model.DisableFlight()
     end
     env.FishmanScriptServer = nil
     print("[Fishman] Successfully shut down.")
@@ -1924,7 +1907,7 @@ end
 Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
 local Window = Fluent:CreateWindow({
     Title = "🐟 Fishman Hub",
-    SubTitle = "Unified Auto-Fisher 1.0.3 v3.6",
+    SubTitle = "Unified Auto-Fisher 1.0.3 v3.3",
     TabWidth = 160,
     Size = UDim2.fromOffset(500, 350),
     Theme = "Darker",
