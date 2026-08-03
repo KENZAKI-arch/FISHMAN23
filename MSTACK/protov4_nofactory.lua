@@ -370,11 +370,11 @@ function Model.UpdateTracking(deltaTime)
                         print("🚢 [DEBUG] Ship Detected! Anchoring 5 studs below ship.")
                         targetSpot = refPart.Position - Vector3.new(0, 5, 0)
                     else
-                        targetSpot = targetRoot.Position + Vector3.new(0, 5, 0)
+                        targetSpot = rootPart.Position
                     end
                 else
-                    print("❌ [DEBUG] No Hoverboard and No Ship Detected! Anchoring to Megalodon.")
-                    targetSpot = targetRoot.Position + Vector3.new(0, 5, 0)
+                    print("❌ [DEBUG] No Hoverboard and No Ship Detected! Staying in place.")
+                    targetSpot = rootPart.Position
                 end
             else
                 -- Apply orbital anti-gravity positioning (custom studs above target) for other enemies
@@ -587,10 +587,10 @@ View.Build(function(isFarming)
                                         if refPart then
                                             targetSpot = refPart.Position - Vector3.new(0, 5, 0)
                                         else
-                                            targetSpot = targetRoot.Position + Vector3.new(0, 5, 0)
+                                            targetSpot = rootPart.Position
                                         end
                                     else
-                                        targetSpot = targetRoot.Position + Vector3.new(0, 5, 0)
+                                        targetSpot = rootPart.Position
                                     end
                                 else
                                     targetSpot = Vector3.new(targetRoot.Position.X, alt, targetRoot.Position.Z)
