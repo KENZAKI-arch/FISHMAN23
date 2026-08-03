@@ -359,16 +359,16 @@ function Model.UpdateTracking(deltaTime)
         
         local targetSpot
         if currentEnemy.Name == "Megalodon" and getgenv().CachedHoverboard and getgenv().CachedHoverboard.Parent then
-            print("🚀 [DEBUG] Hoverboard Detected! Anchoring 5 studs below.")
-            targetSpot = getgenv().CachedHoverboard.Position - Vector3.new(0, 5, 0)
+            print("🚀 [DEBUG] Hoverboard Detected! Anchoring 5 studs above.")
+            targetSpot = getgenv().CachedHoverboard.Position + Vector3.new(0, 5, 0)
         else
             if currentEnemy.Name == "Megalodon" then
                 local myShip = workspace:FindFirstChild("Ships") and workspace.Ships:FindFirstChild(LocalPlayer.Name .. "Ship")
                 if myShip then
                     local refPart = myShip.PrimaryPart or myShip:FindFirstChildWhichIsA("BasePart", true)
                     if refPart then
-                        print("🚢 [DEBUG] Ship Detected! Anchoring 5 studs below ship.")
-                        targetSpot = refPart.Position - Vector3.new(0, 5, 0)
+                        print("🚢 [DEBUG] Ship Detected! Anchoring 5 studs above ship.")
+                        targetSpot = refPart.Position + Vector3.new(0, 5, 0)
                     else
                         targetSpot = rootPart.Position
                     end
@@ -585,7 +585,7 @@ View.Build(function(isFarming)
                                     if myShip then
                                         local refPart = myShip.PrimaryPart or myShip:FindFirstChildWhichIsA("BasePart", true)
                                         if refPart then
-                                            targetSpot = refPart.Position - Vector3.new(0, 5, 0)
+                                            targetSpot = refPart.Position + Vector3.new(0, 5, 0)
                                         else
                                             targetSpot = rootPart.Position
                                         end
