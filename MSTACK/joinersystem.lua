@@ -1,4 +1,4 @@
--- Version 3.65
+-- Version 3.7
 -- ======================================================================
 -- 🛑 GLOBAL SETUP & DUPLICATE PREVENTION
 -- ======================================================================
@@ -1911,7 +1911,7 @@ end
 Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
 local Window = Fluent:CreateWindow({
     Title = "🐟 Fishman Hub",
-    SubTitle = "Unified Auto-Fisher 1.0.3 v3.65",
+    SubTitle = "Unified Auto-Fisher 1.0.3 v3.7",
     TabWidth = 160,
     Size = UDim2.fromOffset(500, 350),
     Theme = "Darker",

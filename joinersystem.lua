@@ -1,4 +1,4 @@
--- Version 3.6
+-- Version 3.7
 -- ======================================================================
 -- 🛑 GLOBAL SETUP & DUPLICATE PREVENTION
 -- ======================================================================
@@ -244,7 +244,7 @@ local craftFlyTarget = nil
 
     Model.State = {
         isFishing             = false,
-        autoBuy               = false,
+        autoBuy               = not isLobby,
         autoSell              = false,
         isBuying              = false,
         isAutoTraveling       = false,
@@ -915,7 +915,7 @@ if not isLobby then
         local originalPos = hrp.Position
         
         Model.State.isFishing = false
-        Model.State.autoBuy = false
+        -- Model.State.autoBuy = false
         Model.State.autoSell = false
         Model.State.isAutoTraveling = false
         Model.State.travelMessage = "Crafting..."
@@ -1473,7 +1473,7 @@ if not isLobby then
     end)
 
     task.spawn(function() while _running and task.wait(2) do if Model.State.autoBuy or Model.State.isMegStackLoc or Model.State.autoSell then Model.CheckInventory() end end end)
-    task.spawn(function() while _running and task.wait() do if Model.State.isFishing or Model.State.isDeepSeaCatcher then Model.DoFishingCycle() end end end)
+    task.spawn(function() while _running and task.wait() do if (Model.State.isFishing or Model.State.isDeepSeaCatcher) and not Model.State.isBuying and not Model.State.isAutoTraveling and not Model.State.isRefillingMegBait and not Model.State.isManualTraveling then Model.DoFishingCycle() end end end)
 
     -- Auto-track hoverboard position to memory every 3 seconds to prevent StreamingEnabled drop-off
     task.spawn(function()
@@ -1556,26 +1556,13 @@ end
 local function ShutdownEverything()
     _running = false
     disconnectAll()
-    if not isLobby and Model and Model.State then
-        Model.State.isFishing = false
-        Model.State.autoBuy = false
-        Model.State.autoSell = false
-        Model.State.isAutoTraveling = false
-        Model.State.autoCraft = false
-        Model.State.isCurrentlyCrafting = false
-        Model.State.isCraftFlying = false
-        Model.State.isBuying = false
-        Model.State.isMegStacking = false
-        Model.State.isDeepSeaCatcher = false
-        
-        pcall(function()
-            if Model.DisableFlight then Model.DisableFlight() end
-            if Model.UnequipRod then Model.UnequipRod() end
-            if Model.State.activeNavigation and Model.State.activeNavigation._isNavigating then
-                Model.State.activeNavigation:Cancel()
-            end
-        end)
+    if not isLobby then
+        Model.DisableFlight()
     end
+    if getgenv().StopAutofarm then
+        pcall(getgenv().StopAutofarm)
+    end
+    getgenv().ToggleCyborgAutofarm = nil
     env.FishmanScriptServer = nil
     print("[Fishman] Successfully shut down.")
 end
@@ -1699,7 +1686,7 @@ local function storeFruits(fruitList)
         
         -- Force stop them
         Model.State.isFishing = false
-        Model.State.autoBuy = false
+        -- Model.State.autoBuy = false
         Model.State.autoSell = false
         Model.State.isAutoTraveling = false
         Model.State.autoCraft = false
@@ -1707,7 +1694,7 @@ local function storeFruits(fruitList)
         -- Update toggles visually
         if Fluent and Fluent.Options then
             if Fluent.Options.T_Fish then Fluent.Options.T_Fish:SetValue(false) end
-            if Fluent.Options.T_Buy then Fluent.Options.T_Buy:SetValue(false) end
+            -- if Fluent.Options.T_Buy then Fluent.Options.T_Buy:SetValue(false) end
             if Fluent.Options.T_Sell then Fluent.Options.T_Sell:SetValue(false) end
             if Fluent.Options.T_Travel then Fluent.Options.T_Travel:SetValue(false) end
             if Fluent.Options.T_Craft then Fluent.Options.T_Craft:SetValue(false) end
@@ -1838,7 +1825,7 @@ local function dropFruits(fruitList)
         
         -- Force stop them
         Model.State.isFishing = false
-        Model.State.autoBuy = false
+        -- Model.State.autoBuy = false
         Model.State.autoSell = false
         Model.State.isAutoTraveling = false
         Model.State.autoCraft = false
@@ -1846,7 +1833,7 @@ local function dropFruits(fruitList)
         -- Update toggles visually
         if Fluent and Fluent.Options then
             if Fluent.Options.T_Fish then Fluent.Options.T_Fish:SetValue(false) end
-            if Fluent.Options.T_Buy then Fluent.Options.T_Buy:SetValue(false) end
+            -- if Fluent.Options.T_Buy then Fluent.Options.T_Buy:SetValue(false) end
             if Fluent.Options.T_Sell then Fluent.Options.T_Sell:SetValue(false) end
             if Fluent.Options.T_Travel then Fluent.Options.T_Travel:SetValue(false) end
             if Fluent.Options.T_Craft then Fluent.Options.T_Craft:SetValue(false) end
@@ -1924,7 +1911,7 @@ end
 Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
 local Window = Fluent:CreateWindow({
     Title = "🐟 Fishman Hub",
-    SubTitle = "Unified Auto-Fisher 1.0.3 v3.6",
+    SubTitle = "Unified Auto-Fisher 1.0.3 v3.7",
     TabWidth = 160,
     Size = UDim2.fromOffset(500, 350),
     Theme = "Darker",
@@ -2613,7 +2600,7 @@ Tabs.Teleport:AddButton({
             task.spawn(function()
                 while Model.State.isMegStacking do
                     local megCount = Model.countMegalodons()
-                    if megCount >= 10 then
+                    if megCount >= 10 and not Model.State.isBuying and not Model.State.isAutoTraveling and not Model.State.isRefillingMegBait and not Model.State.isManualTraveling then
                         print("🔥 [MegStack] 10 Megalodons reached! Disabling fishing and automatically toggling Cyborg Autofarm ON...")
                         if Fluent.Options.T_DeepSea.Value == true then
                             Fluent.Options.T_DeepSea:SetValue(false)
@@ -2851,7 +2838,7 @@ Tabs.Teleport:AddButton({
     Tabs.Fishing:AddToggle("T_StrictReel", { Title = "Only Reel > 1.0 Multiplier", Default = false, Callback = function(Value) 
         Model.State.strictReel = Value 
     end })
-    Tabs.Fishing:AddToggle("T_Buy", { Title = "Auto Buy Bait", Default = false, Callback = function(Value) 
+    Tabs.Fishing:AddToggle("T_Buy", { Title = "Auto Buy Bait", Default = not isLobby, Callback = function(Value) 
         if isLobby then if Value then Fluent:Notify({ Title = "Error", Content = "Cannot buy in Lobby!", Duration = 3 }); Fluent.Options.T_Buy:SetValue(false) end return end
         Model.State.autoBuy = Value; if Value then Model.CheckInventory() end 
     end })
@@ -2991,7 +2978,7 @@ Tabs.Autofarm:AddToggle("T_CyborgAuto", {
 
         if Value and not getgenv().ToggleCyborgAutofarm then
             pcall(function()
-                loadstring(game:HttpGet("https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/main/protov4_nofactory.lua"))()
+                loadstring(game:HttpGet("https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/MSTACK/protov4_nofactory.lua"))()
             end)
             task.wait(1)
         end
@@ -3000,6 +2987,7 @@ Tabs.Autofarm:AddToggle("T_CyborgAuto", {
         end
     end 
 })
+
 
 Tabs.Autofarm:AddButton({                   
     Title = "Load MeleeFactory",
@@ -3157,7 +3145,7 @@ addConn(UserInputService.InputBegan:Connect(function(input, gameProcessed)
 
                 -- Force stop everything instantly
                 Model.State.isFishing = false
-                Model.State.autoBuy = false
+                -- Model.State.autoBuy = false
                 Model.State.autoSell = false
                 Model.State.isAutoTraveling = false
                 Model.State.autoCraft = false
@@ -3168,7 +3156,7 @@ addConn(UserInputService.InputBegan:Connect(function(input, gameProcessed)
                 -- Update UI toggles to visually show they are off
                 if Fluent.Options then
                     if Fluent.Options.T_Fish then Fluent.Options.T_Fish:SetValue(false) end
-                    if Fluent.Options.T_Buy then Fluent.Options.T_Buy:SetValue(false) end
+                    -- if Fluent.Options.T_Buy then Fluent.Options.T_Buy:SetValue(false) end
                     if Fluent.Options.T_Sell then Fluent.Options.T_Sell:SetValue(false) end
                     if Fluent.Options.T_Travel then Fluent.Options.T_Travel:SetValue(false) end
                     if Fluent.Options.T_Craft then Fluent.Options.T_Craft:SetValue(false) end
