@@ -2600,7 +2600,7 @@ Tabs.Teleport:AddButton({
         Model.State.isDeepSeaCatcher = Value 
     end })
     
-    Tabs.Fishing:AddToggle("T_MegStack", { Title = "Megalodon Stack (Wait 3, Kill)", Default = false, Callback = function(Value) 
+    Tabs.Fishing:AddToggle("T_MegStack", { Title = "Megalodon Stack (Wait 10, Kill)", Default = false, Callback = function(Value) 
         if isLobby then if Value then Fluent:Notify({ Title = "Error", Content = "Cannot stack in Lobby!", Duration = 3 }); Fluent.Options.T_MegStack:SetValue(false) end return end
         Model.State.isMegStacking = Value
         if Value then
@@ -2609,12 +2609,12 @@ Tabs.Teleport:AddButton({
             if Fluent.Options.T_MegStackLoc then Fluent.Options.T_MegStackLoc:SetValue(true) end
             if Fluent.Options.T_AutoStoreFruit then Fluent.Options.T_AutoStoreFruit:SetValue(true) end
             if Fluent.Options.T_AutoReturn then Fluent.Options.T_AutoReturn:SetValue(true) end
-            print("🌊 [MegStack] Meg stack starting now! Enabling deep sea catcher for 3 megalodons.")
+            print("🌊 [MegStack] Meg stack starting now! Enabling deep sea catcher for 10 megalodons.")
             task.spawn(function()
                 while Model.State.isMegStacking do
                     local megCount = Model.countMegalodons()
-                    if megCount >= 3 and not Model.State.isBuying and not Model.State.isAutoTraveling and not Model.State.isRefillingMegBait and not Model.State.isManualTraveling then
-                        print("🔥 [MegStack] 3 Megalodons reached! Disabling fishing and automatically toggling Cyborg Autofarm ON...")
+                    if megCount >= 10 and not Model.State.isBuying and not Model.State.isAutoTraveling and not Model.State.isRefillingMegBait and not Model.State.isManualTraveling then
+                        print("🔥 [MegStack] 10 Megalodons reached! Disabling fishing and automatically toggling Cyborg Autofarm ON...")
                         if Fluent.Options.T_DeepSea.Value == true then
                             Fluent.Options.T_DeepSea:SetValue(false)
                         end
