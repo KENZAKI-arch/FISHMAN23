@@ -1556,8 +1556,25 @@ end
 local function ShutdownEverything()
     _running = false
     disconnectAll()
-    if not isLobby then
-        Model.DisableFlight()
+    if not isLobby and Model and Model.State then
+        Model.State.isFishing = false
+        Model.State.autoBuy = false
+        Model.State.autoSell = false
+        Model.State.isAutoTraveling = false
+        Model.State.autoCraft = false
+        Model.State.isCurrentlyCrafting = false
+        Model.State.isCraftFlying = false
+        Model.State.isBuying = false
+        Model.State.isMegStacking = false
+        Model.State.isDeepSeaCatcher = false
+        
+        pcall(function()
+            if Model.DisableFlight then Model.DisableFlight() end
+            if Model.UnequipRod then Model.UnequipRod() end
+            if Model.State.activeNavigation and Model.State.activeNavigation._isNavigating then
+                Model.State.activeNavigation:Cancel()
+            end
+        end)
     end
     env.FishmanScriptServer = nil
     print("[Fishman] Successfully shut down.")
