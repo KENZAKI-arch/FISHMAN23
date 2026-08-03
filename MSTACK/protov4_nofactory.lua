@@ -358,20 +358,19 @@ function Model.UpdateTracking(deltaTime)
         end
         
         local targetSpot
-        if currentEnemy.Name == "Megalodon" then
-            if getgenv().CachedHoverboard and typeof(getgenv().CachedHoverboard) == "Instance" then
-                pcall(function() targetSpot = getgenv().CachedHoverboard.Position + Vector3.new(0, 15, 0) end)
-            end
-            if targetSpot then
-                getgenv().LastMegalodonHoverY = targetSpot.Y
-            else
-                -- Hoverboard is completely gone/nil. Lock Y to last known height to prevent sinking!
-                targetSpot = Vector3.new(rootPart.Position.X, getgenv().LastMegalodonHoverY or rootPart.Position.Y, rootPart.Position.Z)
-            end
+        if currentEnemy.Name == "Megalodon" and getgenv().CachedHoverboard and getgenv().CachedHoverboard.Parent then
+            print("🚀 [DEBUG] Hoverboard Detected! Anchoring 5 studs below.")
+            targetSpot = getgenv().CachedHoverboard.Position - Vector3.new(0, 5, 0)
         else
-            -- Apply orbital anti-gravity positioning (custom studs above target) for other enemies
-            local alt = getgenv().CyborgFlyAltitude or 250
-            targetSpot = Vector3.new(targetRoot.Position.X, alt, targetRoot.Position.Z)
+            if currentEnemy.Name == "Megalodon" then
+                print("❌ [DEBUG] Hoverboard NOT Detected! Anchoring to Megalodon.")
+                -- Remove the height thing completely! Just stay 5 studs above the Megalodon's root.
+                targetSpot = targetRoot.Position + Vector3.new(0, 5, 0)
+            else
+                -- Apply orbital anti-gravity positioning (custom studs above target) for other enemies
+                local alt = getgenv().CyborgFlyAltitude or 250
+                targetSpot = Vector3.new(targetRoot.Position.X, alt, targetRoot.Position.Z)
+            end
         end
         
 
@@ -417,8 +416,8 @@ function Model.UpdateTracking(deltaTime)
         
         local targetSpot
         if getgenv().CachedHoverboard and getgenv().CachedHoverboard.Parent then
-            -- Hover safely ABOVE the hoverboard to prevent hitting the water
-            targetSpot = getgenv().CachedHoverboard.Position + Vector3.new(0, 15, 0)
+            -- Teleport to the tail of the hoverboard (approx 4 studs backwards)
+            targetSpot = (getgenv().CachedHoverboard.CFrame * CFrame.new(0, 3, 4)).Position
         elseif Model.State.originalPosition then
             targetSpot = Model.State.originalPosition
         else
