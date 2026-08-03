@@ -1,5 +1,5 @@
 -- ============================================================================
--- CYBORG AUTOFARM SCRIPT (SEQUENCE TARGETING) THIS IS UPDATED
+-- CYBORG AUTOFARM SCRIPT (SEQUENCE TARGETING) THIS IS UPDATED v2
 -- Contains Model, View, and Controller logic in a single file
 -- ============================================================================
 
