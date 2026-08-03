@@ -1,4 +1,4 @@
--- Version 3.3
+-- Version 3.5
 -- ======================================================================
 -- 🛑 GLOBAL SETUP & DUPLICATE PREVENTION
 -- ======================================================================
@@ -1907,7 +1907,7 @@ end
 Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
 local Window = Fluent:CreateWindow({
     Title = "🐟 Fishman Hub",
-    SubTitle = "Unified Auto-Fisher 1.0.3 v3.45",
+    SubTitle = "Unified Auto-Fisher 1.0.3 v3.5",
     TabWidth = 160,
     Size = UDim2.fromOffset(500, 350),
     Theme = "Darker",
@@ -2974,7 +2974,7 @@ Tabs.Autofarm:AddToggle("T_CyborgAuto", {
 
         if Value and not getgenv().ToggleCyborgAutofarm then
             pcall(function()
-                loadstring(game:HttpGet("https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/main/protov4_nofactory.lua"))()
+                loadstring(game:HttpGet("https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/main/MSTACK/protov4_nofactory.lua?t="..tostring(tick())))()
             end)
             task.wait(1)
         end
@@ -2983,6 +2983,21 @@ Tabs.Autofarm:AddToggle("T_CyborgAuto", {
         end
     end 
 })
+
+Tabs.Autofarm:AddButton({
+    Title = "🔄 Update4 Script",
+    Description = "Fetches and reloads the latest protov4 Cyborg script from Github.",
+    Callback = function()
+        Fluent:Notify({ Title = "Updating", Content = "Fetching latest protov4 script...", Duration = 3 })
+        if getgenv().StopAutofarm then
+            pcall(getgenv().StopAutofarm)
+        end
+        getgenv().ToggleCyborgAutofarm = nil
+        task.wait(1)
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/main/MSTACK/protov4_nofactory.lua?t="..tostring(tick())))()
+    end
+})
+
 
 Tabs.Autofarm:AddButton({                   
     Title = "Load MeleeFactory",
