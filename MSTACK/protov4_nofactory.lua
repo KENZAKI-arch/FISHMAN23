@@ -677,3 +677,69 @@ getgenv().StopAutofarm = function()
     print("[Cyborg Autofarm] Autofarm forcefully stopped, memory cleared, and UI destroyed.")
 end
 
+-- ==========================================
+-- TOGGLEABLE UI
+-- ==========================================
+local function CreateUI()
+    local playerGui = LocalPlayer:WaitForChild("PlayerGui")
+    
+    local oldGui = playerGui:FindFirstChild("AutoFarmGui")
+    if oldGui then oldGui:Destroy() end
+
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "AutoFarmGui"
+    screenGui.ResetOnSpawn = false
+    screenGui.Parent = playerGui
+
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(0, 200, 0, 100)
+    frame.Position = UDim2.new(0, 50, 0, 50)
+    frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    frame.BorderSizePixel = 0
+    frame.Active = true
+    frame.Draggable = true
+    frame.Parent = screenGui
+
+    local uiCorner = Instance.new("UICorner")
+    uiCorner.CornerRadius = UDim.new(0, 8)
+    uiCorner.Parent = frame
+
+    local title = Instance.new("TextLabel")
+    title.Size = UDim2.new(1, 0, 0, 30)
+    title.BackgroundTransparency = 1
+    title.Text = "Cyborg Autofarm"
+    title.TextColor3 = Color3.fromRGB(255, 255, 255)
+    title.Font = Enum.Font.GothamBold
+    title.TextSize = 14
+    title.Parent = frame
+
+    local toggleButton = Instance.new("TextButton")
+    toggleButton.Size = UDim2.new(0.8, 0, 0, 40)
+    toggleButton.Position = UDim2.new(0.1, 0, 0, 45)
+    toggleButton.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
+    toggleButton.Text = "Start Autofarm"
+    toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    toggleButton.Font = Enum.Font.GothamBold
+    toggleButton.TextSize = 14
+    toggleButton.Parent = frame
+
+    local btnCorner = Instance.new("UICorner")
+    btnCorner.CornerRadius = UDim.new(0, 6)
+    btnCorner.Parent = toggleButton
+
+    -- Setup Toggle Logic
+    toggleButton.MouseButton1Click:Connect(function()
+        if Model.State.isAutoFarming then
+            Model.State.isAutoFarming = false
+            toggleButton.Text = "Start Autofarm"
+            toggleButton.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
+            Model.ResetPhysics()
+        else
+            Model.State.isAutoFarming = true
+            toggleButton.Text = "Stop Autofarm"
+            toggleButton.BackgroundColor3 = Color3.fromRGB(50, 255, 50)
+        end
+    end)
+end
+
+CreateUI()
