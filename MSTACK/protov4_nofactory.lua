@@ -364,8 +364,8 @@ function Model.UpdateTracking(deltaTime)
         else
             if currentEnemy.Name == "Megalodon" then
                 print("❌ [DEBUG] Hoverboard NOT Detected! Anchoring to Megalodon.")
-                -- Remove the height thing completely! Just stay 5 studs above the Megalodon's root.
-                targetSpot = targetRoot.Position + Vector3.new(0, 5, 0)
+                -- Remove the height thing completely! Anchoring to Megalodon's root.
+                targetSpot = targetRoot.Position
             else
                 -- Apply orbital anti-gravity positioning (custom studs above target) for other enemies
                 local alt = getgenv().CyborgFlyAltitude or 250
@@ -571,7 +571,7 @@ View.Build(function(isFarming)
                                 end
                             else
                                 if currentEnemy.Name == "Megalodon" then
-                                    targetSpot = targetRoot.Position + Vector3.new(0, 5, 0)
+                                    targetSpot = targetRoot.Position
                                 else
                                     targetSpot = Vector3.new(targetRoot.Position.X, alt, targetRoot.Position.Z)
                                 end
