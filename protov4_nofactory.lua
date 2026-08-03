@@ -362,9 +362,11 @@ function Model.UpdateTracking(deltaTime)
             if getgenv().CachedHoverboard and typeof(getgenv().CachedHoverboard) == "Instance" then
                 pcall(function() targetSpot = getgenv().CachedHoverboard.Position - Vector3.new(0, 5, 0) end)
             end
-            if not targetSpot then
-                -- Hoverboard is completely gone/nil. Just stay right where you are!
-                targetSpot = rootPart.Position
+            if targetSpot then
+                getgenv().LastMegalodonHoverY = targetSpot.Y
+            else
+                -- Hoverboard is completely gone/nil. Lock Y to last known height to prevent sinking!
+                targetSpot = Vector3.new(rootPart.Position.X, getgenv().LastMegalodonHoverY or rootPart.Position.Y, rootPart.Position.Z)
             end
         else
             -- Apply orbital anti-gravity positioning (custom studs above target) for other enemies
