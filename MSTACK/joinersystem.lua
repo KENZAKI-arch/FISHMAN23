@@ -1559,6 +1559,10 @@ local function ShutdownEverything()
     if not isLobby then
         Model.DisableFlight()
     end
+    if getgenv().StopAutofarm then
+        pcall(getgenv().StopAutofarm)
+    end
+    getgenv().ToggleCyborgAutofarm = nil
     env.FishmanScriptServer = nil
     print("[Fishman] Successfully shut down.")
 end
