@@ -416,8 +416,8 @@ function Model.UpdateTracking(deltaTime)
         
         local targetSpot
         if getgenv().CachedHoverboard and getgenv().CachedHoverboard.Parent then
-            -- Teleport to the tail of the hoverboard (approx 4 studs backwards)
-            targetSpot = (getgenv().CachedHoverboard.CFrame * CFrame.new(0, 3, 4)).Position
+            -- Hover below the hoverboard even when waiting for next spawn
+            targetSpot = getgenv().CachedHoverboard.Position - Vector3.new(0, 5, 0)
         elseif Model.State.originalPosition then
             targetSpot = Model.State.originalPosition
         else
