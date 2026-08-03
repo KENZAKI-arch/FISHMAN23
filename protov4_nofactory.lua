@@ -1,5 +1,5 @@
 -- ============================================================================
--- CYBORG AUTOFARM SCRIPT (SEQUENCE TARGETING)
+-- CYBORG AUTOFARM SCRIPT (SEQUENCE TARGETING) THIS IS UPDATED
 -- Contains Model, View, and Controller logic in a single file
 -- ============================================================================
 
@@ -507,62 +507,12 @@ local View = {}
 function View.Build(onToggleCallback)
     local isFarming = false
     
-    -- UI References
-    local CoreGui = game:GetService("CoreGui")
-    if CoreGui:FindFirstChild("CyborgV4UI") then
-        CoreGui.CyborgV4UI:Destroy()
-    end
-
-    local ScreenGui = Instance.new("ScreenGui")
-    ScreenGui.Name = "CyborgV4UI"
-    ScreenGui.Parent = CoreGui
-
-    local ToggleButton = Instance.new("TextButton")
-    ToggleButton.Size = UDim2.new(0, 250, 0, 50)
-    ToggleButton.Position = UDim2.new(0.5, -125, 0, 20)
-    ToggleButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-    ToggleButton.Text = "Cyborg Autofarm: OFF"
-    ToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    ToggleButton.TextScaled = true
-    ToggleButton.Font = Enum.Font.GothamBold
-    ToggleButton.Parent = ScreenGui
-    Instance.new("UICorner", ToggleButton).CornerRadius = UDim.new(0, 8)
-    
-    -- Draggable functionality
-    local UserInputService = game:GetService("UserInputService")
-    local dragging, dragInput, dragStart, startPos
-    ToggleButton.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            dragging = true
-            dragStart = input.Position
-            startPos = ToggleButton.Position
-        end
-    end)
-    ToggleButton.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-            dragInput = input
-        end
-    end)
-    UserInputService.InputChanged:Connect(function(input)
-        if input == dragInput and dragging then
-            local delta = input.Position - dragStart
-            ToggleButton.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-        end
-    end)
-    UserInputService.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            dragging = false
-        end
-    end)
-
     local function setFarmingState(state)
         if isFarming == state then return end
         isFarming = state
         Model.State.isAutoFarming = isFarming
         
         if isFarming then
-            ToggleButton.Text = "Cyborg Autofarm: ON"
-            ToggleButton.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
             Model.State.hasEnteredFactory = false
             Model.State.hasReturned = false
             
@@ -572,17 +522,11 @@ function View.Build(onToggleCallback)
                 Model.State.originalPosition = char.HumanoidRootPart.Position
             end
         else
-            ToggleButton.Text = "Cyborg Autofarm: OFF"
-            ToggleButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
             Model.State.originalPosition = nil
         end
         
         onToggleCallback(isFarming)
     end
-    
-    ToggleButton.MouseButton1Click:Connect(function()
-        setFarmingState(not isFarming)
-    end)
     
     getgenv().ToggleCyborgAutofarm = setFarmingState
 end
@@ -732,9 +676,7 @@ getgenv().StopAutofarm = function()
     local hGui = game:GetService("CoreGui"):FindFirstChild("HoverboardFlightPanel")
     if hGui then hGui:Destroy() end
     
-    local cGui = game:GetService("CoreGui"):FindFirstChild("CyborgV4UI")
-    if cGui then cGui:Destroy() end
-    
+
     print("[Cyborg Autofarm] Autofarm forcefully stopped, memory cleared, and UI destroyed.")
 end
 
