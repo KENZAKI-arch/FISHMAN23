@@ -358,19 +358,18 @@ function Model.UpdateTracking(deltaTime)
         end
         
         local targetSpot
-        if currentEnemy.Name == "Megalodon" and getgenv().CachedHoverboard and getgenv().CachedHoverboard.Parent then
-            print("🚀 [DEBUG] Hoverboard Detected! Anchoring 5 studs below.")
-            targetSpot = getgenv().CachedHoverboard.Position - Vector3.new(0, 5, 0)
-        else
-            if currentEnemy.Name == "Megalodon" then
-                print("❌ [DEBUG] Hoverboard NOT Detected! Anchoring to Megalodon.")
-                -- Remove the height thing completely! Just stay 5 studs above the Megalodon's root.
-                targetSpot = targetRoot.Position + Vector3.new(0, 5, 0)
-            else
-                -- Apply orbital anti-gravity positioning (custom studs above target) for other enemies
-                local alt = getgenv().CyborgFlyAltitude or 250
-                targetSpot = Vector3.new(targetRoot.Position.X, alt, targetRoot.Position.Z)
+        if currentEnemy.Name == "Megalodon" then
+            if getgenv().CachedHoverboard and typeof(getgenv().CachedHoverboard) == "Instance" then
+                pcall(function() targetSpot = getgenv().CachedHoverboard.Position - Vector3.new(0, 5, 0) end)
             end
+            if not targetSpot then
+                -- Hoverboard is completely gone/nil. Just stay right where you are!
+                targetSpot = rootPart.Position
+            end
+        else
+            -- Apply orbital anti-gravity positioning (custom studs above target) for other enemies
+            local alt = getgenv().CyborgFlyAltitude or 250
+            targetSpot = Vector3.new(targetRoot.Position.X, alt, targetRoot.Position.Z)
         end
         
 
