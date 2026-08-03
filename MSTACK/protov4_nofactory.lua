@@ -360,7 +360,7 @@ function Model.UpdateTracking(deltaTime)
         local targetSpot
         if currentEnemy.Name == "Megalodon" then
             if getgenv().CachedHoverboard and typeof(getgenv().CachedHoverboard) == "Instance" then
-                pcall(function() targetSpot = getgenv().CachedHoverboard.Position - Vector3.new(0, 5, 0) end)
+                pcall(function() targetSpot = getgenv().CachedHoverboard.Position + Vector3.new(0, 15, 0) end)
             end
             if targetSpot then
                 getgenv().LastMegalodonHoverY = targetSpot.Y
@@ -417,8 +417,8 @@ function Model.UpdateTracking(deltaTime)
         
         local targetSpot
         if getgenv().CachedHoverboard and getgenv().CachedHoverboard.Parent then
-            -- Hover below the hoverboard even when waiting for next spawn
-            targetSpot = getgenv().CachedHoverboard.Position - Vector3.new(0, 5, 0)
+            -- Hover safely ABOVE the hoverboard to prevent hitting the water
+            targetSpot = getgenv().CachedHoverboard.Position + Vector3.new(0, 15, 0)
         elseif Model.State.originalPosition then
             targetSpot = Model.State.originalPosition
         else
