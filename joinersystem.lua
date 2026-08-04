@@ -2885,7 +2885,9 @@ Tabs.Teleport:AddButton({
         Callback = function(Value)
             if Value then
                 if Fluent.Options.T_DropFruitsManual and Fluent.Options.T_DropFruitsManual.Value then
-                    Fluent.Options.T_DropFruitsManual:SetValue(false)
+                    Fluent:Notify({ Title = "Action Prevented", Content = "Cannot store fruits while dropping is active!", Duration = 3 })
+                    task.spawn(function() Fluent.Options.T_StoreFruitsManual:SetValue(false) end)
+                    return
                 end
                 getgenv()._cancelStoreFruits = false
                 task.spawn(function()
@@ -2907,10 +2909,14 @@ Tabs.Teleport:AddButton({
         Callback = function(Value)
             if Value then
                 if Fluent.Options.T_StoreFruitsManual and Fluent.Options.T_StoreFruitsManual.Value then
-                    Fluent.Options.T_StoreFruitsManual:SetValue(false)
+                    Fluent:Notify({ Title = "Action Prevented", Content = "Cannot drop fruits while manual storing is active!", Duration = 3 })
+                    task.spawn(function() Fluent.Options.T_DropFruitsManual:SetValue(false) end)
+                    return
                 end
                 if Fluent.Options.T_AutoStoreFruit and Fluent.Options.T_AutoStoreFruit.Value then
-                    Fluent.Options.T_AutoStoreFruit:SetValue(false)
+                    Fluent:Notify({ Title = "Action Prevented", Content = "Please turn off Auto Store Fruit before dropping!", Duration = 3 })
+                    task.spawn(function() Fluent.Options.T_DropFruitsManual:SetValue(false) end)
+                    return
                 end
                 getgenv()._cancelDropFruits = false
                 task.spawn(function()
@@ -2933,7 +2939,9 @@ Tabs.Teleport:AddButton({
             autoStoreEnabled = Value
             if autoStoreEnabled then
                 if Fluent.Options.T_DropFruitsManual and Fluent.Options.T_DropFruitsManual.Value then
-                    Fluent.Options.T_DropFruitsManual:SetValue(false)
+                    Fluent:Notify({ Title = "Action Prevented", Content = "Cannot enable Auto Store while dropping!", Duration = 3 })
+                    task.spawn(function() Fluent.Options.T_AutoStoreFruit:SetValue(false) end)
+                    return
                 end
                 task.spawn(function()
                     while autoStoreEnabled do
