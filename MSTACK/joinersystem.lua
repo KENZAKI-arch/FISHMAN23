@@ -1709,6 +1709,7 @@ local function storeFruits(fruitList)
     end
     
     for _, tool in pairs(backpack:GetChildren()) do
+        if getgenv()._cancelStoreFruits then break end
         if tool:IsA("Tool") then
             local toolName = string.lower(tool.Name)
             local isTargetFruit = false
@@ -1848,6 +1849,7 @@ local function dropFruits(fruitList)
     end
     
     for _, tool in pairs(backpack:GetChildren()) do
+        if getgenv()._cancelDropFruits then break end
         if tool:IsA("Tool") then
             local toolName = string.lower(tool.Name)
             local isTargetFruit = false
@@ -2882,12 +2884,15 @@ Tabs.Teleport:AddButton({
         Default = false,
         Callback = function(Value)
             if Value then
+                getgenv()._cancelStoreFruits = false
                 task.spawn(function()
                     storeFruits(targetFruits)
-                    if Fluent.Options.T_StoreFruitsManual then
+                    if Fluent.Options.T_StoreFruitsManual and Fluent.Options.T_StoreFruitsManual.Value then
                         Fluent.Options.T_StoreFruitsManual:SetValue(false)
                     end
                 end)
+            else
+                getgenv()._cancelStoreFruits = true
             end
         end
     })
@@ -2898,12 +2903,15 @@ Tabs.Teleport:AddButton({
         Default = false,
         Callback = function(Value)
             if Value then
+                getgenv()._cancelDropFruits = false
                 task.spawn(function()
                     dropFruits(targetFruits)
-                    if Fluent.Options.T_DropFruitsManual then
+                    if Fluent.Options.T_DropFruitsManual and Fluent.Options.T_DropFruitsManual.Value then
                         Fluent.Options.T_DropFruitsManual:SetValue(false)
                     end
                 end)
+            else
+                getgenv()._cancelDropFruits = true
             end
         end
     })
@@ -2917,6 +2925,7 @@ Tabs.Teleport:AddButton({
             if autoStoreEnabled then
                 task.spawn(function()
                     while autoStoreEnabled do
+                        getgenv()._cancelStoreFruits = false
                         storeFruits(targetFruits)
                         task.wait(600)
                     end
