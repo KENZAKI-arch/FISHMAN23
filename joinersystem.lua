@@ -2884,6 +2884,9 @@ Tabs.Teleport:AddButton({
         Default = false,
         Callback = function(Value)
             if Value then
+                if Fluent.Options.T_DropFruitsManual and Fluent.Options.T_DropFruitsManual.Value then
+                    Fluent.Options.T_DropFruitsManual:SetValue(false)
+                end
                 getgenv()._cancelStoreFruits = false
                 task.spawn(function()
                     storeFruits(targetFruits)
@@ -2903,6 +2906,12 @@ Tabs.Teleport:AddButton({
         Default = false,
         Callback = function(Value)
             if Value then
+                if Fluent.Options.T_StoreFruitsManual and Fluent.Options.T_StoreFruitsManual.Value then
+                    Fluent.Options.T_StoreFruitsManual:SetValue(false)
+                end
+                if Fluent.Options.T_AutoStoreFruit and Fluent.Options.T_AutoStoreFruit.Value then
+                    Fluent.Options.T_AutoStoreFruit:SetValue(false)
+                end
                 getgenv()._cancelDropFruits = false
                 task.spawn(function()
                     dropFruits(targetFruits)
@@ -2923,6 +2932,9 @@ Tabs.Teleport:AddButton({
         Callback = function(Value)
             autoStoreEnabled = Value
             if autoStoreEnabled then
+                if Fluent.Options.T_DropFruitsManual and Fluent.Options.T_DropFruitsManual.Value then
+                    Fluent.Options.T_DropFruitsManual:SetValue(false)
+                end
                 task.spawn(function()
                     while autoStoreEnabled do
                         getgenv()._cancelStoreFruits = false
