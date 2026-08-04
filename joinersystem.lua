@@ -2876,16 +2876,36 @@ Tabs.Teleport:AddButton({
         Callback = function() checkFruits(targetFruits) end
     })
     
-    Tabs.Fishing:AddButton({
+    Tabs.Fishing:AddToggle("T_StoreFruitsManual", {
         Title = "Store Fruits",
         Description = "Store target fruits (keeps in inventory if full).",
-        Callback = function() storeFruits(targetFruits) end
+        Default = false,
+        Callback = function(Value)
+            if Value then
+                task.spawn(function()
+                    storeFruits(targetFruits)
+                    if Fluent.Options.T_StoreFruitsManual then
+                        Fluent.Options.T_StoreFruitsManual:SetValue(false)
+                    end
+                end)
+            end
+        end
     })
     
-    Tabs.Fishing:AddButton({
+    Tabs.Fishing:AddToggle("T_DropFruitsManual", {
         Title = "Drop Fruits",
         Description = "Force drop all target fruits.",
-        Callback = function() dropFruits(targetFruits) end
+        Default = false,
+        Callback = function(Value)
+            if Value then
+                task.spawn(function()
+                    dropFruits(targetFruits)
+                    if Fluent.Options.T_DropFruitsManual then
+                        Fluent.Options.T_DropFruitsManual:SetValue(false)
+                    end
+                end)
+            end
+        end
     })
     
     local autoStoreEnabled = false
