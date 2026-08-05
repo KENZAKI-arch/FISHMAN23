@@ -501,112 +501,92 @@ if not isLobby then
     end
     
     function Model.HandleMovement(deltaTime)
-        local rootPart = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-        if not rootPart then return end
-        local cur = rootPart.Position
-        
-        local tgt
-        if Model.State.travelStage == 1 then tgt = Model.State.waypoint1
-        elseif Model.State.travelStage == 2 then tgt = Model.State.waypoint2
-        else tgt = Model.State.finalTarget end
-        
-        local tgtY = tgt.Y
-        local nextPoint
-        local goingUp = (tgtY > cur.Y)
-
-        if goingUp and math.abs(cur.Y - tgtY) > 1 then nextPoint = Vector3.new(cur.X, tgtY, cur.Z)
-        elseif math.abs(cur.X - tgt.X) > 1 then nextPoint = Vector3.new(tgt.X, cur.Y, cur.Z)
-        elseif math.abs(cur.Z - tgt.Z) > 1 then nextPoint = Vector3.new(tgt.X, cur.Y, tgt.Z)
-        elseif not goingUp and math.abs(cur.Y - tgtY) > 1 then nextPoint = Vector3.new(tgt.X, tgtY, tgt.Z)
-        else
-            if Model.State.travelStage == 1 then
-                Model.State.travelStage = 2
-                local humanoid = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-                if humanoid then humanoid.PlatformStand = false end
-                return
-            elseif Model.State.travelStage == 2 then
-                Model.State.travelStage = 3
-                return
-            end
-            
-            Model.State.isAutoTraveling = false
-            Model.DisableFlight()
-            Model.State.travelMessage = "Arrived at Bait"
-            return
-        end
-
-        local newX, newZ = cur.X, cur.Z
-        local horizNext = Vector3.new(nextPoint.X, cur.Y, nextPoint.Z)
-        local horizDist = (Vector3.new(cur.X, 0, cur.Z) - Vector3.new(nextPoint.X, 0, nextPoint.Z)).Magnitude
-        
-        if horizDist > 0 then
-            local alpha = math.clamp((90 * deltaTime) / horizDist, 0, 1)
-            local hLerp = cur:Lerp(horizNext, alpha)
-            newX, newZ = hLerp.X, hLerp.Z
-        end
-
-        local newY = cur.Y
-        if Model.State.travelStage > 1 and not goingUp then
-            local params = RaycastParams.new()
-            params.FilterDescendantsInstances = {LocalPlayer.Character}
-            params.FilterType = Enum.RaycastFilterType.Exclude
-
-            local floorY = tgtY
-            local rayStart = Vector3.new(newX, cur.Y + 10, newZ)
-            local remainingDist = 500
-            
-            while remainingDist > 0 do
-                local res = workspace:Raycast(rayStart, Vector3.new(0, -remainingDist, 0), params)
-                if res then
-                    if res.Instance.CanCollide and res.Instance.Anchored then
-                        floorY = math.max(tgtY, res.Position.Y + 3.5)
-                        break
-                    else
-                        local advance = (rayStart - res.Position).Magnitude + 0.1
-                        rayStart = res.Position - Vector3.new(0, 0.1, 0)
-                        remainingDist = remainingDist - advance
-                    end
-                else
-                    break
-                end
-            end
-
-            if cur.Y > floorY then
-                newY = cur.Y - (150 * deltaTime)
-                if newY < floorY then newY = floorY end
-            else
-                newY = floorY
-            end
-        else
-            local yDist = math.abs(nextPoint.Y - cur.Y)
-            if yDist > 0 then
-                local alpha = math.clamp((90 * deltaTime) / yDist, 0, 1)
-                newY = cur.Y + (nextPoint.Y - cur.Y) * alpha
-            end
-        end
-
-        rootPart.CFrame = CFrame.new(newX, newY, newZ) * rootPart.CFrame.Rotation
-        rootPart.AssemblyLinearVelocity = Vector3.zero
-        rootPart.AssemblyAngularVelocity = Vector3.zero
+        -- deprecated by new physics flight system
     end
     
     function Model.StartTraveling()
-        local char = LocalPlayer.Character
+        local char = game.Players.LocalPlayer.Character
         local hrp = char and char:FindFirstChild("HumanoidRootPart")
         if not hrp then return end
         
-        local pos = hrp.Position
-        local d1 = (pos - Model.State.waypoint1).Magnitude
-        local d2 = (pos - Model.State.waypoint2).Magnitude
-        local d3 = (pos - Model.State.finalTarget).Magnitude
-
-        if d3 < d2 and d3 < d1 then Model.State.travelStage = 3
-        elseif d2 < d1 then Model.State.travelStage = 2
-        else Model.State.travelStage = 1 end
-
         Model.State.travelMessage = "Traveling..."
         Model.State.isAutoTraveling = true
-        Model.EnableFlight()
+        
+        local speed = 100
+        
+        local bv = hrp:FindFirstChild("AntiGravity") or Instance.new("BodyVelocity")
+        bv.Name = "AntiGravity"
+        bv.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+        bv.Velocity = Vector3.zero
+        bv.Parent = hrp
+        
+        local bg = hrp:FindFirstChild("AntiRotation") or Instance.new("BodyGyro")
+        bg.Name = "AntiRotation"
+        bg.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
+        bg.P = 9e4
+        bg.CFrame = hrp.CFrame
+        bg.Parent = hrp
+        
+        local function FlyTo(point)
+            if not Model.State.isAutoTraveling then return false end
+            local dist = (hrp.Position - point).Magnitude
+            if dist < 5 then return true end
+            
+            while Model.State.isAutoTraveling do
+                local curPos = hrp.Position
+                dist = (curPos - point).Magnitude
+                if dist < 5 then 
+                    bv.Velocity = Vector3.zero
+                    return true 
+                end
+                
+                local dir = (point - curPos).Unit
+                bv.Velocity = dir * speed
+                
+                local lookDir = Vector3.new(dir.X, 0, dir.Z)
+                if lookDir.Magnitude > 0.001 then
+                    bg.CFrame = CFrame.lookAt(curPos, curPos + lookDir)
+                end
+                
+                pcall(function()
+                    if _G.PlayEffect then
+                        _G.PlayEffect("Geppo", nil, {char = char, cf = hrp.CFrame * CFrame.new(0, -3, 0)})
+                    end
+                end)
+                task.wait()
+            end
+            
+            bv.Velocity = Vector3.zero
+            return false
+        end
+
+        task.spawn(function()
+            local pos = hrp.Position
+            local d1 = (pos - Model.State.waypoint1).Magnitude
+            local d2 = (pos - Model.State.waypoint2).Magnitude
+            local d3 = (pos - Model.State.finalTarget).Magnitude
+            
+            local startStage = 1
+            if d3 < d2 and d3 < d1 then startStage = 3
+            elseif d2 < d1 then startStage = 2 end
+            
+            if startStage <= 1 then
+                if not FlyTo(Model.State.waypoint1) then return end
+            end
+            if startStage <= 2 then
+                if not FlyTo(Model.State.waypoint2) then return end
+            end
+            if startStage <= 3 then
+                if not FlyTo(Model.State.finalTarget) then return end
+            end
+            
+            if Model.State.isAutoTraveling then
+                Model.State.isAutoTraveling = false
+                if bv then bv:Destroy() end
+                if bg then bg:Destroy() end
+                Model.State.travelMessage = "Arrived at Bait"
+            end
+        end)
     end
     
     -- ======================================================================
