@@ -367,38 +367,36 @@ if not isLobby then
 
         local humanoid = object:FindFirstChildOfClass("Humanoid")
         if humanoid then humanoid.PlatformStand = true end
-        if primaryPart then primaryPart.Anchored = true end
 
         local navigator = { 
             _isNavigating = true,
             _isPaused = false,
             _roboTarget = nil,
             Distance = 0,
-            _currentTween = nil,
-            _noclipConnection = nil
+            _noclipConnection = nil,
+            _bv = nil,
+            _bg = nil
         }
         
         function navigator:Cancel()
             self._isNavigating = false
-            if self._currentTween then self._currentTween:Cancel() end
             if self._noclipConnection then self._noclipConnection:Disconnect() end
+            if self._bv then self._bv:Destroy() end
+            if self._bg then self._bg:Destroy() end
             if humanoid then humanoid.PlatformStand = false end
-            if primaryPart then primaryPart.Anchored = false end
         end
         
         function navigator:TogglePause()
             self._isPaused = not self._isPaused
-            if self._currentTween then
+            if self._bv then
                 if self._isPaused then
-                    self._currentTween:Pause()
-                else
-                    self._currentTween:Play()
+                    self._bv.Velocity = Vector3.zero
                 end
             end
             return self._isPaused
         end
         
-        navigator._noclipConnection = RunService.Stepped:Connect(function()
+        navigator._noclipConnection = game:GetService("RunService").Stepped:Connect(function()
             if not navigator._isNavigating or navigator._isPaused then return end
             if object then
                 for _, part in ipairs(object:GetDescendants()) do
@@ -421,7 +419,7 @@ if not isLobby then
             if currentTick - lastGeppoRemoteTick >= 2 then
                 lastGeppoRemoteTick = currentTick
                 pcall(function()
-                    local stats = game.ReplicatedStorage:FindFirstChild("Stats" .. LocalPlayer.Name)
+                    local stats = game.ReplicatedStorage:FindFirstChild("Stats" .. game.Players.LocalPlayer.Name)
                     local fs = stats and stats:FindFirstChild("Stats") and stats.Stats:FindFirstChild("FightingStyle")
                     local skillName = "Sky Walk2"
                     if fs then
@@ -435,41 +433,62 @@ if not isLobby then
             end
         end
 
+        local bv = Instance.new("BodyVelocity")
+        bv.Name = "AntiGravity"
+        bv.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+        bv.Velocity = Vector3.zero
+        bv.Parent = primaryPart
+        navigator._bv = bv
+        
+        local bg = Instance.new("BodyGyro")
+        bg.Name = "AntiRotation"
+        bg.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
+        bg.P = 9e4
+        bg.CFrame = primaryPart.CFrame
+        bg.Parent = primaryPart
+        navigator._bg = bg
+
         task.spawn(function()
             local cur = primaryPart.Position
-            local upPoint = Vector3.new(cur.X, math.max(cur.Y, targetPosition.Y) + 1000, cur.Z)
+            local upPoint = Vector3.new(cur.X, max(cur.Y, targetPosition.Y) + 1000, cur.Z)
             local overPoint = Vector3.new(targetPosition.X, upPoint.Y, targetPosition.Z)
             
-            local function TweenTo(point)
+            local function FlyTo(point)
                 if not navigator._isNavigating then return false end
                 local dist = (primaryPart.Position - point).Magnitude
                 if dist < arrivalDistance then return true end
                 
-                local tweenInfo = TweenInfo.new(dist / speed, Enum.EasingStyle.Linear)
-                local tween = TweenService:Create(primaryPart, tweenInfo, {CFrame = CFrame.new(point) * primaryPart.CFrame.Rotation})
-                navigator._currentTween = tween
-                tween:Play()
-                
-                while tween.PlaybackState == Enum.PlaybackState.Playing or tween.PlaybackState == Enum.PlaybackState.Paused do
-                    if not navigator._isNavigating then
-                        tween:Cancel()
-                        return false
-                    end
-                    
-                    navigator.Distance = math.floor((primaryPart.Position - targetPosition).Magnitude)
-                    
-                    if tween.PlaybackState == Enum.PlaybackState.Playing then
+                while navigator._isNavigating do
+                    if not navigator._isPaused then
+                        local curPos = primaryPart.Position
+                        dist = (curPos - point).Magnitude
+                        navigator.Distance = math.floor((curPos - targetPosition).Magnitude)
+                        
+                        if dist < arrivalDistance then
+                            bv.Velocity = Vector3.zero
+                            return true
+                        end
+                        
+                        local dir = (point - curPos).Unit
+                        bv.Velocity = dir * speed
+                        
+                        local lookDir = Vector3.new(dir.X, 0, dir.Z)
+                        if lookDir.Magnitude > 0.001 then
+                            bg.CFrame = CFrame.lookAt(curPos, curPos + lookDir)
+                        end
+                        
                         SafePlayGeppo()
                     end
-                    
-                    task.wait(0.1)
+                    task.wait()
                 end
-                return navigator._isNavigating
+                
+                bv.Velocity = Vector3.zero
+                return false
             end
 
-            if TweenTo(upPoint) then
-                if TweenTo(overPoint) then
-                    TweenTo(targetPosition)
+            if FlyTo(upPoint) then
+                if FlyTo(overPoint) then
+                    FlyTo(targetPosition)
                 end
             end
             
@@ -631,40 +650,61 @@ if not isLobby then
         if not rootPart then return end
         
         Model.State.isCraftFlying = true
-        rootPart.Anchored = true
         local speed = Model.State.shipSpeed or 175 
         
-        local function TweenTo(point, customSpeed)
-            local currentSpeed = customSpeed or speed
+        local bv = Instance.new("BodyVelocity")
+        bv.Name = "AntiGravity"
+        bv.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+        bv.Velocity = Vector3.zero
+        bv.Parent = rootPart
+        
+        local bg = Instance.new("BodyGyro")
+        bg.Name = "AntiRotation"
+        bg.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
+        bg.P = 9e4
+        bg.CFrame = rootPart.CFrame
+        bg.Parent = rootPart
+        
+        local function FlyTo(point)
             if not Model.State.isCraftFlying then return end
-            local dist = (rootPart.Position - point).Magnitude
-            if dist < 1 then return end
             
-            local tweenInfo = TweenInfo.new(dist / currentSpeed, Enum.EasingStyle.Linear)
-            local tween = TweenService:Create(rootPart, tweenInfo, {CFrame = CFrame.new(point) * rootPart.CFrame.Rotation})
-            tween:Play()
-            
-            while tween.PlaybackState == Enum.PlaybackState.Playing do
+            while Model.State.isCraftFlying do
                 if not Model.State.autoCraft and not Model.State.isRefillingMegBait and not Model.State.isManualTraveling then 
-                    tween:Cancel()
-                    rootPart.Anchored = false
                     Model.State.isCraftFlying = false
                     break 
                 end
+                
+                local curPos = rootPart.Position
+                local dist = (curPos - point).Magnitude
+                if dist < 10 then 
+                    bv.Velocity = Vector3.zero
+                    break 
+                end
+                
+                local dir = (point - curPos).Unit
+                bv.Velocity = dir * speed
+                
+                local lookDir = Vector3.new(dir.X, 0, dir.Z)
+                if lookDir.Magnitude > 0.001 then
+                    bg.CFrame = CFrame.lookAt(curPos, curPos + lookDir)
+                end
+                
                 PlayGeppoEffect(character, rootPart)
-                task.wait(0.1)
+                task.wait()
             end
         end
-        
+
         local cur = rootPart.Position
-        local upPoint = Vector3.new(cur.X, math.max(cur.Y, targetVector.Y) + 500, cur.Z)
+        local upPoint = Vector3.new(cur.X, math.max(cur.Y, targetVector.Y) + 1000, cur.Z)
         local overPoint = Vector3.new(targetVector.X, upPoint.Y, targetVector.Z)
         
-        TweenTo(upPoint, speed * 0.5) -- 50% slower for going up
-        TweenTo(overPoint)
-        TweenTo(targetVector)
+        FlyTo(upPoint)
+        FlyTo(overPoint)
+        FlyTo(targetVector)
         
-        rootPart.Anchored = false
+        bv:Destroy()
+        bg:Destroy()
+        
         Model.State.isCraftFlying = false
     end
 
@@ -694,43 +734,59 @@ if not isLobby then
         if not rootPart then return false end
         
         Model.State.isCraftFlying = true
-        rootPart.Anchored = true
         Model.DisableFlight()
         task.wait(0.1)
-        Model.EnableFlight()
+        
         local speed = Model.State.shipSpeed or 300 
         
-        local function TweenTo(point, customSpeed)
-            local currentSpeed = customSpeed or speed
+        local bv = Instance.new("BodyVelocity")
+        bv.Name = "AntiGravity"
+        bv.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+        bv.Velocity = Vector3.zero
+        bv.Parent = rootPart
+        
+        local bg = Instance.new("BodyGyro")
+        bg.Name = "AntiRotation"
+        bg.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
+        bg.P = 9e4
+        bg.CFrame = rootPart.CFrame
+        bg.Parent = rootPart
+        
+        local function FlyTo(point)
             if not Model.State.isCraftFlying then return end
-            local dist = (rootPart.Position - point).Magnitude
-            if dist < 1 then return end
             
-            local tweenInfo = TweenInfo.new(dist / currentSpeed, Enum.EasingStyle.Linear)
-            local tween = TweenService:Create(rootPart, tweenInfo, {CFrame = CFrame.new(point) * rootPart.CFrame.Rotation})
-            tween:Play()
-            
-            while tween.PlaybackState == Enum.PlaybackState.Playing do
-                if not Model.State.isCraftFlying then 
-                    tween:Cancel()
-                    rootPart.Anchored = false
+            while Model.State.isCraftFlying do
+                local curPos = rootPart.Position
+                local dist = (curPos - point).Magnitude
+                if dist < 10 then 
+                    bv.Velocity = Vector3.zero
                     break 
                 end
+                
+                local dir = (point - curPos).Unit
+                bv.Velocity = dir * speed
+                
+                local lookDir = Vector3.new(dir.X, 0, dir.Z)
+                if lookDir.Magnitude > 0.001 then
+                    bg.CFrame = CFrame.lookAt(curPos, curPos + lookDir)
+                end
+                
                 PlayGeppoEffect(character, rootPart)
-                task.wait(0.1)
+                task.wait()
             end
         end
 
         local cur = rootPart.Position
-        local upPoint = Vector3.new(cur.X, math.max(cur.Y, targetVector.Y) + 500, cur.Z)
+        local upPoint = Vector3.new(cur.X, math.max(cur.Y, targetVector.Y) + 1000, cur.Z)
         local overPoint = Vector3.new(targetVector.X, upPoint.Y, targetVector.Z)
         
-        TweenTo(upPoint, speed * 0.5) -- 50% slower for going up
-        TweenTo(overPoint)
-        TweenTo(targetVector)
+        FlyTo(upPoint)
+        FlyTo(overPoint)
+        FlyTo(targetVector)
         
-        rootPart.Anchored = false
-        Model.DisableFlight()
+        bv:Destroy()
+        bg:Destroy()
+        
         Model.State.isCraftFlying = false
         return true
     end
