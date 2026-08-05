@@ -485,7 +485,7 @@ if not isLobby then
                         
                         local insideWall = false
                         for _, p in ipairs(overlapping) do
-                            if p:IsA("BasePart") and p.CanCollide and not p.Parent:FindFirstChild("Humanoid") then
+                            if p:IsA("BasePart") and not p:IsA("Terrain") and not p.Parent:FindFirstChild("Humanoid") then
                                 insideWall = true
                                 break
                             end
@@ -586,7 +586,7 @@ if not isLobby then
                         
                         local insideWall = false
                         for _, p in ipairs(overlapping) do
-                            if p:IsA("BasePart") and p.CanCollide and not p.Parent:FindFirstChild("Humanoid") then
+                            if p:IsA("BasePart") and not p:IsA("Terrain") and not p.Parent:FindFirstChild("Humanoid") then
                                 insideWall = true
                                 break
                             end
