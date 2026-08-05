@@ -450,7 +450,7 @@ if not isLobby then
 
         task.spawn(function()
             local cur = primaryPart.Position
-            local upPoint = Vector3.new(cur.X, max(cur.Y, targetPosition.Y) + 1000, cur.Z)
+            local upPoint = Vector3.new(cur.X, math.max(cur.Y, targetPosition.Y) + 1000, cur.Z)
             local overPoint = Vector3.new(targetPosition.X, upPoint.Y, targetPosition.Z)
             
             local function FlyTo(point)
