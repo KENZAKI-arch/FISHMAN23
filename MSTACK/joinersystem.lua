@@ -743,6 +743,26 @@ if not isLobby then
                     bg.CFrame = CFrame.lookAt(curPos, curPos + lookDir)
                 end
                 
+                -- Predictive Anti-Stuck Noclip
+                local opParams = OverlapParams.new()
+                opParams.FilterDescendantsInstances = {character}
+                opParams.FilterType = Enum.RaycastFilterType.Exclude
+                
+                local checkPos = curPos + (dir * 4)
+                local overlapping = workspace:GetPartBoundsInRadius(checkPos, 3, opParams)
+                
+                local insideWall = false
+                for _, p in ipairs(overlapping) do
+                    if p:IsA("BasePart") and not p:IsA("Terrain") and not p.Parent:FindFirstChild("Humanoid") then
+                        insideWall = true
+                        break
+                    end
+                end
+                
+                if insideWall then
+                    rootPart.CFrame = rootPart.CFrame + (dir * 4)
+                end
+                
                 PlayGeppoEffect(character, rootPart)
                 task.wait()
             end
@@ -823,6 +843,26 @@ if not isLobby then
                 local lookDir = Vector3.new(dir.X, 0, dir.Z)
                 if lookDir.Magnitude > 0.001 then
                     bg.CFrame = CFrame.lookAt(curPos, curPos + lookDir)
+                end
+                
+                -- Predictive Anti-Stuck Noclip
+                local opParams = OverlapParams.new()
+                opParams.FilterDescendantsInstances = {character}
+                opParams.FilterType = Enum.RaycastFilterType.Exclude
+                
+                local checkPos = curPos + (dir * 4)
+                local overlapping = workspace:GetPartBoundsInRadius(checkPos, 3, opParams)
+                
+                local insideWall = false
+                for _, p in ipairs(overlapping) do
+                    if p:IsA("BasePart") and not p:IsA("Terrain") and not p.Parent:FindFirstChild("Humanoid") then
+                        insideWall = true
+                        break
+                    end
+                end
+                
+                if insideWall then
+                    rootPart.CFrame = rootPart.CFrame + (dir * 4)
                 end
                 
                 PlayGeppoEffect(character, rootPart)
