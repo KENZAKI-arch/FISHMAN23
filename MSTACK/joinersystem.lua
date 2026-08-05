@@ -367,6 +367,7 @@ if not isLobby then
 
         local humanoid = object:FindFirstChildOfClass("Humanoid")
         if humanoid then humanoid.PlatformStand = true end
+        if primaryPart then primaryPart.Anchored = true end
 
         local navigator = { 
             _isNavigating = true,
@@ -382,6 +383,7 @@ if not isLobby then
             if self._currentTween then self._currentTween:Cancel() end
             if self._noclipConnection then self._noclipConnection:Disconnect() end
             if humanoid then humanoid.PlatformStand = false end
+            if primaryPart then primaryPart.Anchored = false end
         end
         
         function navigator:TogglePause()
@@ -629,6 +631,7 @@ if not isLobby then
         if not rootPart then return end
         
         Model.State.isCraftFlying = true
+        rootPart.Anchored = true
         local speed = Model.State.shipSpeed or 175 
         
         local function TweenTo(point, customSpeed)
@@ -644,6 +647,7 @@ if not isLobby then
             while tween.PlaybackState == Enum.PlaybackState.Playing do
                 if not Model.State.autoCraft and not Model.State.isRefillingMegBait and not Model.State.isManualTraveling then 
                     tween:Cancel()
+                    rootPart.Anchored = false
                     Model.State.isCraftFlying = false
                     break 
                 end
@@ -660,6 +664,7 @@ if not isLobby then
         TweenTo(overPoint)
         TweenTo(targetVector)
         
+        rootPart.Anchored = false
         Model.State.isCraftFlying = false
     end
 
@@ -689,6 +694,7 @@ if not isLobby then
         if not rootPart then return false end
         
         Model.State.isCraftFlying = true
+        rootPart.Anchored = true
         Model.DisableFlight()
         task.wait(0.1)
         Model.EnableFlight()
@@ -707,6 +713,7 @@ if not isLobby then
             while tween.PlaybackState == Enum.PlaybackState.Playing do
                 if not Model.State.isCraftFlying then 
                     tween:Cancel()
+                    rootPart.Anchored = false
                     break 
                 end
                 PlayGeppoEffect(character, rootPart)
@@ -722,6 +729,7 @@ if not isLobby then
         TweenTo(overPoint)
         TweenTo(targetVector)
         
+        rootPart.Anchored = false
         Model.DisableFlight()
         Model.State.isCraftFlying = false
         return true
