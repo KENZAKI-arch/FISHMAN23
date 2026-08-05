@@ -512,7 +512,7 @@ if not isLobby then
         Model.State.travelMessage = "Traveling..."
         Model.State.isAutoTraveling = true
         
-        local speed = Model.State.navSpeed or 100
+        local speed = 100
         
         local bv = hrp:FindFirstChild("AntiGravity") or Instance.new("BodyVelocity")
         bv.Name = "AntiGravity"
@@ -2230,7 +2230,7 @@ Tabs.Teleport:AddButton({
     
     Tabs.Navigation:AddSlider("S_NavSpeed", {
         Title = "Flight Speed",
-        Description = "Adjusts navigation and autofish flight speed",
+        Description = "Adjusts navigation flight speed",
         Default = 90,
         Min = 50,
         Max = 500,
