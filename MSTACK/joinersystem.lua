@@ -568,8 +568,7 @@ if not isLobby then
             if not Model.State.isAutoTraveling then return false end
             local dist = (hrp.Position - point).Magnitude
             if dist < 5 then return true end
-                local stuckTime = 0
-                local lastPos = hrp and hrp.Position or primaryPart.Position
+
                 while Model.State.isAutoTraveling do
                 local curPos = hrp.Position
                 dist = (curPos - point).Magnitude
@@ -585,42 +584,7 @@ if not isLobby then
                 if lookDir.Magnitude > 0.001 then
                     bg.CFrame = CFrame.lookAt(curPos, curPos + lookDir)
                 end
-                        local charObj = hrp and hrp.Parent or primaryPart.Parent
-                        local opParams = OverlapParams.new()
-                        opParams.FilterDescendantsInstances = {charObj}
-                        opParams.FilterType = Enum.RaycastFilterType.Exclude
-                        local insideWall = false
-                        local currentPos = hrp and hrp.Position or primaryPart.Position
-                        
-                        -- Predictive detection: Check a 3-stud radius sphere located 4 studs IN FRONT of the character
-                        local checkPos = currentPos + (dir * 4)
-                        local overlapping = workspace:GetPartBoundsInRadius(checkPos, 3, opParams)
-                        
-                        for _, p in ipairs(overlapping) do
-                            if p:IsA("BasePart") and not p:IsA("Terrain") and not p.Parent:FindFirstChild("Humanoid") then
-                                insideWall = true
-                                break
-                            end
-                        end
-                        
-                        if insideWall then
-                            if hrp then hrp.CFrame = hrp.CFrame + (dir * 4)
-                            else primaryPart.CFrame = primaryPart.CFrame + (dir * 4) end
-                            stuckTime = 0
-                        else
-                            local moved = (currentPos - lastPos).Magnitude
-                            if moved < 0.5 then
-                                stuckTime = stuckTime + 0.03
-                                if stuckTime > 0.20 then
-                                    if hrp then hrp.CFrame = hrp.CFrame + (dir * 4)
-                                    else primaryPart.CFrame = primaryPart.CFrame + (dir * 4) end
-                                    stuckTime = 0
-                                end
-                            else
-                                stuckTime = 0
-                            end
-                        end
-                        lastPos = currentPos
+
                         
                         pcall(function()
                     if _G.PlayEffect then
