@@ -520,11 +520,7 @@ if not isLobby then
                 return false
             end
 
-            if FlyTo(upPoint) then
-                if FlyTo(overPoint) then
-                    FlyTo(targetPosition)
-                end
-            end
+            FlyTo(targetPosition)
             
             if navigator._isNavigating then
                 navigator:Cancel()
