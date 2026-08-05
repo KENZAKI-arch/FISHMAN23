@@ -68,6 +68,7 @@ pcall(function()
             if GlobalMem.FishmanAutoJoin == nil then GlobalMem.FishmanAutoJoin = data.FishmanAutoJoin end
             if GlobalMem.FishmanAutoReconnect == nil then GlobalMem.FishmanAutoReconnect = data.FishmanAutoReconnect end
             if GlobalMem.FishmanAutoRouteLobby == nil then GlobalMem.FishmanAutoRouteLobby = data.FishmanAutoRouteLobby end
+            if GlobalMem.FishmanAutoSpawnShip == nil then GlobalMem.FishmanAutoSpawnShip = data.FishmanAutoSpawnShip end
             print("[Fishman] Loaded Config from file.")
         end
     end
@@ -96,7 +97,8 @@ local function SaveConfig()
                 FishmanAutoTeleport = GlobalMem.FishmanAutoTeleport,
                 FishmanAutoJoin = GlobalMem.FishmanAutoJoin,
                 FishmanAutoReconnect = GlobalMem.FishmanAutoReconnect,
-                FishmanAutoRouteLobby = GlobalMem.FishmanAutoRouteLobby
+                FishmanAutoRouteLobby = GlobalMem.FishmanAutoRouteLobby,
+                FishmanAutoSpawnShip = GlobalMem.FishmanAutoSpawnShip
             }
             writefile(configFileName, HttpService:JSONEncode(data))
         end
@@ -2250,11 +2252,29 @@ Tabs.Teleport:AddButton({
     end
 })
 
+local function isAtWholeCakeIsland()
+    local result = false
+    pcall(function()
+        local char = LocalPlayer.Character
+        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+        local wci = workspace:FindFirstChild("Islands") and workspace.Islands:FindFirstChild("Whole Cake Island")
+        if hrp and wci then
+            local part = wci:IsA("Model") and wci.PrimaryPart or wci:FindFirstChildWhichIsA("BasePart", true)
+            if part and (hrp.Position - part.Position).Magnitude < 4000 then
+                result = true
+            end
+        end
+    end)
+    return result
+end
+
 Tabs.Teleport:AddToggle("T_AutoSpawnShip", {
     Title = "🛳️ Auto Spawn Ship",
     Description = "Flies to spawn, spawns hoverboard, and sets flight height.",
-    Default = false,
+    Default = (GlobalMem.FishmanAutoSpawnShip == true) and isAtWholeCakeIsland() or false,
     Callback = function(Value)
+        GlobalMem.FishmanAutoSpawnShip = Value
+        SaveConfig()
         print("[Hub] 'Auto Spawn Ship' toggled " .. tostring(Value))
         if Value then
             EnsureHoverboardLoaded()
