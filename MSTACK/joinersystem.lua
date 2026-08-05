@@ -3153,15 +3153,22 @@ Tabs.Settings:AddButton({
 
 Tabs.Settings:AddButton({
     Title = "🔄 Update / Load Latest Version",
-    Description = "Destroys the current UI and executes the latest joinersystem from GitHub.",
+    Description = "Saves the latest script from GitHub and executes it.",
     Callback = function()
         Fluent:Notify({ Title = "Updating", Content = "Fetching latest script from GitHub...", Duration = 3 })
+        local newCode = game:HttpGet("https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/main/MSTACK/joinersystem.lua?t="..tostring(tick()))
+        pcall(function()
+            if writefile then
+                writefile("joinersystem.lua", newCode)
+                pcall(function() writefile("../autoexec/joinersystem.lua", newCode) end)
+            end
+        end)
         ShutdownEverything()
         if Window and Window.Destroy then
             Window:Destroy()
         end
         task.wait(1)
-        loadstring(game:HttpGet("https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/main/MSTACK/joinersystem.lua?t="..tostring(tick())))()
+        loadstring(newCode)()
     end
 })
 
