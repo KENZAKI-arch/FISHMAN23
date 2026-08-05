@@ -365,141 +365,38 @@ if not isLobby then
         local primaryPart = object:IsA("Model") and object.PrimaryPart or (object:IsA("BasePart") and object or nil)
         if not primaryPart then return nil end
 
-        local startPosition = primaryPart.Position
-        local size = primaryPart.Size
-        if object:IsA("Model") then
-            local _, modelSize = object:GetBoundingBox()
-            size = modelSize
-        end
-
-        local downwardParams = RaycastParams.new()
-        downwardParams.FilterType = Enum.RaycastFilterType.Exclude
-        downwardParams.FilterDescendantsInstances = {object, LocalPlayer.Character}
-        downwardParams.IgnoreWater = false 
-
-        local forwardParams = RaycastParams.new()
-        forwardParams.FilterType = Enum.RaycastFilterType.Exclude
-        
-        local ignoreList = {object, LocalPlayer.Character}
-        local OCEAN_LEVEL = 0 
-        
-        local oceanModel = workspace:FindFirstChild("Ocean")
-        if oceanModel then 
-            table.insert(ignoreList, oceanModel) 
-            local highestWater = -math.huge
-            for _, part in ipairs(oceanModel:GetDescendants()) do
-                if part:IsA("BasePart") then
-                    local topSurface = part.Position.Y + (part.Size.Y / 2)
-                    if topSurface > highestWater then
-                        highestWater = topSurface
-                    end
-                end
-            end
-            if highestWater ~= -math.huge then
-                OCEAN_LEVEL = highestWater
-            end
-        end
-        
-        local envFolder = workspace:FindFirstChild("Env")
-        if envFolder then
-            local waterStuff = envFolder:FindFirstChild("WaterStuff")
-            if waterStuff then
-                table.insert(ignoreList, waterStuff)
-                local highestWater = -math.huge
-                for _, part in ipairs(waterStuff:GetDescendants()) do
-                    if part:IsA("BasePart") then
-                        local topSurface = part.Position.Y + (part.Size.Y / 2)
-                        if topSurface > highestWater then
-                            highestWater = topSurface
-                        end
-                    end
-                end
-                if highestWater ~= -math.huge and highestWater > OCEAN_LEVEL then
-                    OCEAN_LEVEL = highestWater
-                end
-            end
-        end
-        
-        local npcsFolder = workspace:FindFirstChild("NPCs")
-        if npcsFolder then
-            table.insert(ignoreList, npcsFolder)
-            local downIgnore = downwardParams.FilterDescendantsInstances
-            table.insert(downIgnore, npcsFolder)
-            downwardParams.FilterDescendantsInstances = downIgnore
-        end
-        
-        forwardParams.FilterDescendantsInstances = ignoreList
-        forwardParams.IgnoreWater = true 
-
         local humanoid = object:FindFirstChildOfClass("Humanoid")
         if humanoid then humanoid.PlatformStand = true end
-
-        local bv = Instance.new("BodyVelocity")
-        bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
-        bv.Velocity = Vector3.zero
-        bv.Parent = primaryPart
-
-        local bg = Instance.new("BodyGyro")
-        bg.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
-        bg.CFrame = primaryPart.CFrame
-        bg.Parent = primaryPart
 
         local navigator = { 
             _isNavigating = true,
             _isPaused = false,
-            _evadingTimer = 0,
-            _evasionDir = nil,
             _roboTarget = nil,
-            _lastScan = 0,
-            Distance = 0
+            Distance = 0,
+            _currentTween = nil,
+            _noclipConnection = nil
         }
-        local connection = nil
-        local noclipConnection = nil
         
         function navigator:Cancel()
             self._isNavigating = false
-            if bv then bv:Destroy() end
-            if bg then bg:Destroy() end
+            if self._currentTween then self._currentTween:Cancel() end
+            if self._noclipConnection then self._noclipConnection:Disconnect() end
             if humanoid then humanoid.PlatformStand = false end
-            if connection then connection:Disconnect() end
-            if noclipConnection then noclipConnection:Disconnect() end
         end
         
         function navigator:TogglePause()
             self._isPaused = not self._isPaused
-            if self._isPaused then
-                if bv then bv.Velocity = Vector3.zero end
+            if self._currentTween then
+                if self._isPaused then
+                    self._currentTween:Pause()
+                else
+                    self._currentTween:Play()
+                end
             end
             return self._isPaused
         end
-
-        local function raycastSolid(origin, direction, params)
-            local result = workspace:Raycast(origin, direction, params)
-            local loops = 0
-            while result and not result.Instance.CanCollide and loops < 10 do
-                local currentList = params.FilterDescendantsInstances
-                table.insert(currentList, result.Instance)
-                params.FilterDescendantsInstances = currentList
-                loops = loops + 1
-                result = workspace:Raycast(origin, direction, params)
-            end
-            return result
-        end
-
-        local function blockcastSolid(cframe, extents, dir, params)
-            local result = workspace:Blockcast(cframe, extents, dir, params)
-            local loops = 0
-            while result and not result.Instance.CanCollide and loops < 10 do
-                local currentList = params.FilterDescendantsInstances
-                table.insert(currentList, result.Instance)
-                params.FilterDescendantsInstances = currentList
-                loops = loops + 1
-                result = workspace:Blockcast(cframe, extents, dir, params)
-            end
-            return result
-        end
-
-        noclipConnection = RunService.Stepped:Connect(function()
+        
+        navigator._noclipConnection = RunService.Stepped:Connect(function()
             if not navigator._isNavigating or navigator._isPaused then return end
             if object then
                 for _, part in ipairs(object:GetDescendants()) do
@@ -507,158 +404,20 @@ if not isLobby then
                 end
             end
         end)
-
-        connection = RunService.Heartbeat:Connect(function(deltaTime)
-            if not navigator._isNavigating then
-                navigator:Cancel()
-                return
+        
+        local lastGeppoEffectTick = 0
+        local lastGeppoRemoteTick = 0
+        local function SafePlayGeppo()
+            local currentTick = tick()
+            local cf = primaryPart.CFrame * CFrame.new(0, -3, 0)
+            if currentTick - lastGeppoEffectTick >= 0.2 then
+                lastGeppoEffectTick = currentTick
+                pcall(function()
+                    if _G.PlayEffect then _G.PlayEffect("Geppo", nil, {char = object, cf = cf}) end
+                end)
             end
-            
-            if navigator._isPaused then return end
-            
-            local currentPos = primaryPart.Position
-            local flatCurrent = Vector3.new(currentPos.X, 0, currentPos.Z)
-            local flatTarget = Vector3.new(targetPosition.X, 0, targetPosition.Z)
-            
-            local directionToTarget = (flatTarget - flatCurrent)
-            local distToTarget = directionToTarget.Magnitude
-            
-            navigator.Distance = math.floor(distToTarget)
-            
-            if not navigator._roboTarget and distToTarget <= 1500 then
-                local now = tick()
-                if now - navigator._lastScan > 1 then
-                    navigator._lastScan = now
-                    if npcsFolder then
-                        local closestRobo = nil
-                        local shortestDist = 1500
-                        
-                        for _, npc in ipairs(npcsFolder:GetChildren()) do
-                            if string.find(string.lower(npc.Name), "robo") then
-                                local root = npc:FindFirstChild("HumanoidRootPart") or npc:FindFirstChildWhichIsA("BasePart")
-                                if root then
-                                    local distToDestination = (root.Position - targetPosition).Magnitude
-                                    local distToStart = (root.Position - startPosition).Magnitude
-                                    
-                                    if distToDestination < shortestDist and distToDestination < distToStart then
-                                        shortestDist = distToDestination
-                                        closestRobo = root
-                                    end
-                                end
-                            end
-                        end
-                        
-                        if closestRobo then
-                            navigator._roboTarget = closestRobo
-                        end
-                    end
-                end
-            end
-            
-            if navigator._roboTarget then
-                local roboPos = navigator._roboTarget.Position
-                local roboLook = navigator._roboTarget.CFrame.LookVector
-                targetPosition = roboPos + (roboLook * 15)
-                flatTarget = Vector3.new(targetPosition.X, 0, targetPosition.Z)
-                directionToTarget = (flatTarget - flatCurrent)
-                distToTarget = directionToTarget.Magnitude
-                arrivalDistance = 8 
-            end
-            
-            local moveDir = directionToTarget.Unit
-            if distToTarget == 0 then moveDir = primaryPart.CFrame.LookVector end
-            
-            local targetVelocity = (moveDir * speed)
-            local targetRotation = CFrame.lookAt(currentPos, currentPos + moveDir)
-            
-            local lookAheadPos = flatCurrent + (targetVelocity.Unit * 5)
-            local rayOrigin = Vector3.new(lookAheadPos.X, currentPos.Y + 500, lookAheadPos.Z)
-            local groundHit = raycastSolid(rayOrigin, Vector3.new(0, -1000, 0), downwardParams)
-            
-            if distToTarget <= arrivalDistance then
-                if navigator._roboTarget then
-                    navigator:Cancel()
-                    return
-                else
-                    if groundHit and groundHit.Position.Y > (OCEAN_LEVEL + 3) then
-                        navigator:Cancel()
-                        return
-                    end
-                    if distToTarget <= 20 then
-                        navigator:Cancel()
-                        return
-                    end
-                end
-            end
-            
-            local targetY = currentPos.Y
-            if groundHit then
-                targetY = groundHit.Position.Y + 5 + (size.Y / 2)
-            end
-            
-            local minAllowedHeight = OCEAN_LEVEL + 5 + (size.Y / 2)
-            if targetY < minAllowedHeight then targetY = minAllowedHeight end
-            
-            local wallCheckCFrame = primaryPart.CFrame + Vector3.new(0, 3, 0)
-            local isCloseToArrival = (distToTarget <= arrivalDistance + 15)
-            
-            if navigator._evadingTimer > 0 and not isCloseToArrival then
-                navigator._evadingTimer = navigator._evadingTimer - deltaTime
-                local evadeWallCast = blockcastSolid(wallCheckCFrame, size, navigator._evasionDir * 15, forwardParams)
-                if evadeWallCast and evadeWallCast.Distance <= 5 then
-                    navigator._evadingTimer = 0
-                else
-                    targetVelocity = (navigator._evasionDir * speed)
-                    if navigator._evasionDir.Y >= 0.99 or navigator._evasionDir.Y <= -0.99 then
-                        targetRotation = CFrame.lookAt(currentPos, currentPos + navigator._evasionDir + (moveDir * 0.01))
-                    else
-                        targetRotation = CFrame.lookAt(currentPos, currentPos + navigator._evasionDir)
-                    end
-                end
-            elseif not isCloseToArrival then
-                local wallCast = blockcastSolid(wallCheckCFrame, size, moveDir * 10, forwardParams)
-                if wallCast and wallCast.Distance <= 5 then
-                    if wallCast.Distance > 0.5 then
-                        local evaded = false
-                        local baseLook = CFrame.lookAt(currentPos, currentPos + moveDir)
-                        for _, evasionDir in ipairs(EVASION_DIRECTIONS) do
-                            local relativeVector = evasionDir
-                            if evasionDir.X ~= 0 then relativeVector = baseLook:VectorToWorldSpace(evasionDir) end
-                            local evadeCast = blockcastSolid(wallCheckCFrame, size, relativeVector * 15, forwardParams)
-                            if not evadeCast then
-                                navigator._evadingTimer = 0.3 
-                                navigator._evasionDir = relativeVector
-                                targetVelocity = (relativeVector * speed)
-                                if relativeVector.Y >= 0.99 or relativeVector.Y <= -0.99 then
-                                    targetRotation = CFrame.lookAt(currentPos, currentPos + relativeVector + (moveDir * 0.01))
-                                else
-                                    targetRotation = CFrame.lookAt(currentPos, currentPos + relativeVector)
-                                end
-                                evaded = true
-                                break
-                            end
-                        end
-                        if not evaded then
-                            navigator._evadingTimer = 0.3
-                            navigator._evasionDir = Vector3.new(0, 1, 0)
-                        end
-                    end
-                end
-            end
-            
-            if navigator._evadingTimer <= 0 or isCloseToArrival then
-                local heightDiff = targetY - currentPos.Y
-                local yVelocity = math.clamp(heightDiff * 5, -speed, speed)
-                targetVelocity = Vector3.new(targetVelocity.X, yVelocity, targetVelocity.Z)
-            end
-            
-            bv.Velocity = targetVelocity
-            bg.CFrame = targetRotation
-            
-            -- Geppo stamina script while moving
-            local nowGeppo = tick()
-            if nowGeppo - (navigator._lastGeppoTick or 0) >= 2 then
-                navigator._lastGeppoTick = nowGeppo
+            if currentTick - lastGeppoRemoteTick >= 2 then
+                lastGeppoRemoteTick = currentTick
                 pcall(function()
                     local stats = game.ReplicatedStorage:FindFirstChild("Stats" .. LocalPlayer.Name)
                     local fs = stats and stats:FindFirstChild("Stats") and stats.Stats:FindFirstChild("FightingStyle")
@@ -669,8 +428,51 @@ if not isLobby then
                         elseif fs.Value == "Kamishiki" then skillName = "KamishikiGeppo"
                         end
                     end
-                    game.ReplicatedStorage.Events.Skill:InvokeServer(skillName, {char = LocalPlayer.Character, cf = primaryPart.CFrame})
+                    game.ReplicatedStorage.Events.Skill:InvokeServer(skillName, {char = object, cf = cf})
                 end)
+            end
+        end
+
+        task.spawn(function()
+            local cur = primaryPart.Position
+            local upPoint = Vector3.new(cur.X, math.max(cur.Y, targetPosition.Y) + 1000, cur.Z)
+            local overPoint = Vector3.new(targetPosition.X, upPoint.Y, targetPosition.Z)
+            
+            local function TweenTo(point)
+                if not navigator._isNavigating then return false end
+                local dist = (primaryPart.Position - point).Magnitude
+                if dist < arrivalDistance then return true end
+                
+                local tweenInfo = TweenInfo.new(dist / speed, Enum.EasingStyle.Linear)
+                local tween = TweenService:Create(primaryPart, tweenInfo, {CFrame = CFrame.new(point) * primaryPart.CFrame.Rotation})
+                navigator._currentTween = tween
+                tween:Play()
+                
+                while tween.PlaybackState == Enum.PlaybackState.Playing or tween.PlaybackState == Enum.PlaybackState.Paused do
+                    if not navigator._isNavigating then
+                        tween:Cancel()
+                        return false
+                    end
+                    
+                    navigator.Distance = math.floor((primaryPart.Position - targetPosition).Magnitude)
+                    
+                    if tween.PlaybackState == Enum.PlaybackState.Playing then
+                        SafePlayGeppo()
+                    end
+                    
+                    task.wait(0.1)
+                end
+                return navigator._isNavigating
+            end
+
+            if TweenTo(upPoint) then
+                if TweenTo(overPoint) then
+                    TweenTo(targetPosition)
+                end
+            end
+            
+            if navigator._isNavigating then
+                navigator:Cancel()
             end
         end)
         
