@@ -1,4 +1,4 @@
--- Version 3.8
+-- Version 3.9
 -- ======================================================================
 -- 🛑 GLOBAL SETUP & DUPLICATE PREVENTION
 -- ======================================================================
@@ -827,7 +827,7 @@ if not isLobby then
         if not rootPart then return end
         
         Model.State.isCraftFlying = true
-        local speed = Model.State.travelSpeed or 175 
+        local speed = Model.State.shipSpeed or 175 
         
         local function TweenTo(point, customSpeed)
             local currentSpeed = customSpeed or speed
@@ -851,10 +851,10 @@ if not isLobby then
         end
         
         local cur = rootPart.Position
-        local upPoint = Vector3.new(cur.X, math.max(cur.Y, targetVector.Y) + 1000, cur.Z)
+        local upPoint = Vector3.new(cur.X, math.max(cur.Y, targetVector.Y) + 500, cur.Z)
         local overPoint = Vector3.new(targetVector.X, upPoint.Y, targetVector.Z)
         
-        TweenTo(upPoint) -- Use full speed for going up
+        TweenTo(upPoint, speed * 0.5) -- 50% slower for going up
         TweenTo(overPoint)
         TweenTo(targetVector)
         
@@ -913,10 +913,10 @@ if not isLobby then
         end
 
         local cur = rootPart.Position
-        local upPoint = Vector3.new(cur.X, math.max(cur.Y, targetVector.Y) + 1000, cur.Z)
+        local upPoint = Vector3.new(cur.X, math.max(cur.Y, targetVector.Y) + 500, cur.Z)
         local overPoint = Vector3.new(targetVector.X, upPoint.Y, targetVector.Z)
         
-        TweenTo(upPoint) -- Use full speed for going up
+        TweenTo(upPoint, speed * 0.5) -- 50% slower for going up
         TweenTo(overPoint)
         TweenTo(targetVector)
         
@@ -1933,7 +1933,7 @@ end
 Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
 local Window = Fluent:CreateWindow({
     Title = "🐟 Fishman Hub",
-    SubTitle = "Unified Auto-Fisher 1.0.3 v3.8",
+    SubTitle = "Unified Auto-Fisher 1.0.3 v3.9",
     TabWidth = 160,
     Size = UDim2.fromOffset(500, 350),
     Theme = "Darker",
@@ -2872,18 +2872,6 @@ Tabs.Teleport:AddButton({
         Rounding = 0,
         Callback = function(Value)
             Model.State.shipSpeed = Value
-        end
-    })
-
-    Tabs.Fishing:AddSlider("S_TravelSpeed", {
-        Title = "General Travel Speed",
-        Description = "Adjusts the general traveling flight speed (for crafting etc.)",
-        Default = 175,
-        Min = 50,
-        Max = 1000,
-        Rounding = 0,
-        Callback = function(Value)
-            Model.State.travelSpeed = Value
         end
     })
 
