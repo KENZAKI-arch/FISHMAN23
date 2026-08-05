@@ -482,22 +482,19 @@ if not isLobby then
                         opParams.FilterDescendantsInstances = {charObj}
                         opParams.FilterType = Enum.RaycastFilterType.Exclude
                         local insideWall = false
-                        local partsToCheck = {hrp or primaryPart}
-                        local head = charObj:FindFirstChild("Head")
-                        if head then table.insert(partsToCheck, head) end
+                        local currentPos = hrp and hrp.Position or primaryPart.Position
                         
-                        for _, checkPart in ipairs(partsToCheck) do
-                            local overlapping = workspace:GetPartsInPart(checkPart, opParams)
-                            for _, p in ipairs(overlapping) do
-                                if p:IsA("BasePart") and not p:IsA("Terrain") and not p.Parent:FindFirstChild("Humanoid") then
-                                    insideWall = true
-                                    break
-                                end
+                        -- Predictive detection: Check a 3-stud radius sphere located 4 studs IN FRONT of the character
+                        local checkPos = currentPos + (dir * 4)
+                        local overlapping = workspace:GetPartBoundsInRadius(checkPos, 3, opParams)
+                        
+                        for _, p in ipairs(overlapping) do
+                            if p:IsA("BasePart") and not p:IsA("Terrain") and not p.Parent:FindFirstChild("Humanoid") then
+                                insideWall = true
+                                break
                             end
-                            if insideWall then break end
                         end
                         
-                        local currentPos = hrp and hrp.Position or primaryPart.Position
                         if insideWall then
                             if hrp then hrp.CFrame = hrp.CFrame + (dir * 4)
                             else primaryPart.CFrame = primaryPart.CFrame + (dir * 4) end
@@ -589,22 +586,19 @@ if not isLobby then
                         opParams.FilterDescendantsInstances = {charObj}
                         opParams.FilterType = Enum.RaycastFilterType.Exclude
                         local insideWall = false
-                        local partsToCheck = {hrp or primaryPart}
-                        local head = charObj:FindFirstChild("Head")
-                        if head then table.insert(partsToCheck, head) end
+                        local currentPos = hrp and hrp.Position or primaryPart.Position
                         
-                        for _, checkPart in ipairs(partsToCheck) do
-                            local overlapping = workspace:GetPartsInPart(checkPart, opParams)
-                            for _, p in ipairs(overlapping) do
-                                if p:IsA("BasePart") and not p:IsA("Terrain") and not p.Parent:FindFirstChild("Humanoid") then
-                                    insideWall = true
-                                    break
-                                end
+                        -- Predictive detection: Check a 3-stud radius sphere located 4 studs IN FRONT of the character
+                        local checkPos = currentPos + (dir * 4)
+                        local overlapping = workspace:GetPartBoundsInRadius(checkPos, 3, opParams)
+                        
+                        for _, p in ipairs(overlapping) do
+                            if p:IsA("BasePart") and not p:IsA("Terrain") and not p.Parent:FindFirstChild("Humanoid") then
+                                insideWall = true
+                                break
                             end
-                            if insideWall then break end
                         end
                         
-                        local currentPos = hrp and hrp.Position or primaryPart.Position
                         if insideWall then
                             if hrp then hrp.CFrame = hrp.CFrame + (dir * 4)
                             else primaryPart.CFrame = primaryPart.CFrame + (dir * 4) end
