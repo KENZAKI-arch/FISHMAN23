@@ -512,7 +512,7 @@ if not isLobby then
         Model.State.travelMessage = "Traveling..."
         Model.State.isAutoTraveling = true
         
-        local speed = 100
+        local speed = Model.State.navSpeed or 100
         
         local bv = hrp:FindFirstChild("AntiGravity") or Instance.new("BodyVelocity")
         bv.Name = "AntiGravity"
@@ -2228,6 +2228,18 @@ Tabs.Teleport:AddButton({
     
     local flightStatus = Tabs.Navigation:AddParagraph({ Title = "Flight Status", Content = "Idle" })
     
+    Tabs.Navigation:AddSlider("S_NavSpeed", {
+        Title = "Flight Speed",
+        Description = "Adjusts navigation and autofish flight speed",
+        Default = 90,
+        Min = 50,
+        Max = 500,
+        Rounding = 0,
+        Callback = function(Value)
+            Model.State.navSpeed = Value
+        end
+    })
+
     Tabs.Navigation:AddButton({
         Title = "🛫 Start Flight",
         Description = "Begins advanced auto-navigation to the selected island.",
@@ -2245,7 +2257,7 @@ Tabs.Teleport:AddButton({
                 return
             end
             
-            Model.State.activeNavigation = Model.NavigateTo(character, selectedIslandPos, 90, 20)
+            Model.State.activeNavigation = Model.NavigateTo(character, selectedIslandPos, Model.State.navSpeed or 90, 20)
             
             task.spawn(function()
                 while Model.State.activeNavigation and Model.State.activeNavigation._isNavigating do
