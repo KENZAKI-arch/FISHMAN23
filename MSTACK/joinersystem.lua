@@ -654,6 +654,24 @@ if not isLobby then
             
             bv.Velocity = targetVelocity
             bg.CFrame = targetRotation
+            
+            -- Geppo stamina script while moving
+            local nowGeppo = tick()
+            if nowGeppo - (navigator._lastGeppoTick or 0) >= 2 then
+                navigator._lastGeppoTick = nowGeppo
+                pcall(function()
+                    local stats = game.ReplicatedStorage:FindFirstChild("Stats" .. LocalPlayer.Name)
+                    local fs = stats and stats:FindFirstChild("Stats") and stats.Stats:FindFirstChild("FightingStyle")
+                    local skillName = "Sky Walk2"
+                    if fs then
+                        if fs.Value == "Rokushiki" then skillName = "Geppo"
+                        elseif fs.Value == "BlackLeg" then skillName = "Sky Walk"
+                        elseif fs.Value == "Kamishiki" then skillName = "KamishikiGeppo"
+                        end
+                    end
+                    game.ReplicatedStorage.Events.Skill:InvokeServer(skillName, {char = LocalPlayer.Character, cf = primaryPart.CFrame})
+                end)
+            end
         end)
         
         return navigator
@@ -809,7 +827,7 @@ if not isLobby then
         if not rootPart then return end
         
         Model.State.isCraftFlying = true
-        local speed = Model.State.shipSpeed or 175 
+        local speed = Model.State.travelSpeed or 175 
         
         local function TweenTo(point, customSpeed)
             local currentSpeed = customSpeed or speed
@@ -833,10 +851,10 @@ if not isLobby then
         end
         
         local cur = rootPart.Position
-        local upPoint = Vector3.new(cur.X, math.max(cur.Y, targetVector.Y) + 500, cur.Z)
+        local upPoint = Vector3.new(cur.X, math.max(cur.Y, targetVector.Y) + 1000, cur.Z)
         local overPoint = Vector3.new(targetVector.X, upPoint.Y, targetVector.Z)
         
-        TweenTo(upPoint, speed * 0.5) -- 50% slower for going up
+        TweenTo(upPoint) -- Use full speed for going up
         TweenTo(overPoint)
         TweenTo(targetVector)
         
@@ -895,10 +913,10 @@ if not isLobby then
         end
 
         local cur = rootPart.Position
-        local upPoint = Vector3.new(cur.X, math.max(cur.Y, targetVector.Y) + 500, cur.Z)
+        local upPoint = Vector3.new(cur.X, math.max(cur.Y, targetVector.Y) + 1000, cur.Z)
         local overPoint = Vector3.new(targetVector.X, upPoint.Y, targetVector.Z)
         
-        TweenTo(upPoint, speed * 0.5) -- 50% slower for going up
+        TweenTo(upPoint) -- Use full speed for going up
         TweenTo(overPoint)
         TweenTo(targetVector)
         
@@ -2854,6 +2872,18 @@ Tabs.Teleport:AddButton({
         Rounding = 0,
         Callback = function(Value)
             Model.State.shipSpeed = Value
+        end
+    })
+
+    Tabs.Fishing:AddSlider("S_TravelSpeed", {
+        Title = "General Travel Speed",
+        Description = "Adjusts the general traveling flight speed (for crafting etc.)",
+        Default = 175,
+        Min = 50,
+        Max = 1000,
+        Rounding = 0,
+        Callback = function(Value)
+            Model.State.travelSpeed = Value
         end
     })
 

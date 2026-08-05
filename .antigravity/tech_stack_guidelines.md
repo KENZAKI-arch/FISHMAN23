@@ -15,3 +15,9 @@
 - **Meg Stack & Fruit Storage Interference:** During automated inventory operations (such as `storeFruits` or `dropFruits`), never disable core gameplay toggles like `T_MegStack` or `T_DeepSea`, as this aborts the active Megalodon counter loop. Additionally, always check `PlayerGui.Inventory.Main.Inventory.List` before attempting to store fruits to prevent re-storing duplicates, and wrap remote invocations (such as `FruitStorage:InvokeServer`) in `pcall` blocks to prevent network hangs.
 - **Manual Travel Toggle & Auto-Return Interference:** When implementing manual travel toggles (e.g., `T_ManualMegStackLoc`), if Auto-Return to ship/hoverboard is disabled when travel starts, do NOT automatically re-enable Auto-Return upon arrival or toggle deactivation if the user intends to remain at the destination island. Re-enabling Auto-Return immediately triggers a return flight when distance > 20 studs.
 - **Travel & Buying State Isolation:** When implementing automated behaviors that require movement (e.g., auto-buying bait or refilling Megalodon stacks), always pause background action loops (such as Model.DoFishingCycle and the isMegStacking 10-count cyborg trigger) by checking if not Model.State.isBuying and not Model.State.isAutoTraveling and not Model.State.isRefillingMegBait and not Model.State.isManualTraveling then. This ensures gameplay actions like teleporting to kill Megalodons don't interrupt active movement or buying logic.
+
+## joinersystem.lua path
+- **CRITICAL**: Always make sure to use and modify the joinersystem.lua file located inside the MSTACK folder (FISHMAN23/MSTACK/joinersystem.lua). Do NOT use or edit the one in the root directory.
+
+## Autoexec Path
+- **CRITICAL**: Whenever asked to put a script in 'autoexec', always use the exact path: C:\Users\luigi\AppData\Local\Potassium\autoexec.
