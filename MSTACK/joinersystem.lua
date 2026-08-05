@@ -481,14 +481,20 @@ if not isLobby then
                         local opParams = OverlapParams.new()
                         opParams.FilterDescendantsInstances = {charObj}
                         opParams.FilterType = Enum.RaycastFilterType.Exclude
-                        local overlapping = workspace:GetPartsInPart(hrp or primaryPart, opParams)
-                        
                         local insideWall = false
-                        for _, p in ipairs(overlapping) do
-                            if p:IsA("BasePart") and not p:IsA("Terrain") and not p.Parent:FindFirstChild("Humanoid") then
-                                insideWall = true
-                                break
+                        local partsToCheck = {hrp or primaryPart}
+                        local head = charObj:FindFirstChild("Head")
+                        if head then table.insert(partsToCheck, head) end
+                        
+                        for _, checkPart in ipairs(partsToCheck) do
+                            local overlapping = workspace:GetPartsInPart(checkPart, opParams)
+                            for _, p in ipairs(overlapping) do
+                                if p:IsA("BasePart") and not p:IsA("Terrain") and not p.Parent:FindFirstChild("Humanoid") then
+                                    insideWall = true
+                                    break
+                                end
                             end
+                            if insideWall then break end
                         end
                         
                         local currentPos = hrp and hrp.Position or primaryPart.Position
@@ -582,14 +588,20 @@ if not isLobby then
                         local opParams = OverlapParams.new()
                         opParams.FilterDescendantsInstances = {charObj}
                         opParams.FilterType = Enum.RaycastFilterType.Exclude
-                        local overlapping = workspace:GetPartsInPart(hrp or primaryPart, opParams)
-                        
                         local insideWall = false
-                        for _, p in ipairs(overlapping) do
-                            if p:IsA("BasePart") and not p:IsA("Terrain") and not p.Parent:FindFirstChild("Humanoid") then
-                                insideWall = true
-                                break
+                        local partsToCheck = {hrp or primaryPart}
+                        local head = charObj:FindFirstChild("Head")
+                        if head then table.insert(partsToCheck, head) end
+                        
+                        for _, checkPart in ipairs(partsToCheck) do
+                            local overlapping = workspace:GetPartsInPart(checkPart, opParams)
+                            for _, p in ipairs(overlapping) do
+                                if p:IsA("BasePart") and not p:IsA("Terrain") and not p.Parent:FindFirstChild("Humanoid") then
+                                    insideWall = true
+                                    break
+                                end
                             end
+                            if insideWall then break end
                         end
                         
                         local currentPos = hrp and hrp.Position or primaryPart.Position
