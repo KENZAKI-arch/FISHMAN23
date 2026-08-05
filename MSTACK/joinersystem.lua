@@ -457,7 +457,8 @@ if not isLobby then
                 if not navigator._isNavigating then return false end
                 local dist = (primaryPart.Position - point).Magnitude
                 if dist < arrivalDistance then return true end
-                
+                local stuckTime = 0
+                local lastPos = hrp and hrp.Position or primaryPart.Position
                 while navigator._isNavigating do
                     if not navigator._isPaused then
                         local curPos = primaryPart.Position
@@ -476,6 +477,21 @@ if not isLobby then
                         if lookDir.Magnitude > 0.001 then
                             bg.CFrame = CFrame.lookAt(curPos, curPos + lookDir)
                         end
+                        
+                        
+                        local currentPos = hrp and hrp.Position or primaryPart.Position
+                        local moved = (currentPos - lastPos).Magnitude
+                        if moved < 0.5 then
+                            stuckTime = stuckTime + 0.03
+                            if stuckTime > 0.25 then
+                                if hrp then hrp.CFrame = hrp.CFrame + (dir * 3)
+                                else primaryPart.CFrame = primaryPart.CFrame + (dir * 3) end
+                                stuckTime = 0
+                            end
+                        else
+                            stuckTime = 0
+                        end
+                        lastPos = currentPos
                         
                         SafePlayGeppo()
                     end
@@ -531,8 +547,9 @@ if not isLobby then
             if not Model.State.isAutoTraveling then return false end
             local dist = (hrp.Position - point).Magnitude
             if dist < 5 then return true end
-            
-            while Model.State.isAutoTraveling do
+                local stuckTime = 0
+                local lastPos = hrp and hrp.Position or primaryPart.Position
+                while Model.State.isAutoTraveling do
                 local curPos = hrp.Position
                 dist = (curPos - point).Magnitude
                 if dist < 5 then 
@@ -548,7 +565,21 @@ if not isLobby then
                     bg.CFrame = CFrame.lookAt(curPos, curPos + lookDir)
                 end
                 
-                pcall(function()
+                
+                        local currentPos = hrp.Position
+                        local moved = (currentPos - lastPos).Magnitude
+                        if moved < 0.5 then
+                            stuckTime = stuckTime + 0.03
+                            if stuckTime > 0.25 then
+                                hrp.CFrame = hrp.CFrame + (dir * 3)
+                                stuckTime = 0
+                            end
+                        else
+                            stuckTime = 0
+                        end
+                        lastPos = currentPos
+                        
+                        pcall(function()
                     if _G.PlayEffect then
                         _G.PlayEffect("Geppo", nil, {char = char, cf = hrp.CFrame * CFrame.new(0, -3, 0)})
                     end
