@@ -477,19 +477,37 @@ if not isLobby then
                         if lookDir.Magnitude > 0.001 then
                             bg.CFrame = CFrame.lookAt(curPos, curPos + lookDir)
                         end
+                        local charObj = hrp and hrp.Parent or primaryPart.Parent
+                        local opParams = OverlapParams.new()
+                        opParams.FilterDescendantsInstances = {charObj}
+                        opParams.FilterType = Enum.RaycastFilterType.Exclude
+                        local overlapping = workspace:GetPartsInPart(hrp or primaryPart, opParams)
                         
+                        local insideWall = false
+                        for _, p in ipairs(overlapping) do
+                            if p:IsA("BasePart") and p.CanCollide and not p.Parent:FindFirstChild("Humanoid") then
+                                insideWall = true
+                                break
+                            end
+                        end
                         
                         local currentPos = hrp and hrp.Position or primaryPart.Position
-                        local moved = (currentPos - lastPos).Magnitude
-                        if moved < 0.5 then
-                            stuckTime = stuckTime + 0.03
-                            if stuckTime > 0.25 then
-                                if hrp then hrp.CFrame = hrp.CFrame + (dir * 3)
-                                else primaryPart.CFrame = primaryPart.CFrame + (dir * 3) end
+                        if insideWall then
+                            if hrp then hrp.CFrame = hrp.CFrame + (dir * 4)
+                            else primaryPart.CFrame = primaryPart.CFrame + (dir * 4) end
+                            stuckTime = 0
+                        else
+                            local moved = (currentPos - lastPos).Magnitude
+                            if moved < 0.5 then
+                                stuckTime = stuckTime + 0.03
+                                if stuckTime > 0.20 then
+                                    if hrp then hrp.CFrame = hrp.CFrame + (dir * 4)
+                                    else primaryPart.CFrame = primaryPart.CFrame + (dir * 4) end
+                                    stuckTime = 0
+                                end
+                            else
                                 stuckTime = 0
                             end
-                        else
-                            stuckTime = 0
                         end
                         lastPos = currentPos
                         
@@ -564,18 +582,37 @@ if not isLobby then
                 if lookDir.Magnitude > 0.001 then
                     bg.CFrame = CFrame.lookAt(curPos, curPos + lookDir)
                 end
-                
-                
-                        local currentPos = hrp.Position
-                        local moved = (currentPos - lastPos).Magnitude
-                        if moved < 0.5 then
-                            stuckTime = stuckTime + 0.03
-                            if stuckTime > 0.25 then
-                                hrp.CFrame = hrp.CFrame + (dir * 3)
+                        local charObj = hrp and hrp.Parent or primaryPart.Parent
+                        local opParams = OverlapParams.new()
+                        opParams.FilterDescendantsInstances = {charObj}
+                        opParams.FilterType = Enum.RaycastFilterType.Exclude
+                        local overlapping = workspace:GetPartsInPart(hrp or primaryPart, opParams)
+                        
+                        local insideWall = false
+                        for _, p in ipairs(overlapping) do
+                            if p:IsA("BasePart") and p.CanCollide and not p.Parent:FindFirstChild("Humanoid") then
+                                insideWall = true
+                                break
+                            end
+                        end
+                        
+                        local currentPos = hrp and hrp.Position or primaryPart.Position
+                        if insideWall then
+                            if hrp then hrp.CFrame = hrp.CFrame + (dir * 4)
+                            else primaryPart.CFrame = primaryPart.CFrame + (dir * 4) end
+                            stuckTime = 0
+                        else
+                            local moved = (currentPos - lastPos).Magnitude
+                            if moved < 0.5 then
+                                stuckTime = stuckTime + 0.03
+                                if stuckTime > 0.20 then
+                                    if hrp then hrp.CFrame = hrp.CFrame + (dir * 4)
+                                    else primaryPart.CFrame = primaryPart.CFrame + (dir * 4) end
+                                    stuckTime = 0
+                                end
+                            else
                                 stuckTime = 0
                             end
-                        else
-                            stuckTime = 0
                         end
                         lastPos = currentPos
                         
