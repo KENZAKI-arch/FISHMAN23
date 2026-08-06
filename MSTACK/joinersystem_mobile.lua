@@ -1953,6 +1953,47 @@ function redzlib:MakeWindow(config)
     titleLabel.TextXAlignment = Enum.TextXAlignment.Left
     titleLabel.Parent = mainFrame
     
+    local controlsFrame = Instance.new("Frame")
+    controlsFrame.Size = UDim2.new(0, 100, 0, 25)
+    controlsFrame.Position = UDim2.new(1, -110, 0, 7)
+    controlsFrame.BackgroundTransparency = 1
+    controlsFrame.Parent = mainFrame
+    
+    local cLayout = Instance.new("UIListLayout")
+    cLayout.FillDirection = Enum.FillDirection.Horizontal
+    cLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right
+    cLayout.Padding = UDim.new(0, 5)
+    cLayout.Parent = controlsFrame
+    
+    local minimizeBtn = Instance.new("TextButton")
+    minimizeBtn.Size = UDim2.new(0, 25, 0, 25)
+    minimizeBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    minimizeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    minimizeBtn.Font = Enum.Font.GothamBold
+    minimizeBtn.TextSize = 14
+    minimizeBtn.Text = "-"
+    minimizeBtn.Parent = controlsFrame
+    Instance.new("UICorner", minimizeBtn).CornerRadius = UDim.new(0, 4)
+    
+    local maximizeBtn = Instance.new("TextButton")
+    maximizeBtn.Size = UDim2.new(0, 25, 0, 25)
+    maximizeBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    maximizeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    maximizeBtn.Font = Enum.Font.GothamBold
+    maximizeBtn.TextSize = 14
+    maximizeBtn.Text = "+"
+    maximizeBtn.Parent = controlsFrame
+    Instance.new("UICorner", maximizeBtn).CornerRadius = UDim.new(0, 4)
+    
+    local closeBtn = Instance.new("TextButton")
+    closeBtn.Size = UDim2.new(0, 25, 0, 25)
+    closeBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+    closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    closeBtn.Font = Enum.Font.GothamBold
+    closeBtn.TextSize = 12
+    closeBtn.Text = "X"
+    closeBtn.Parent = controlsFrame
+    Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, 4)
     local tabContainer = Instance.new("ScrollingFrame")
     tabContainer.Size = UDim2.new(0, 140, 1, -50)
     tabContainer.Position = UDim2.new(0, 10, 0, 40)
@@ -1971,6 +2012,43 @@ function redzlib:MakeWindow(config)
     contentContainer.BackgroundTransparency = 1
     contentContainer.Parent = mainFrame
     
+    local isMinimized = false
+    local isMaximized = false
+    local normalSize = UDim2.new(0, 500, 0, 350)
+    local normalPos = mainFrame.Position
+    
+    minimizeBtn.MouseButton1Click:Connect(function()
+        isMinimized = not isMinimized
+        if isMinimized then
+            mainFrame.Size = UDim2.new(normalSize.X.Scale, normalSize.X.Offset, 0, 40)
+            tabContainer.Visible = false
+            contentContainer.Visible = false
+        else
+            mainFrame.Size = normalSize
+            tabContainer.Visible = true
+            contentContainer.Visible = true
+        end
+    end)
+    
+    maximizeBtn.MouseButton1Click:Connect(function()
+        if isMinimized then return end
+        isMaximized = not isMaximized
+        if isMaximized then
+            normalSize = mainFrame.Size
+            normalPos = mainFrame.Position
+            -- Maximize to a larger size
+            mainFrame.Size = UDim2.new(0, 750, 0, 450)
+            mainFrame.Position = UDim2.new(0.5, -375, 0.5, -225)
+        else
+            mainFrame.Size = normalSize
+            mainFrame.Position = normalPos
+        end
+    end)
+    
+    closeBtn.MouseButton1Click:Connect(function()
+        if gui then gui:Destroy() end
+    end)
+
     Window.Tabs = {}
     local currentTabFrame = nil
     
