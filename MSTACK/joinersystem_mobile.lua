@@ -222,7 +222,7 @@ local function ActivatePotatoGraphics()
         end)
     end))
     
-    if Fluent then Fluent:Notify({ Title = "Anti-Lag", Content = "Potato Graphics Active!", Duration = 3 }) end
+    if true then game.StarterGui:SetCore("SendNotification", {Title = "Anti-Lag", Text = "Potato Graphics Active!", Duration = 3}) end
     print("Anti-Lag: Active")
 end
 
@@ -981,7 +981,7 @@ if not isLobby then
         end
         
         if #craftQueue == 0 then
-            Fluent:Notify({ Title = "Craft All", Content = "No Legendary Fish to craft!", Duration = 3 })
+            game.StarterGui:SetCore("SendNotification", {Title = "Craft All", Text = "No Legendary Fish to craft!", Duration = 3})
             return
         end
         
@@ -1029,7 +1029,7 @@ if not isLobby then
         Model.EquipRod()
         Model.State.isCurrentlyCrafting = false
         Model.State.travelMessage = ""
-        Fluent:Notify({ Title = "Craft All", Content = "Finished crafting all legendary fishes!", Duration = 3 })
+        game.StarterGui:SetCore("SendNotification", {Title = "Craft All", Text = "Finished crafting all legendary fishes!", Duration = 3})
     end
     
     -- ======================================================================
@@ -1429,14 +1429,14 @@ if not isLobby then
             if isAFKModeActive then
                 secondsSinceLastInput += 1
                 if secondsSinceLastInput == 10 then
-                    if Fluent and Fluent.Options then
-                        if Fluent.Options.T_Buy then Fluent.Options.T_Buy:SetValue(true) end
-                        if Fluent.Options.T_Sell then Fluent.Options.T_Sell:SetValue(true) end
-                        if Fluent.Options.T_Craft then Fluent.Options.T_Craft:SetValue(true) end
-                        if Fluent.Options.T_Travel then Fluent.Options.T_Travel:SetValue(true) end
+                    if true then
+                        if Toggles.T_Buy then Toggles.T_Buy:Set(true) end
+                        if Toggles.T_Sell then Toggles.T_Sell:Set(true) end
+                        if Toggles.T_Craft then Toggles.T_Craft:Set(true) end
+                        if Toggles.T_Travel then Toggles.T_Travel:Set(true) end
                         
                         -- Anti-Lag
-                        if Fluent.Options.T_AntiLag then Fluent.Options.T_AntiLag:SetValue(true) else RunService:Set3dRenderingEnabled(false) end
+                        if Toggles.T_AntiLag then if Toggles.T_AntiLag then Toggles.T_AntiLag:Set(true) end else RunService:Set3dRenderingEnabled(false) end
                     else
                         Model.State.autoBuy = true
                         Model.State.autoSell = true
@@ -1613,9 +1613,9 @@ local function checkFruits(fruitList)
             table.insert(lines, count .. "x " .. name)
         end
         local message = table.concat(lines, ", ")
-        if Fluent then Fluent:Notify({ Title = "Fruits Found", Content = message, Duration = 5 }) end
+        if true then game.StarterGui:SetCore("SendNotification", {Title = "Fruits Found", Text = "Message", Duration = 5}) end
     else
-        if Fluent then Fluent:Notify({ Title = "Fruit Check", Content = "No target fruits found.", Duration = 3 }) end
+        if true then game.StarterGui:SetCore("SendNotification", {Title = "Fruit Check", Text = "No target fruits found.", Duration = 3}) end
     end
 end
 
@@ -1694,12 +1694,12 @@ local function storeFruits(fruitList)
         Model.State.autoCraft = false
         
         -- Update toggles visually
-        if Fluent and Fluent.Options then
-            if Fluent.Options.T_Fish then Fluent.Options.T_Fish:SetValue(false) end
-            -- if Fluent.Options.T_Buy then Fluent.Options.T_Buy:SetValue(false) end
-            if Fluent.Options.T_Sell then Fluent.Options.T_Sell:SetValue(false) end
-            if Fluent.Options.T_Travel then Fluent.Options.T_Travel:SetValue(false) end
-            if Fluent.Options.T_Craft then Fluent.Options.T_Craft:SetValue(false) end
+        if true then
+            if Toggles.T_Fish then Toggles.T_Fish:Set(false) end
+            -- if Toggles.T_Buy then Toggles.T_Buy:Set(false) end
+            if Toggles.T_Sell then Toggles.T_Sell:Set(false) end
+            if Toggles.T_Travel then Toggles.T_Travel:Set(false) end
+            if Toggles.T_Craft then Toggles.T_Craft:Set(false) end
         end
         
         -- Wait a moment for any current actions (like reeling) to finish
@@ -1719,7 +1719,7 @@ local function storeFruits(fruitList)
             for _, fruitName in ipairs(fruitList) do
                 if string.find(toolName, string.lower(fruitName)) then
                     if isFruitAlreadyStored(fruitName) then
-                        if Fluent then Fluent:Notify({ Title = "Already Stored", Content = tool.Name .. " is already in storage! Skipping.", Duration = 3 }) end
+                        if true then game.StarterGui:SetCore("SendNotification", {Title = "Already Stored", Text = "Message", Duration = 3}) end
                         break
                     end
                     local isSpecial = false
@@ -1750,9 +1750,9 @@ local function storeFruits(fruitList)
                 
                 if tool.Parent == character or tool.Parent == backpack then
                     humanoid:UnequipTools()
-                    if Fluent then Fluent:Notify({ Title = "Storage Full", Content = "Couldn't store: " .. tool.Name .. " (kept in inventory)", Duration = 3 }) end
+                    if true then game.StarterGui:SetCore("SendNotification", {Title = "Storage Full", Text = "Couldn't store: ", Duration = 3}) end
                 else
-                    if Fluent then Fluent:Notify({ Title = "Fruit Stored", Content = "Successfully stored: " .. tool.Name, Duration = 3 }) end
+                    if true then game.StarterGui:SetCore("SendNotification", {Title = "Fruit Stored", Text = "Successfully stored: ", Duration = 3}) end
                 end
                 task.wait(0.5)
             end
@@ -1768,12 +1768,12 @@ local function storeFruits(fruitList)
         Model.State.autoCraft = tempSavedState.autoCraft or false
         
         -- Update UI toggles visually to match restored state
-        if Fluent and Fluent.Options then
-            if Fluent.Options.T_Fish then Fluent.Options.T_Fish:SetValue(Model.State.isFishing) end
-            if Fluent.Options.T_Buy then Fluent.Options.T_Buy:SetValue(Model.State.autoBuy) end
-            if Fluent.Options.T_Sell then Fluent.Options.T_Sell:SetValue(Model.State.autoSell) end
-            if Fluent.Options.T_Travel then Fluent.Options.T_Travel:SetValue(Model.State.isAutoTraveling) end
-            if Fluent.Options.T_Craft then Fluent.Options.T_Craft:SetValue(Model.State.autoCraft) end
+        if true then
+            if Toggles.T_Fish then Toggles.T_Fish:Set(Model.State.isFishing) end
+            if Toggles.T_Buy then Toggles.T_Buy:Set(Model.State.autoBuy) end
+            if Toggles.T_Sell then Toggles.T_Sell:Set(Model.State.autoSell) end
+            if Toggles.T_Travel then Toggles.T_Travel:Set(Model.State.isAutoTraveling) end
+            if Toggles.T_Craft then Toggles.T_Craft:Set(Model.State.autoCraft) end
         end
 
         if Model.State.isAutoTraveling and Model.StartTraveling then
@@ -1834,12 +1834,12 @@ local function dropFruits(fruitList)
         Model.State.autoCraft = false
         
         -- Update toggles visually
-        if Fluent and Fluent.Options then
-            if Fluent.Options.T_Fish then Fluent.Options.T_Fish:SetValue(false) end
-            -- if Fluent.Options.T_Buy then Fluent.Options.T_Buy:SetValue(false) end
-            if Fluent.Options.T_Sell then Fluent.Options.T_Sell:SetValue(false) end
-            if Fluent.Options.T_Travel then Fluent.Options.T_Travel:SetValue(false) end
-            if Fluent.Options.T_Craft then Fluent.Options.T_Craft:SetValue(false) end
+        if true then
+            if Toggles.T_Fish then Toggles.T_Fish:Set(false) end
+            -- if Toggles.T_Buy then Toggles.T_Buy:Set(false) end
+            if Toggles.T_Sell then Toggles.T_Sell:Set(false) end
+            if Toggles.T_Travel then Toggles.T_Travel:Set(false) end
+            if Toggles.T_Craft then Toggles.T_Craft:Set(false) end
         end
         
         -- Wait a moment for any current actions (like reeling) to finish
@@ -1877,7 +1877,7 @@ local function dropFruits(fruitList)
                 humanoid:EquipTool(tool)
                 task.wait(0.2)
                 tool.Parent = workspace -- Safely drop item for mobile
-                if Fluent then Fluent:Notify({ Title = "Dropping Fruit", Content = "Dropped: " .. tool.Name, Duration = 3 }) end
+                if true then game.StarterGui:SetCore("SendNotification", {Title = "Dropping Fruit", Text = "Dropped: ", Duration = 3}) end
                 task.wait(0.5)
             end
         end
@@ -1892,12 +1892,12 @@ local function dropFruits(fruitList)
         Model.State.autoCraft = tempSavedState.autoCraft or false
         
         -- Update UI toggles visually to match restored state
-        if Fluent and Fluent.Options then
-            if Fluent.Options.T_Fish then Fluent.Options.T_Fish:SetValue(Model.State.isFishing) end
-            if Fluent.Options.T_Buy then Fluent.Options.T_Buy:SetValue(Model.State.autoBuy) end
-            if Fluent.Options.T_Sell then Fluent.Options.T_Sell:SetValue(Model.State.autoSell) end
-            if Fluent.Options.T_Travel then Fluent.Options.T_Travel:SetValue(Model.State.isAutoTraveling) end
-            if Fluent.Options.T_Craft then Fluent.Options.T_Craft:SetValue(Model.State.autoCraft) end
+        if true then
+            if Toggles.T_Fish then Toggles.T_Fish:Set(Model.State.isFishing) end
+            if Toggles.T_Buy then Toggles.T_Buy:Set(Model.State.autoBuy) end
+            if Toggles.T_Sell then Toggles.T_Sell:Set(Model.State.autoSell) end
+            if Toggles.T_Travel then Toggles.T_Travel:Set(Model.State.isAutoTraveling) end
+            if Toggles.T_Craft then Toggles.T_Craft:Set(Model.State.autoCraft) end
         end
 
         if Model.State.isAutoTraveling and Model.StartTraveling then
@@ -1908,17 +1908,25 @@ end
 
 
 -- ======================================================================
--- 🎨 FLUENT UI INTEGRATION
+-- 🎨 REDZ HUB UI INTEGRATION
 -- ======================================================================
-Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
-local Window = Fluent:CreateWindow({
+local redzlib = loadstring(game:HttpGet("https://raw.githubusercontent.com/tbao143/Library-ui/refs/heads/main/Redzhubui"))()
+
+local Window = redzlib:MakeWindow({
     Title = "🐟 Fishman Hub",
-    SubTitle = "Unified Auto-Fisher 1.0.3 v3.8",
-    TabWidth = 160,
-    Size = UDim2.fromOffset(500, 350),
-    Theme = "Darker",
-    MinimizeKey = Enum.KeyCode.RightShift
+    SubTitle = "Mobile Unified Auto-Fisher",
+    SaveFolder = "FishmanConfig"
 })
+
+local Tabs = {
+    Teleport = Window:MakeTab({"Teleport", "plane"}),
+    Navigation = Window:MakeTab({"Navigation", "map"}),
+    Fishing = Window:MakeTab({"Fishing", "anchor"}),
+    Autofarm = Window:MakeTab({"Autofarm", "swords"}),
+    Settings = Window:MakeTab({"Settings", "settings"})
+}
+
+local Toggles = {}
 
 env.Fishman_DestroyUI = function()
     pcall(function()
@@ -1926,88 +1934,14 @@ env.Fishman_DestroyUI = function()
     end)
 end
 
--- Make the entire UI draggable by clicking anywhere
-task.spawn(function()
-    pcall(function()
-        task.wait(1)
-        local coreGui = game:GetService("CoreGui")
-        local mainFrame
-        
-        for _, gui in pairs(coreGui:GetDescendants()) do
-            if gui:IsA("Frame") and gui.Size == UDim2.fromOffset(500, 350) then
-                mainFrame = gui
-                break
-            end
-        end
 
-        if mainFrame then
-            local dragging, dragInput, dragStart, startPos
-
-            local function update(input)
-                local delta = input.Position - dragStart
-                mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-            end
-
-            mainFrame.InputBegan:Connect(function(input)
-                if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-                    dragging = true
-                    dragStart = input.Position
-                    startPos = mainFrame.Position
-
-                    input.Changed:Connect(function()
-                        if input.UserInputState == Enum.UserInputState.End then
-                            dragging = false
-                        end
-                    end)
-                end
-            end)
-
-            mainFrame.InputChanged:Connect(function(input)
-                if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-                    dragInput = input
-                end
-            end)
-
-            addConn(UserInputService.InputChanged:Connect(function(input)
-                if input == dragInput and dragging then
-                    update(input)
-                end
-            end))
-        end
-    end)
-end)
-
--- Prevent game from detecting UI actions or internal UI errors (Anti-Cheat bypass)
-pcall(function()
-    if getconnections then
-        for _, conn in pairs(getconnections(game:GetService("UserInputService").WindowFocusReleased)) do
-            conn:Disable()
-        end
-        for _, conn in pairs(getconnections(game:GetService("LogService").MessageOut)) do
-            conn:Disable()
-        end
-        for _, conn in pairs(getconnections(game:GetService("ScriptContext").Error)) do
-            conn:Disable()
-        end
-    end
-    game:GetService("ContextActionService"):UnbindAction("FluentMinimize")
-end)
-
-Tabs = {
-    Teleport = Window:AddTab({ Title = "Teleport", Icon = "plane" }),
-    Navigation = Window:AddTab({ Title = "Navigation", Icon = "map" }),
-    Fishing = Window:AddTab({ Title = "Fishing", Icon = "anchor" }),
-    Autofarm = Window:AddTab({ Title = "Autofarm", Icon = "swords" }),
-    Settings = Window:AddTab({ Title = "Settings", Icon = "settings" })
-}
 
 -- ======================================================================
 -- 🗺️ TELEPORT TAB UI
 -- ======================================================================
-    Tabs.Teleport:AddInput("Input", {
-        Title = "Private Server Code",
+    Toggles.Input = Tabs.Teleport:AddTextBox({ Name = "Private Server Code",
         Default = GlobalMem.FishmanPSCode,
-        Placeholder = "Enter PS Code",
+        PlaceholderText = "Enter PS Code",
         Numeric = false,
         Finished = false,
         Callback = function(Value)
@@ -2017,56 +1951,49 @@ Tabs = {
                 while #GlobalMem.FishmanPSCodeHistory > 10 do
                     table.remove(GlobalMem.FishmanPSCodeHistory, #GlobalMem.FishmanPSCodeHistory)
                 end
-                if Fluent.Options.D_PSCodeHistory then
-                    Fluent.Options.D_PSCodeHistory:SetValues(GlobalMem.FishmanPSCodeHistory)
+                if Toggles.D_PSCodeHistory then
+                    if Toggles.D_PSCodeHistory then Toggles.D_PSCodeHistory:Set(GlobalMem.FishmanPSCodeHistory) end
                 end
             end
             SaveConfig()
-        end
-    })
+        end })
 
-    Tabs.Teleport:AddDropdown("D_PSCodeHistory", {
-        Title = "PS Code History",
+    Toggles.D_PSCodeHistory = Tabs.Teleport:AddDropdown({ Name = "PS Code History",
         Description = "Click to select a saved PS code",
-        Values = GlobalMem.FishmanPSCodeHistory,
+        Options = GlobalMem.FishmanPSCodeHistory,
         Multi = false,
         Default = GlobalMem.FishmanPSCode,
         Callback = function(Value)
             if Value and Value ~= "" then
                 GlobalMem.FishmanPSCode = Value
                 SaveConfig()
-                if Fluent.Options.Input and Fluent.Options.Input.Value ~= Value then
-                    Fluent.Options.Input:SetValue(Value)
+                if Toggles.Input and Toggles.Input.Value ~= Value then
+                    if Toggles.Input then Toggles.Input:Set(Value) end
                 end
             end
-        end
-    })
+        end })
 
-    Tabs.Teleport:AddDropdown("Dropdown", {
-        Title = "Destination",
-        Values = {"fishHub", "tradeHub", "Second Sea", "Lobby"},
+    Toggles.Dropdown = Tabs.Teleport:AddDropdown({ Name = "Destination",
+        Options = {"fishHub", "tradeHub", "Second Sea", "Lobby"},
         Multi = false,
         Default = (table.find({"fishHub", "tradeHub", "Second Sea", "Lobby"}, GlobalMem.FishmanDestination) or 2),
         Callback = function(Value)
             GlobalMem.FishmanDestination = Value
             SaveConfig()
-        end
-    })
+        end })
 
-    Tabs.Teleport:AddToggle("T_AutoRouteLobby", {
-        Title = "Auto-Route from Lobby on Join",
+    Toggles.T_AutoRouteLobby = Tabs.Teleport:AddToggle({ Name = "Auto-Route from Lobby on Join",
         Description = "Automatically teleport to your chosen Destination & PS Code when entering Lobby",
         Default = GlobalMem.FishmanAutoRouteLobby,
         Callback = function(Value)
             GlobalMem.FishmanAutoRouteLobby = Value
             SaveConfig()
-        end
-    })
+        end })
 
     local function ExecuteTeleport(destination, psCode)
         if isLobby then
             if destination == "Lobby" then
-                Fluent:Notify({ Title = "Lobby", Content = "You are already in the Lobby!", Duration = 3 })
+                game.StarterGui:SetCore("SendNotification", {Title = "Lobby", Text = "You are already in the Lobby!", Duration = 3})
                 return
             end
             if psCode and psCode ~= "" then
@@ -2118,53 +2045,40 @@ Tabs = {
         end
     end
 
-    Tabs.Teleport:AddButton({
-        Title = "🚀 Teleport Now!",
-        Description = "Teleports you to the selected destination.",
-        Callback = function()
+    Tabs.Teleport:AddButton({"🚀 Teleport Now!", function()
             if GlobalMem.FishmanPSCode and GlobalMem.FishmanPSCode ~= "" then
                 if not table.find(GlobalMem.FishmanPSCodeHistory, GlobalMem.FishmanPSCode) then
                     table.insert(GlobalMem.FishmanPSCodeHistory, 1, GlobalMem.FishmanPSCode)
                     while #GlobalMem.FishmanPSCodeHistory > 10 do
                         table.remove(GlobalMem.FishmanPSCodeHistory, #GlobalMem.FishmanPSCodeHistory)
                     end
-                    if Fluent.Options.D_PSCodeHistory then
-                        Fluent.Options.D_PSCodeHistory:SetValues(GlobalMem.FishmanPSCodeHistory)
+                    if Toggles.D_PSCodeHistory then
+                        if Toggles.D_PSCodeHistory then Toggles.D_PSCodeHistory:Set(GlobalMem.FishmanPSCodeHistory) end
                     end
                 end
             end
             GlobalMem.FishmanAutoTeleport = true
             SaveConfig()
             ExecuteTeleport(GlobalMem.FishmanDestination, GlobalMem.FishmanPSCode)
-        end
-    })
+        end})
 
-    Tabs.Teleport:AddButton({
-        Title = "🏠 Return to Configured Base / Destination",
-        Description = "Instantly teleports you to your selected Destination and PS Code.",
-        Callback = function()
+    Tabs.Teleport:AddButton({"🏠 Return to Configured Base / Destination", function()
             GlobalMem.FishmanAutoTeleport = true
             SaveConfig()
             
-            Fluent:Notify({ Title = "Routing to Base", Content = "Initiating warp to " .. tostring(GlobalMem.FishmanDestination) .. "...", Duration = 3 })
+            game.StarterGui:SetCore("Send})
             
             ExecuteTeleport(GlobalMem.FishmanDestination, GlobalMem.FishmanPSCode)
         end
     })
 
-    Tabs.Teleport:AddButton({
-        Title = "📈 Trade Hub",
-        Description = "Instantly teleports you to tradeHub in private server qj1ttW4JG1.",
-        Callback = function()
+    Tabs.Teleport:AddButton({"📈 Trade Hub", function()
             GlobalMem.FishmanPSCode = "qj1ttW4JG1"
             GlobalMem.FishmanDestination = "tradeHub"
             GlobalMem.FishmanAutoTeleport = true
             SaveConfig()
             
-            if Fluent.Options.Input then Fluent.Options.Input:SetValue("qj1ttW4JG1") end
-            if Fluent.Options.Dropdown then Fluent.Options.Dropdown:SetValue("tradeHub") end
-
-            Fluent:Notify({ Title = "Trade Hub", Content = "Initiating warp to Trade Hub (qj1ttW4JG1)...", Duration = 3 })
+            if Toggles.Input then if Toggles.Input then Toggles.Input:Set("qj1ttW4JG1") end})
             
             ExecuteTeleport("tradeHub", "qj1ttW4JG1")
         end
@@ -2180,20 +2094,20 @@ Tabs = {
             GlobalMem.FishmanAutoTeleport = false
             SaveConfig()
             if destPlace == "Lobby" then
-                Fluent:Notify({ Title = "Arrived at Lobby", Content = "You have arrived at the Lobby.", Duration = 3 })
+                game.StarterGui:SetCore("SendNotification", {Title = "Arrived at Lobby", Text = "You have arrived at the Lobby.", Duration = 3})
             else
-                Fluent:Notify({ Title = "Auto-Teleporting", Content = "Routing to chosen destination in 3s...", Duration = 3 })
+                game.StarterGui:SetCore("SendNotification", {Title = "Auto-Teleporting", Text = "Routing to chosen destination in 3s...", Duration = 3})
                 shouldTeleport = true
             end
         elseif GlobalMem.FishmanAutoRouteLobby then
             if destPlace == "Lobby" then
-                Fluent:Notify({ Title = "Lobby", Content = "Destination is set to Lobby. Staying here.", Duration = 3 })
+                game.StarterGui:SetCore("SendNotification", {Title = "Lobby", Text = "Destination is set to Lobby. Staying here.", Duration = 3})
             else
-                Fluent:Notify({ Title = "Auto-Route", Content = "Routing to " .. tostring(destPlace) .. " in 3s...", Duration = 3 })
+                game.StarterGui:SetCore("SendNotification", {Title = "Auto-Route", Text = "Routing to ", Duration = 3})
                 shouldTeleport = true
             end
         else
-            Fluent:Notify({ Title = "Lobby", Content = "Auto-Route is OFF. Staying in Lobby.", Duration = 3 })
+            game.StarterGui:SetCore("SendNotification", {Title = "Lobby", Text = "Auto-Route is OFF. Staying in Lobby.", Duration = 3})
         end
         
         if shouldTeleport then
@@ -2208,10 +2122,9 @@ Tabs = {
 -- 🚀 HOVERBOARD UI
 -- ======================================================================
 
-Tabs.Teleport:AddInput("I_HoverHeight", {
-    Title = "Flight Altitude",
+Toggles.I_HoverHeight = Tabs.Teleport:AddTextBox({ Name = "Flight Altitude",
     Default = "440",
-    Placeholder = "Enter Altitude...",
+    PlaceholderText = "Enter Altitude...",
     Numeric = true,
     Finished = false,
     Callback = function(Value)
@@ -2220,8 +2133,7 @@ Tabs.Teleport:AddInput("I_HoverHeight", {
         if getgenv().HoverboardController and getgenv().HoverboardController.SetHeightValue then
             getgenv().HoverboardController.SetHeightValue(height)
         end
-    end
-})
+    end })
 
 local function EnsureHoverboardLoaded()
     if not getgenv().HoverboardController then
@@ -2235,10 +2147,7 @@ local function EnsureHoverboardLoaded()
     end
 end
 
-Tabs.Teleport:AddButton({
-    Title = "🚀 Set Flight Height",
-    Description = "Lifts your hoverboard to the target altitude.",
-    Callback = function()
+Tabs.Teleport:AddButton({"🚀 Set Flight Height", function()
         print("[Hub] 'Set Flight Height' clicked!")
         EnsureHoverboardLoaded()
         if getgenv().HoverboardController and getgenv().HoverboardController.SetHeight then
@@ -2247,8 +2156,7 @@ Tabs.Teleport:AddButton({
         else
             print("[Hub] ERROR: HoverboardController.SetHeight not found!")
         end
-    end
-})
+    end})
 
 local function isAtWholeCakeIsland()
     local result = false
@@ -2266,8 +2174,7 @@ local function isAtWholeCakeIsland()
     return result
 end
 
-Tabs.Teleport:AddToggle("T_AutoSpawnShip", {
-    Title = "🛳️ Auto Spawn Ship",
+Toggles.T_AutoSpawnShip = Tabs.Teleport:AddToggle({ Name = "🛳️ Auto Spawn Ship",
     Description = "Flies to spawn, spawns hoverboard, and sets flight height.",
     Default = (GlobalMem.FishmanAutoSpawnShip == true) and isAtWholeCakeIsland() or false,
     Callback = function(Value)
@@ -2279,9 +2186,9 @@ Tabs.Teleport:AddToggle("T_AutoSpawnShip", {
             if getgenv().HoverboardController and getgenv().HoverboardController.AutoSpawn then
                 print("[Hub] Calling HoverboardController.AutoSpawn()...")
                 getgenv().HoverboardController.AutoSpawn(function()
-                    if Fluent and Fluent.Options and Fluent.Options.T_MegStack then
+                    if Toggles.T_MegStack then
                         print("[Hub] Automatically enabling Megalodon Stack after final move...")
-                        Fluent.Options.T_MegStack:SetValue(true)
+                        if Toggles.T_MegStack then Toggles.T_MegStack:Set(true) end
                     end
                 end)
             else
@@ -2299,13 +2206,9 @@ Tabs.Teleport:AddToggle("T_AutoSpawnShip", {
                 getgenv().HoverboardController.Reset()
             end
         end
-    end
-})
+    end })
 
-Tabs.Teleport:AddButton({
-    Title = "⬇️ Reset to Normal",
-    Description = "Restores normal hoverboard physics.",
-    Callback = function()
+Tabs.Teleport:AddButton({"⬇️ Reset to Normal", function()
         print("[Hub] 'Reset to Normal' clicked!")
         EnsureHoverboardLoaded()
         if getgenv().HoverboardController and getgenv().HoverboardController.Reset then
@@ -2314,8 +2217,7 @@ Tabs.Teleport:AddButton({
         else
             print("[Hub] ERROR: HoverboardController.Reset not found!")
         end
-    end
-})
+    end})
 
 -- ======================================================================
 -- 🗺️ NAVIGATION TAB UI
@@ -2340,42 +2242,31 @@ Tabs.Teleport:AddButton({
 
     local selectedIslandPos = nil
 
-    local D_Island = Tabs.Navigation:AddDropdown("D_Island", {
-        Title = "Select Island",
-        Values = islandNames,
+    local D_Island = Toggles.D_Island = Tabs.Navigation:AddDropdown({ Name = "Select Island",
+        Options = islandNames,
         Multi = false,
         Default = islandNames[1],
         Callback = function(Value)
             selectedIslandPos = islandPositions[Value]
-        end
-    })
+        end })
     
-    Tabs.Navigation:AddButton({
-        Title = "🔄 Refresh Islands",
-        Description = "Refreshes the island list if CompassGuider was slow to load.",
-        Callback = function()
+    Tabs.Navigation:AddButton({"🔄 Refresh Islands", function()
             refreshIslands()
             D_Island:SetValues(islandNames)
-            Fluent:Notify({ Title = "Refreshed", Content = "Island list updated.", Duration = 3 })
+            game.StarterGui:SetCore("Send})
         end
     })
     
-    local flightStatus = Tabs.Navigation:AddParagraph({ Title = "Flight Status", Content = "Idle" })
+    local flightStatus = Tabs.Navigation:AddParagraph({"Flight Status", "Idle"})
     
-    Tabs.Navigation:AddButton({
-        Title = "🛫 Start Flight",
-        Description = "Begins advanced auto-navigation to the selected island.",
-        Callback = function()
+    Tabs.Navigation:AddButton({"🛫 Start Flight", function()
             local character = LocalPlayer.Character
-            if not character or not character.PrimaryPart then return end
-            
-            if Model.State.activeNavigation and Model.State.activeNavigation._isNavigating then
-                Fluent:Notify({ Title = "Already Flying", Content = "Cancel or Pause current flight first.", Duration = 3 })
+            if not character or not character.PrimaryPart then return end})
                 return
             end
             
             if not selectedIslandPos then
-                Fluent:Notify({ Title = "No Island", Content = "Please select a valid island first.", Duration = 3 })
+                game.StarterGui:SetCore("SendNotification", {Title = "No Island", Text = "Please select a valid island first.", Duration = 3})
                 return
             end
             
@@ -2398,35 +2289,29 @@ Tabs.Teleport:AddButton({
         end
     })
 
-    Tabs.Navigation:AddButton({
-        Title = "⏸️ Pause / Resume Flight",
-        Description = "Toggles the current flight state.",
-        Callback = function()
+    Tabs.Navigation:AddButton({"⏸️ Pause / Resume Flight", function()
             if Model.State.activeNavigation and Model.State.activeNavigation._isNavigating then
                 local isPaused = Model.State.activeNavigation:TogglePause()
                 if isPaused then
-                    Fluent:Notify({ Title = "Paused", Content = "Flight paused.", Duration = 3 })
+                    game.StarterGui:SetCore("Send})
                 else
-                    Fluent:Notify({ Title = "Resumed", Content = "Flight resumed.", Duration = 3 })
+                    game.StarterGui:SetCore("SendNotification", {Title = "Resumed", Text = "Flight resumed.", Duration = 3})
                 end
             end
         end
     })
 
-    Tabs.Navigation:AddButton({
-        Title = "🛑 Cancel Flight",
-        Description = "Immediately stops the current flight.",
-        Callback = function()
+    Tabs.Navigation:AddButton({"🛑 Cancel Flight", function()
             if Model.State.activeNavigation and Model.State.activeNavigation._isNavigating then
                 Model.State.activeNavigation:Cancel()
                 Model.State.activeNavigation = nil
                 flightStatus:SetDesc("Idle")
-                Fluent:Notify({ Title = "Cancelled", Content = "Flight cancelled.", Duration = 3 })
+                game.StarterGui:SetCore("Send})
             end
         end
     })
 
-    Tabs.Navigation:AddToggle("T_IslandESP", { Title = "Islands ESP", Default = false, Callback = function(Value) 
+    Toggles.T_IslandESP = Tabs.Navigation:AddToggle({ Name = "Islands ESP", Default = false, Callback = function(Value) 
         Model.State.isIslandESP = Value
         if Value then
             task.spawn(function()
@@ -2501,7 +2386,7 @@ Tabs.Teleport:AddButton({
         end
     end })
 
-    Tabs.Navigation:AddToggle("T_FruitESP", { Title = "Fruit ESP", Default = false, Callback = function(Value) 
+    Toggles.T_FruitESP = Tabs.Navigation:AddToggle({ Name = "Fruit ESP", Default = false, Callback = function(Value) 
         Model.State.isFruitESP = Value
         local targetFruits = {
             "Dragon", "Venom", "Mochi", "Soul", "Pika", "Buddha", "Magu", "Goro", "Goru",
@@ -2589,12 +2474,12 @@ Tabs.Teleport:AddButton({
 -- ======================================================================
 -- 🎣 FISHING TAB UI
 -- ======================================================================
-    Tabs.Fishing:AddToggle("T_Fish", { Title = "Auto Fish", Default = false, Callback = function(Value) 
-        if isLobby then if Value then Fluent:Notify({ Title = "Error", Content = "Cannot fish in Lobby!", Duration = 3 }); Fluent.Options.T_Fish:SetValue(false) end return end
+    Toggles.T_Fish = Tabs.Fishing:AddToggle({ Name = "Auto Fish", Default = false, Callback = function(Value) 
+        if isLobby then if Value then game.StarterGui:SetCore("SendNotification", {Name = "Error", Text = "Cannot fish in Lobby!", Duration = 3 }); if Toggles.T_Fish then Toggles.T_Fish:Set(false) end end return end
         Model.State.isFishing = Value 
     end })
-    Tabs.Fishing:AddToggle("T_DeepSea", { Title = "Deep Sea Catcher (ONLY Beasts)", Default = false, Callback = function(Value) 
-        if isLobby then if Value then Fluent:Notify({ Title = "Error", Content = "Cannot fish in Lobby!", Duration = 3 }); Fluent.Options.T_DeepSea:SetValue(false) end return end
+    Toggles.T_DeepSea = Tabs.Fishing:AddToggle({ Name = "Deep Sea Catcher (ONLY Beasts)", Default = false, Callback = function(Value) 
+        if isLobby then if Value then game.StarterGui:SetCore("SendNotification", {Name = "Error", Text = "Cannot fish in Lobby!", Duration = 3 }); if Toggles.T_DeepSea then Toggles.T_DeepSea:Set(false) end end return end
         task.spawn(function()
             if Value then
                 print("triggering title: \"Skilled Fisherman\"")
@@ -2607,27 +2492,27 @@ Tabs.Teleport:AddButton({
         Model.State.isDeepSeaCatcher = Value 
     end })
     
-    Tabs.Fishing:AddToggle("T_MegStack", { Title = "Megalodon Stack (Wait 10, Kill)", Default = false, Callback = function(Value) 
-        if isLobby then if Value then Fluent:Notify({ Title = "Error", Content = "Cannot stack in Lobby!", Duration = 3 }); Fluent.Options.T_MegStack:SetValue(false) end return end
+    Toggles.T_MegStack = Tabs.Fishing:AddToggle({ Name = "Megalodon Stack (Wait 10, Kill)", Default = false, Callback = function(Value) 
+        if isLobby then if Value then game.StarterGui:SetCore("SendNotification", {Name = "Error", Text = "Cannot stack in Lobby!", Duration = 3 }); if Toggles.T_MegStack then Toggles.T_MegStack:Set(false) end end return end
         Model.State.isMegStacking = Value
         if Value then
-            if Fluent.Options.T_DeepSea then Fluent.Options.T_DeepSea:SetValue(true) end
-            if Fluent.Options.T_Buy then Fluent.Options.T_Buy:SetValue(true) end
-            if Fluent.Options.T_MegStackLoc then Fluent.Options.T_MegStackLoc:SetValue(true) end
-            if Fluent.Options.T_AutoStoreFruit then Fluent.Options.T_AutoStoreFruit:SetValue(true) end
-            if Fluent.Options.T_AutoReturn then Fluent.Options.T_AutoReturn:SetValue(true) end
+            if Toggles.T_DeepSea then Toggles.T_DeepSea:Set(true) end
+            if Toggles.T_Buy then Toggles.T_Buy:Set(true) end
+            if Toggles.T_MegStackLoc then Toggles.T_MegStackLoc:Set(true) end
+            if Toggles.T_AutoStoreFruit then Toggles.T_AutoStoreFruit:Set(true) end
+            if Toggles.T_AutoReturn then Toggles.T_AutoReturn:Set(true) end
             print("🌊 [MegStack] Meg stack starting now! Enabling deep sea catcher for 10 megalodons.")
             task.spawn(function()
                 while Model.State.isMegStacking do
                     local megCount = Model.countMegalodons()
                     if megCount >= 10 and not Model.State.isBuying and not Model.State.isAutoTraveling and not Model.State.isRefillingMegBait and not Model.State.isManualTraveling then
                         print("🔥 [MegStack] 10 Megalodons reached! Disabling fishing and automatically toggling Cyborg Autofarm ON...")
-                        if Fluent.Options.T_DeepSea.Value == true then
-                            Fluent.Options.T_DeepSea:SetValue(false)
+                        if Toggles.T_DeepSea.Value == true then
+                            if Toggles.T_DeepSea then Toggles.T_DeepSea:Set(false) end
                         end
                         
-                        if Fluent.Options.T_CyborgAuto then
-                            Fluent.Options.T_CyborgAuto:SetValue(true)
+                        if Toggles.T_CyborgAuto then
+                            if Toggles.T_CyborgAuto then Toggles.T_CyborgAuto:Set(true) end
                         end
                         
                         local waitTime = 0
@@ -2644,12 +2529,12 @@ Tabs.Teleport:AddButton({
                         
                         print("✅ [MegStack] Stack cleared! Toggling Cyborg Autofarm OFF and resuming fishing...")
                         
-                        if Fluent.Options.T_CyborgAuto then
-                            Fluent.Options.T_CyborgAuto:SetValue(false)
+                        if Toggles.T_CyborgAuto then
+                            if Toggles.T_CyborgAuto then Toggles.T_CyborgAuto:Set(false) end
                         end
                         
                         if Model.State.isMegStacking then
-                            Fluent.Options.T_DeepSea:SetValue(true)
+                            if Toggles.T_DeepSea then Toggles.T_DeepSea:Set(true) end
                         end
                     end
                     task.wait(1)
@@ -2657,32 +2542,32 @@ Tabs.Teleport:AddButton({
             end)
         else
             print("🛑 [MegStack] Stacking aborted. Shutting down deep sea catcher.")
-            if Fluent.Options.T_DeepSea and Fluent.Options.T_DeepSea.Value == true then
-                Fluent.Options.T_DeepSea:SetValue(false)
+            if Toggles.T_DeepSea and Toggles.T_DeepSea.Value == true then
+                if Toggles.T_DeepSea then Toggles.T_DeepSea:Set(false) end
             end
-            if Fluent.Options.T_AutoStoreFruit and Fluent.Options.T_AutoStoreFruit.Value == true then
-                Fluent.Options.T_AutoStoreFruit:SetValue(false)
+            if Toggles.T_AutoStoreFruit and Toggles.T_AutoStoreFruit.Value == true then
+                if Toggles.T_AutoStoreFruit then Toggles.T_AutoStoreFruit:Set(false) end
             end
-            if Fluent.Options.T_AutoReturn and Fluent.Options.T_AutoReturn.Value == true then
-                Fluent.Options.T_AutoReturn:SetValue(false)
+            if Toggles.T_AutoReturn and Toggles.T_AutoReturn.Value == true then
+                if Toggles.T_AutoReturn then Toggles.T_AutoReturn:Set(false) end
             end
         end
     end })
     
-    Tabs.Fishing:AddToggle("T_MegStackLoc", { Title = "Meg Stack Location (Auto Refill)", Default = false, Callback = function(Value) 
-        if isLobby then if Value then Fluent:Notify({ Title = "Error", Content = "Cannot use in Lobby!", Duration = 3 }); Fluent.Options.T_MegStackLoc:SetValue(false) end return end
+    Toggles.T_MegStackLoc = Tabs.Fishing:AddToggle({ Name = "Meg Stack Location (Auto Refill)", Default = false, Callback = function(Value) 
+        if isLobby then if Value then game.StarterGui:SetCore("SendNotification", {Name = "Error", Text = "Cannot use in Lobby!", Duration = 3 }); if Toggles.T_MegStackLoc then Toggles.T_MegStackLoc:Set(false) end end return end
         Model.State.isMegStackLoc = Value 
     end })
     
     local manualTravelInitialized = false
-    Tabs.Fishing:AddToggle("T_ManualMegStackLoc", { Title = "Manual Meg Stack Island", Default = false, Callback = function(Value) 
-        if isLobby then if Value then Fluent:Notify({ Title = "Error", Content = "Cannot use in Lobby!", Duration = 3 }); Fluent.Options.T_ManualMegStackLoc:SetValue(false) end return end
+    Toggles.T_ManualMegStackLoc = Tabs.Fishing:AddToggle({ Name = "Manual Meg Stack Island", Default = false, Callback = function(Value) 
+        if isLobby then if Value then game.StarterGui:SetCore("SendNotification", {Name = "Error", Text = "Cannot use in Lobby!", Duration = 3 }); if Toggles.T_ManualMegStackLoc then Toggles.T_ManualMegStackLoc:Set(false) end end return end
         
         if Value then
             -- Turn off Auto Return to Hoverboard so it doesn't fly us back after arriving at Meg Stack Island
-            if Fluent and Fluent.Options and Fluent.Options.T_AutoReturn and Fluent.Options.T_AutoReturn.Value then
-                Fluent.Options.T_AutoReturn:SetValue(false)
-                Fluent:Notify({ Title = "System", Content = "Auto Return Hoverboard turned OFF for Manual Travel", Duration = 3 })
+            if Toggles.T_AutoReturn and Toggles.T_AutoReturn.Value then
+                if Toggles.T_AutoReturn then Toggles.T_AutoReturn:Set(false) end
+                game.StarterGui:SetCore("SendNotification", {Title = "System", Text = "Auto Return Hoverboard turned OFF for Manual Travel", Duration = 3})
             end
 
             manualTravelInitialized = true
@@ -2695,19 +2580,19 @@ Tabs.Teleport:AddButton({
                 if Model.UnequipRod then Model.UnequipRod() end
                 task.wait(1)
                 
-                if not Fluent.Options.T_ManualMegStackLoc.Value then return end
+                if not Toggles.T_ManualMegStackLoc.Value then return end
                 
                 Model.State.isManualTraveling = true
                 Model.EnableFlight()
-                Fluent:Notify({ Title = "Manual Travel", Content = "Flying to Meg Stack Island...", Duration = 3 })
+                game.StarterGui:SetCore("SendNotification", {Title = "Manual Travel", Text = "Flying to Meg Stack Island...", Duration = 3})
                 Model.CraftFlyPath({ Vector3.new(-6760, 27, 9191) })
                 
                 if Model.State.isManualTraveling then
                     Model.State.isManualTraveling = false
                     Model.DisableFlight()
-                    Fluent:Notify({ Title = "Manual Travel", Content = "Arrived at Meg Stack Island!", Duration = 3 })
-                    if Fluent and Fluent.Options and Fluent.Options.T_ManualMegStackLoc then
-                        Fluent.Options.T_ManualMegStackLoc:SetValue(false)
+                    game.StarterGui:SetCore("SendNotification", {Title = "Manual Travel", Text = "Arrived at Meg Stack Island!", Duration = 3})
+                    if Toggles.T_ManualMegStackLoc then
+                        if Toggles.T_ManualMegStackLoc then Toggles.T_ManualMegStackLoc:Set(false) end
                     end
                 end
             end)
@@ -2720,12 +2605,12 @@ Tabs.Teleport:AddButton({
                 Model.State.isCraftFlying = false
                 Model.DisableFlight()
                 if Model.EquipRod then Model.EquipRod() end
-                Fluent:Notify({ Title = "Manual Travel", Content = "Travel paused - flight disabled.", Duration = 3 })
+                game.StarterGui:SetCore("SendNotification", {Title = "Manual Travel", Text = "Travel paused - flight disabled.", Duration = 3})
             end
         end
     end })
     
-    Tabs.Fishing:AddToggle("T_HoverboardESP", { Title = "Ship ESP", Default = false, Callback = function(Value) 
+    Toggles.T_HoverboardESP = Tabs.Fishing:AddToggle({ Name = "Ship ESP", Default = false, Callback = function(Value) 
         Model.State.isHoverboardESP = Value 
         if Value then
             task.spawn(function()
@@ -2767,7 +2652,7 @@ Tabs.Teleport:AddButton({
         end
     end })
     
-    Tabs.Fishing:AddToggle("T_MegESP", { Title = "Megalodon ESP", Default = false, Callback = function(Value) 
+    Toggles.T_MegESP = Tabs.Fishing:AddToggle({ Name = "Megalodon ESP", Default = false, Callback = function(Value) 
         Model.State.isMegESP = Value 
         if Value then
             task.spawn(function()
@@ -2818,33 +2703,27 @@ Tabs.Teleport:AddButton({
         end
     end })
     
-    Tabs.Fishing:AddButton({
-        Title = "Return to Hoverboard",
-        Description = "Uses Geppo + BV to manually fly back to your hoverboard",
-        Callback = function()
-            if isLobby then Fluent:Notify({ Title = "Error", Content = "Cannot travel in Lobby!", Duration = 3 }); return end
+    Tabs.Fishing:AddButton({"Return to Hoverboard", function()
+            if isLobby then game.StarterGui:SetCore("Send}); return end
             task.spawn(function()
                 local success = Model.ReturnToShip()
                 if success then
                     print("🚀 [ReturnToShip] Successfully arrived at hoverboard!")
                 else
-                    Fluent:Notify({ Title = "Error", Content = "No Hoverboard detected in workspace!", Duration = 3 })
+                    game.StarterGui:SetCore("SendNotification", {Title = "Error", Text = "No Hoverboard detected in workspace!", Duration = 3})
                 end
             end)
         end
     })
 
-    Tabs.Fishing:AddToggle("T_AutoReturn", { 
-        Title = "Auto Return to Hoverboard", 
+    Toggles.T_AutoReturn = Tabs.Fishing:AddToggle({ Name = "Auto Return to Hoverboard", 
         Description = "Automatically flies back to your hoverboard if you fall off.",
         Default = false, 
         Callback = function(Value) 
             Model.State.autoReturn = Value 
-        end 
-    })
+        end })
 
-    Tabs.Fishing:AddSlider("S_ShipSpeed", {
-        Title = "Return To Ship Speed",
+    Toggles.S_ShipSpeed = Tabs.Fishing:AddSlider({ Name = "Return To Ship Speed",
         Description = "Adjusts flight speed (300 is recommended)",
         Default = 90,
         Min = 50,
@@ -2852,66 +2731,57 @@ Tabs.Teleport:AddButton({
         Rounding = 0,
         Callback = function(Value)
             Model.State.shipSpeed = Value
-        end
-    })
+        end })
 
-    Tabs.Fishing:AddToggle("T_StrictReel", { Title = "Only Reel > 1.0 Multiplier", Default = false, Callback = function(Value) 
+    Toggles.T_StrictReel = Tabs.Fishing:AddToggle({ Name = "Only Reel > 1.0 Multiplier", Default = false, Callback = function(Value) 
         Model.State.strictReel = Value 
     end })
-    Tabs.Fishing:AddToggle("T_Buy", { Title = "Auto Buy Bait", Default = not isLobby, Callback = function(Value) 
-        if isLobby then if Value then Fluent:Notify({ Title = "Error", Content = "Cannot buy in Lobby!", Duration = 3 }); Fluent.Options.T_Buy:SetValue(false) end return end
+    Toggles.T_Buy = Tabs.Fishing:AddToggle({ Name = "Auto Buy Bait", Default = not isLobby, Callback = function(Value) 
+        if isLobby then if Value then game.StarterGui:SetCore("SendNotification", {Name = "Error", Text = "Cannot buy in Lobby!", Duration = 3 }); if Toggles.T_Buy then Toggles.T_Buy:Set(false) end end return end
         Model.State.autoBuy = Value; if Value then Model.CheckInventory() end 
     end })
-    Tabs.Fishing:AddToggle("T_Sell", { Title = "Auto Sell Fish", Default = false, Callback = function(Value) 
-        if isLobby then if Value then Fluent:Notify({ Title = "Error", Content = "Cannot sell in Lobby!", Duration = 3 }); Fluent.Options.T_Sell:SetValue(false) end return end
+    Toggles.T_Sell = Tabs.Fishing:AddToggle({ Name = "Auto Sell Fish", Default = false, Callback = function(Value) 
+        if isLobby then if Value then game.StarterGui:SetCore("SendNotification", {Name = "Error", Text = "Cannot sell in Lobby!", Duration = 3 }); if Toggles.T_Sell then Toggles.T_Sell:Set(false) end end return end
         Model.State.autoSell = Value; if Value then Model.CheckInventory() end 
     end })
-    Tabs.Fishing:AddToggle("T_Travel", { Title = "Travel to Bait", Default = false, Callback = function(Value) 
-        if isLobby then if Value then Fluent:Notify({ Title = "Error", Content = "Cannot travel in Lobby!", Duration = 3 }); Fluent.Options.T_Travel:SetValue(false) end return end
+    Toggles.T_Travel = Tabs.Fishing:AddToggle({ Name = "Travel to Bait", Default = false, Callback = function(Value) 
+        if isLobby then if Value then game.StarterGui:SetCore("SendNotification", {Name = "Error", Text = "Cannot travel in Lobby!", Duration = 3 }); if Toggles.T_Travel then Toggles.T_Travel:Set(false) end end return end
         if Value then Model.StartTraveling() else Model.State.isAutoTraveling = false; if Model.DisableFlight then Model.DisableFlight() end; Model.State.travelMessage = "" end 
     end })
-    Tabs.Fishing:AddToggle("T_Craft", { Title = "Auto Craft Legendary Bait", Default = false, Callback = function(Value) 
-        if isLobby then if Value then Fluent:Notify({ Title = "Error", Content = "Cannot craft in Lobby!", Duration = 3 }); Fluent.Options.T_Craft:SetValue(false) end return end
+    Toggles.T_Craft = Tabs.Fishing:AddToggle({ Name = "Auto Craft Legendary Bait", Default = false, Callback = function(Value) 
+        if isLobby then if Value then game.StarterGui:SetCore("SendNotification", {Name = "Error", Text = "Cannot craft in Lobby!", Duration = 3 }); if Toggles.T_Craft then Toggles.T_Craft:Set(false) end end return end
         Model.State.autoCraft = Value 
     end })
-    Tabs.Fishing:AddButton({
-        Title = "🔨 Craft All Legendary Fish Now",
-        Description = "Instantly crafts all legendary fishes in your inventory into bait.",
-        Callback = function()
+    Tabs.Fishing:AddButton({"🔨 Craft All Legendary Fish Now", function()
             if isLobby then
-                Fluent:Notify({ Title = "Error", Content = "Cannot craft in Lobby!", Duration = 3 })
+                game.StarterGui:SetCore("Send})
                 return
             end
             task.spawn(Model.ForceCraftAll)
         end
     })
-    Tabs.Fishing:AddToggle("T_AFK", { Title = "AFK Mode (Auto-start after 10s)", Default = false, Callback = function(Value) 
-        if isLobby then if Value then Fluent:Notify({ Title = "Error", Content = "AFK Mode requires Fishing server!", Duration = 3 }); Fluent.Options.T_AFK:SetValue(false) end return end
+    Toggles.T_AFK = Tabs.Fishing:AddToggle({ Name = "AFK Mode (Auto-start after 10s)", Default = false, Callback = function(Value) 
+        if isLobby then if Value then game.StarterGui:SetCore("SendNotification", {Name = "Error", Text = "AFK Mode requires Fishing server!", Duration = 3 }); if Toggles.T_AFK then Toggles.T_AFK:Set(false) end end return end
         isAFKModeActive = Value; secondsSinceLastInput = 0 
     end })
 
-    Tabs.Fishing:AddButton({
-        Title = "Check Fruits",
-        Description = "Check your inventory for target fruits.",
-        Callback = function() checkFruits(targetFruits) end
-    })
+    Tabs.Fishing:AddButton({"Check Fruits", function() checkFruits(targetFruits) end})
     
-    Tabs.Fishing:AddToggle("T_StoreFruitsManual", {
-        Title = "Store Fruits",
+    Toggles.T_StoreFruitsManual = Tabs.Fishing:AddToggle({ Name = "Store Fruits",
         Description = "Store target fruits (keeps in inventory if full).",
         Default = false,
         Callback = function(Value)
             if Value then
-                if Fluent.Options.T_DropFruitsManual and Fluent.Options.T_DropFruitsManual.Value then
-                    Fluent:Notify({ Title = "Action Prevented", Content = "Cannot store fruits while dropping is active!", Duration = 3 })
-                    task.spawn(function() Fluent.Options.T_StoreFruitsManual:SetValue(false) end)
+                if Toggles.T_DropFruitsManual and Toggles.T_DropFruitsManual.Value then
+                    game.StarterGui:SetCore("SendNotification", {Name = "Action Prevented", Text = "Cannot store fruits while dropping is active!", Duration = 3 })
+                    task.spawn(function() if Toggles.T_StoreFruitsManual then Toggles.T_StoreFruitsManual:Set(false) end end)
                     return
                 end
                 getgenv()._cancelStoreFruits = false
                 task.spawn(function()
                     storeFruits(targetFruits)
-                    if Fluent.Options.T_StoreFruitsManual and Fluent.Options.T_StoreFruitsManual.Value then
-                        Fluent.Options.T_StoreFruitsManual:SetValue(false)
+                    if Toggles.T_StoreFruitsManual and Toggles.T_StoreFruitsManual.Value then
+                        if Toggles.T_StoreFruitsManual then Toggles.T_StoreFruitsManual:Set(false) end
                     end
                 end)
             else
@@ -2920,27 +2790,26 @@ Tabs.Teleport:AddButton({
         end
     })
     
-    Tabs.Fishing:AddToggle("T_DropFruitsManual", {
-        Title = "Drop Fruits",
+    Toggles.T_DropFruitsManual = Tabs.Fishing:AddToggle({ Name = "Drop Fruits",
         Description = "Force drop all target fruits.",
         Default = false,
         Callback = function(Value)
             if Value then
-                if Fluent.Options.T_StoreFruitsManual and Fluent.Options.T_StoreFruitsManual.Value then
-                    Fluent:Notify({ Title = "Action Prevented", Content = "Cannot drop fruits while manual storing is active!", Duration = 3 })
-                    task.spawn(function() Fluent.Options.T_DropFruitsManual:SetValue(false) end)
+                if Toggles.T_StoreFruitsManual and Toggles.T_StoreFruitsManual.Value then
+                    game.StarterGui:SetCore("SendNotification", {Name = "Action Prevented", Text = "Cannot drop fruits while manual storing is active!", Duration = 3 })
+                    task.spawn(function() if Toggles.T_DropFruitsManual then Toggles.T_DropFruitsManual:Set(false) end end)
                     return
                 end
-                if Fluent.Options.T_AutoStoreFruit and Fluent.Options.T_AutoStoreFruit.Value then
-                    Fluent:Notify({ Title = "Action Prevented", Content = "Please turn off Auto Store Fruit before dropping!", Duration = 3 })
-                    task.spawn(function() Fluent.Options.T_DropFruitsManual:SetValue(false) end)
+                if Toggles.T_AutoStoreFruit and Toggles.T_AutoStoreFruit.Value then
+                    game.StarterGui:SetCore("SendNotification", {Title = "Action Prevented", Text = "Please turn off Auto Store Fruit before dropping!", Duration = 3})
+                    task.spawn(function() if Toggles.T_DropFruitsManual then Toggles.T_DropFruitsManual:Set(false) end end)
                     return
                 end
                 getgenv()._cancelDropFruits = false
                 task.spawn(function()
                     dropFruits(targetFruits)
-                    if Fluent.Options.T_DropFruitsManual and Fluent.Options.T_DropFruitsManual.Value then
-                        Fluent.Options.T_DropFruitsManual:SetValue(false)
+                    if Toggles.T_DropFruitsManual and Toggles.T_DropFruitsManual.Value then
+                        if Toggles.T_DropFruitsManual then Toggles.T_DropFruitsManual:Set(false) end
                     end
                 end)
             else
@@ -2950,15 +2819,14 @@ Tabs.Teleport:AddButton({
     })
     
     local autoStoreEnabled = false
-    Tabs.Fishing:AddToggle("T_AutoStoreFruit", { 
-        Title = "Auto Store Fruit (10 Minutes)", 
+    Toggles.T_AutoStoreFruit = Tabs.Fishing:AddToggle({ Name = "Auto Store Fruit (10 Minutes)", 
         Default = false, 
         Callback = function(Value)
             autoStoreEnabled = Value
             if autoStoreEnabled then
-                if Fluent.Options.T_DropFruitsManual and Fluent.Options.T_DropFruitsManual.Value then
-                    Fluent:Notify({ Title = "Action Prevented", Content = "Cannot enable Auto Store while dropping!", Duration = 3 })
-                    task.spawn(function() Fluent.Options.T_AutoStoreFruit:SetValue(false) end)
+                if Toggles.T_DropFruitsManual and Toggles.T_DropFruitsManual.Value then
+                    game.StarterGui:SetCore("SendNotification", {Name = "Action Prevented", Text = "Cannot enable Auto Store while dropping!", Duration = 3 })
+                    task.spawn(function() if Toggles.T_AutoStoreFruit then Toggles.T_AutoStoreFruit:Set(false) end end)
                     return
                 end
                 task.spawn(function()
@@ -2973,7 +2841,7 @@ Tabs.Teleport:AddButton({
     })
 
     -- Status Monitor
-    local StatusPara = Tabs.Fishing:AddParagraph({ Title = "Status", Content = "Idle" })
+    local StatusPara = Tabs.Fishing:AddParagraph({"Status", "Idle"})
     local statusParts = {}
     task.spawn(function()
         while _running and task.wait(1) do
@@ -2988,7 +2856,7 @@ Tabs.Teleport:AddButton({
                 StatusPara:SetDesc("Status: " .. Model.State.travelMessage)
                 if Model.State.travelMessage == "Arrived at Bait" and Model.State.waitingForArrivalToFish then
                     Model.State.waitingForArrivalToFish = false
-                    if Fluent and Fluent.Options and Fluent.Options.T_Fish then Fluent.Options.T_Fish:SetValue(true) end -- Automatically turn on fishing toggle in UI
+                    if Toggles.T_Fish then Toggles.T_Fish:Set(true) end -- Automatically turn on fishing toggle in UI
                 end
             else
                 StatusPara:SetDesc(#statusParts > 0 and ("Active: " .. table.concat(statusParts, " ")) or "Idle")
@@ -2997,39 +2865,38 @@ Tabs.Teleport:AddButton({
     end)
     
     if not isLobby and GetCurrentPSCode() == GlobalMem.FishmanPSCode and GlobalMem.FishmanPSCode ~= "" then
-        Fluent:Notify({ Title = "Detection", Content = "Target Server " .. tostring(GlobalMem.FishmanPSCode) .. " Detected.", Duration = 5 })
+        game.StarterGui:SetCore("SendNotification", {Title = "Detection", Text = "Target Server ", Duration = 5})
     end
 
 -- ======================================================================
 -- 🤖 AUTOFARM TAB UI
 -- ======================================================================
-Tabs.Autofarm:AddToggle("T_CyborgAuto", { 
-    Title = "Toggle Cyborg Autofarm", 
+Toggles.T_CyborgAuto = Tabs.Autofarm:AddToggle({ Name = "Toggle Cyborg Autofarm", 
     Default = false, 
     Callback = function(Value)
         if isLobby then 
             if Value then 
-                Fluent:Notify({ Title = "Error", Content = "Cannot farm in Lobby!", Duration = 3 }) 
-                if Fluent.Options.T_CyborgAuto then Fluent.Options.T_CyborgAuto:SetValue(false) end 
+                game.StarterGui:SetCore("SendNotification", {Name = "Error", Text = "Cannot farm in Lobby!", Duration = 3 }) 
+                if Toggles.T_CyborgAuto then Toggles.T_CyborgAuto:Set(false) end 
             end 
             return 
         end
 
         if Value then
             -- Temporarily turn off auto store fruit if it was on
-            if Fluent and Fluent.Options and Fluent.Options.T_AutoStoreFruit then
-                getgenv()._wasAutoStoreFruitOn = Fluent.Options.T_AutoStoreFruit.Value
+            if Toggles.T_AutoStoreFruit then
+                getgenv()._wasAutoStoreFruitOn = Toggles.T_AutoStoreFruit.Value
                 if getgenv()._wasAutoStoreFruitOn then
-                    Fluent.Options.T_AutoStoreFruit:SetValue(false)
-                    Fluent:Notify({ Title = "System", Content = "Auto Store Fruit paused during Cyborg Autofarm", Duration = 3 })
+                    if Toggles.T_AutoStoreFruit then Toggles.T_AutoStoreFruit:Set(false) end
+                    game.StarterGui:SetCore("SendNotification", {Title = "System", Text = "Auto Store Fruit paused during Cyborg Autofarm", Duration = 3})
                 end
             end
         else
             -- Restore auto store fruit if it was previously on
-            if getgenv()._wasAutoStoreFruitOn and Fluent and Fluent.Options and Fluent.Options.T_AutoStoreFruit then
-                Fluent.Options.T_AutoStoreFruit:SetValue(true)
+            if getgenv()._wasAutoStoreFruitOn and Fluent and Fluent.Options and Toggles.T_AutoStoreFruit then
+                if Toggles.T_AutoStoreFruit then Toggles.T_AutoStoreFruit:Set(true) end
                 getgenv()._wasAutoStoreFruitOn = false
-                Fluent:Notify({ Title = "System", Content = "Auto Store Fruit resumed", Duration = 3 })
+                game.StarterGui:SetCore("SendNotification", {Title = "System", Text = "Auto Store Fruit resumed", Duration = 3})
             end
         end
 
@@ -3056,81 +2923,59 @@ Tabs.Autofarm:AddToggle("T_CyborgAuto", {
 })
 
 
-Tabs.Autofarm:AddButton({                   
-    Title = "Load MeleeFactory",
-    Description = "Executes the Melee Factory script.",
-    Callback = function()
+Tabs.Autofarm:AddButton({"Load MeleeFactory", function()
         local scriptURL = "https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/main/MSTACK/meleefactory.lua?t="..tostring(tick())
         loadstring(game:HttpGet(scriptURL))()
-        Fluent:Notify({ Title = "MeleeFactory Loaded", Content = "MeleeFactory script initialized.", Duration = 3 })
+        game.StarterGui:SetCore("Send})
     end
 })
 
-Tabs.Autofarm:AddButton({                   
-    Title = "Auto Reroll Skypian",
-    Description = "Executes the auto reroll skypian script.",
-    Callback = function()
+Tabs.Autofarm:AddButton({"Auto Reroll Skypian", function()
         local scriptURL = "https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/main/MSTACK/auto_reroll_skypian.lua?t="..tostring(tick())
         loadstring(game:HttpGet(scriptURL))()
-        Fluent:Notify({ Title = "Skypian Reroll Loaded", Content = "Auto reroll script initialized.", Duration = 3 })
+        game.StarterGui:SetCore("Send})
     end
 })
 
-Tabs.Autofarm:AddButton({                   
-    Title = "Load CombinedAutoLoad (Autofarm)",
-    Description = "Executes the script and queues it for future teleports.",
-    Callback = function()
+Tabs.Autofarm:AddButton({"Load CombinedAutoLoad (Autofarm)", function()
         getgenv().FishmanAllowAutoLoad = true
         local scriptURL = "https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/CombinedAutoLoad.lua"
         
         -- Execute the script. It will automatically queue itself for future teleports.
         loadstring(game:HttpGet(scriptURL))()
         
-        Fluent:Notify({ Title = "Autofarm Loaded", Content = "Auto-farm initialized and queued.", Duration = 3 })
+        game.StarterGui:SetCore("Send})
     end
 })
 
-Tabs.Autofarm:AddButton({
-    Title = "Stop & Clear Autofarm Queue",
-    Description = "Tries to halt the autofarm and wipes the teleport queue.",
-    Callback = function()
+Tabs.Autofarm:AddButton({"Stop & Clear Autofarm Queue", function()
         getgenv().FishmanAutoFarmRunning = false
         
         -- Attempt to clear the exploit teleport queue so it stops following you
         local clear_queue = clear_teleport_queue or (syn and syn.clear_teleport_queue) or (fluxus and fluxus.clear_teleport_queue)
         if clear_queue then
             pcall(clear_queue)
-        end
-        
-        -- Attempt to call any generic stop functions from Controller.lua if they exist
-        if typeof(getgenv().StopAutofarm) == "function" then pcall(getgenv().StopAutofarm) end
-        
-        Fluent:Notify({ Title = "Autofarm Halted", Content = "Queue cleared. If loops are still running, please manually rejoin.", Duration = 5 })
+        end})
     end
 })
 
 -- ======================================================================
 -- ⚙️ SETTINGS TAB UI
 -- ======================================================================
-Tabs.Settings:AddToggle("T_AutoReconnect", { 
-    Title = "Auto Reconnect on Disconnect", 
+Toggles.T_AutoReconnect = Tabs.Settings:AddToggle({ Name = "Auto Reconnect on Disconnect", 
     Default = GlobalMem.FishmanAutoReconnect, 
     Callback = function(Value)
         GlobalMem.FishmanAutoReconnect = Value
         SaveConfig()
-    end 
-})
+    end })
 
-Tabs.Settings:AddToggle("T_AntiLag", { 
-    Title = "Disable 3D Rendering (Anti-Lag)", 
+Toggles.T_AntiLag = Tabs.Settings:AddToggle({ Name = "Disable 3D Rendering (Anti-Lag)", 
     Default = false, 
     Callback = function(Value)
         RunService:Set3dRenderingEnabled(not Value)
-    end 
-})
+    end })
 
-Tabs.Settings:AddSlider("S_FPSCap", {
-    Title = "FPS Cap",
+Toggles.S_FPSCap = Tabs.Settings:AddSlider({ Name = "FPS Cap",
     Description = "Limits your FPS to reduce CPU/GPU usage when AFKing.",
     Default = 35,
     Min = 5,
@@ -3138,22 +2983,14 @@ Tabs.Settings:AddSlider("S_FPSCap", {
     Rounding = 0,
     Callback = function(Value)
         if setfpscap then pcall(setfpscap, Value) end
-    end
-})
+    end })
 
-Tabs.Settings:AddButton({
-    Title = "🥔 Potato Graphics",
-    Description = "Reduces all game graphics to the absolute minimum for maximum FPS.",
-    Callback = function()
+Tabs.Settings:AddButton({"🥔 Potato Graphics", function()
         ActivatePotatoGraphics()
-    end
-})
+    end})
 
-Tabs.Settings:AddButton({
-    Title = "🔄 Update / Load Latest Version",
-    Description = "Destroys the current UI and executes the latest joinersystem from GitHub.",
-    Callback = function()
-        Fluent:Notify({ Title = "Updating", Content = "Fetching latest script from GitHub...", Duration = 3 })
+Tabs.Settings:AddButton({"🔄 Update / Load Latest Version", function()
+        game.StarterGui:SetCore("Send})
         ShutdownEverything()
         if Window and Window.Destroy then
             Window:Destroy()
@@ -3163,32 +3000,22 @@ Tabs.Settings:AddButton({
     end
 })
 
-Tabs.Settings:AddButton({
-    Title = "Destroy UI & Shutdown",
-    Description = "Cleans up all loops, unloads the UI, and stops the script safely.",
-    Callback = function()
+Tabs.Settings:AddButton({"Destroy UI & Shutdown", function()
         ShutdownEverything()
         if Window and Window.Destroy then
             Window:Destroy()
         end
+    end})
+
+
+game.StarterGui:SetCore("SendNotification", {Title = "Fishman Unified", Text = "Script loaded successfully!", Duration = 5})
+
     end
-})
-
-Window:SelectTab(isLobby and 1 or 2)
-Fluent:Notify({ Title = "Fishman Unified", Content = "Script loaded successfully!", Duration = 5 })
-
--- ======================================================================
--- 📱 MOBILE TOGGLE BUTTON
--- ======================================================================
-pcall(function()
-    local CoreGui = game:GetService("CoreGui")
-    local ToggleGui = Instance.new("ScreenGui")
-    ToggleGui.Name = "FishmanMobileToggle"
-    ToggleGui.ResetOnSpawn = false
-    
-    local success = pcall(function() ToggleGui.Parent = CoreGui end)
-    if not success then
-        ToggleGui.Parent = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
+    if not safeParent then
+        pcall(function() safeParent = game:GetService("CoreGui") end)
+    end
+    if safeParent then
+        ToggleGui.Parent = safeParent
     end
 
     local ToggleButton = Instance.new("TextButton")
@@ -3206,7 +3033,7 @@ pcall(function()
     corner.CornerRadius = UDim.new(0, 8)
     corner.Parent = ToggleButton
 
-    ToggleButton.MouseButton1Click:Connect(function()
+    ToggleButton.Activated:Connect(function()
         -- Attempt to toggle Fluent Window safely
         local toggled = false
         pcall(function()
@@ -3217,9 +3044,8 @@ pcall(function()
         end)
         
         -- Fallback: manually toggle visibility of Fluent ScreenGuis if method doesn't exist
-        if not toggled then
-            local targetParent = success and CoreGui or game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
-            for _, v in pairs(targetParent:GetChildren()) do
+        if not toggled and safeParent then
+            for _, v in pairs(safeParent:GetChildren()) do
                 if v:IsA("ScreenGui") and v.Name ~= "FishmanMobileToggle" then
                     -- Fluent usually creates Guis with random names, but they have frames inside
                     local hasFrame = v:FindFirstChildWhichIsA("Frame", true)
@@ -3242,12 +3068,12 @@ addConn(UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if input.KeyCode == Enum.KeyCode.F then
         isPaused = not isPaused
         if isPaused then
-            Fluent:Notify({ Title = "🛑 Emergency Stop", Content = "Script paused! Press F again to resume.", Duration = 5 })
+            game.StarterGui:SetCore("SendNotification", {Title = "🛑 Emergency Stop", Text = "Script paused! Press F again to resume.", Duration = 5})
             
             -- Stop Auto Start state (AFK Mode)
             isAFKModeActive = false
-            if Fluent.Options and Fluent.Options.T_AFK then
-                Fluent.Options.T_AFK:SetValue(false)
+            if Fluent.Options and Toggles.T_AFK then
+                if Toggles.T_AFK then Toggles.T_AFK:Set(false) end
             end
 
             if Model and Model.State then
@@ -3259,10 +3085,10 @@ addConn(UserInputService.InputBegan:Connect(function(input, gameProcessed)
                     isAutoTraveling = Model.State.isAutoTraveling,
                     autoCraft = Model.State.autoCraft,
                     isCurrentlyCrafting = Model.State.isCurrentlyCrafting,
-                    antiLag = (Fluent.Options and Fluent.Options.T_AntiLag) and Fluent.Options.T_AntiLag.Value or false,
-                    deepSea = (Fluent and Fluent.Options and Fluent.Options.T_DeepSea) and Fluent.Options.T_DeepSea.Value or false,
-                    megStack = (Fluent and Fluent.Options and Fluent.Options.T_MegStack) and Fluent.Options.T_MegStack.Value or false,
-                    megStackLoc = (Fluent and Fluent.Options and Fluent.Options.T_MegStackLoc) and Fluent.Options.T_MegStackLoc.Value or false
+                    antiLag = (Fluent.Options and Toggles.T_AntiLag) and Toggles.T_AntiLag.Value or false,
+                    deepSea = (Toggles.T_DeepSea) and Toggles.T_DeepSea.Value or false,
+                    megStack = (Toggles.T_MegStack) and Toggles.T_MegStack.Value or false,
+                    megStackLoc = (Toggles.T_MegStackLoc) and Toggles.T_MegStackLoc.Value or false
                 }
 
                 -- Force stop everything instantly
@@ -3276,16 +3102,16 @@ addConn(UserInputService.InputBegan:Connect(function(input, gameProcessed)
                 Model.State.isBuying = false
                 
                 -- Update UI toggles to visually show they are off
-                if Fluent.Options then
-                    if Fluent.Options.T_Fish then Fluent.Options.T_Fish:SetValue(false) end
-                    -- if Fluent.Options.T_Buy then Fluent.Options.T_Buy:SetValue(false) end
-                    if Fluent.Options.T_Sell then Fluent.Options.T_Sell:SetValue(false) end
-                    if Fluent.Options.T_Travel then Fluent.Options.T_Travel:SetValue(false) end
-                    if Fluent.Options.T_Craft then Fluent.Options.T_Craft:SetValue(false) end
-                    if Fluent.Options.T_AntiLag then Fluent.Options.T_AntiLag:SetValue(false) end
-                    if Fluent.Options.T_DeepSea then Fluent.Options.T_DeepSea:SetValue(false) end
-                    if Fluent.Options.T_MegStack then Fluent.Options.T_MegStack:SetValue(false) end
-                    if Fluent.Options.T_MegStackLoc then Fluent.Options.T_MegStackLoc:SetValue(false) end
+                if true then
+                    if Toggles.T_Fish then Toggles.T_Fish:Set(false) end
+                    -- if Toggles.T_Buy then Toggles.T_Buy:Set(false) end
+                    if Toggles.T_Sell then Toggles.T_Sell:Set(false) end
+                    if Toggles.T_Travel then Toggles.T_Travel:Set(false) end
+                    if Toggles.T_Craft then Toggles.T_Craft:Set(false) end
+                    if Toggles.T_AntiLag then Toggles.T_AntiLag:Set(false) end
+                    if Toggles.T_DeepSea then Toggles.T_DeepSea:Set(false) end
+                    if Toggles.T_MegStack then Toggles.T_MegStack:Set(false) end
+                    if Toggles.T_MegStackLoc then Toggles.T_MegStackLoc:Set(false) end
                 end
 
                 -- Abort actions
@@ -3303,7 +3129,7 @@ addConn(UserInputService.InputBegan:Connect(function(input, gameProcessed)
                 end)
             end
         else
-            Fluent:Notify({ Title = "▶️ Resumed", Content = "Script restored to previous tasks.", Duration = 5 })
+            game.StarterGui:SetCore("SendNotification", {Title = "▶️ Resumed", Text = "Script restored to previous tasks.", Duration = 5})
 
             if Model and Model.State then
                 -- Restore previously active tasks
@@ -3314,16 +3140,16 @@ addConn(UserInputService.InputBegan:Connect(function(input, gameProcessed)
                 Model.State.autoCraft = savedState.autoCraft or false
                 
                 -- Update UI toggles visually to match restored state
-                if Fluent.Options then
-                    if Fluent.Options.T_Fish then Fluent.Options.T_Fish:SetValue(Model.State.isFishing) end
-                    if Fluent.Options.T_Buy then Fluent.Options.T_Buy:SetValue(Model.State.autoBuy) end
-                    if Fluent.Options.T_Sell then Fluent.Options.T_Sell:SetValue(Model.State.autoSell) end
-                    if Fluent.Options.T_Travel then Fluent.Options.T_Travel:SetValue(Model.State.isAutoTraveling) end
-                    if Fluent.Options.T_Craft then Fluent.Options.T_Craft:SetValue(Model.State.autoCraft) end
-                    if Fluent.Options.T_AntiLag and savedState.antiLag then Fluent.Options.T_AntiLag:SetValue(true) end
-                    if Fluent.Options.T_DeepSea then Fluent.Options.T_DeepSea:SetValue(savedState.deepSea) end
-                    if Fluent.Options.T_MegStack then Fluent.Options.T_MegStack:SetValue(savedState.megStack) end
-                    if Fluent.Options.T_MegStackLoc then Fluent.Options.T_MegStackLoc:SetValue(savedState.megStackLoc) end
+                if true then
+                    if Toggles.T_Fish then Toggles.T_Fish:Set(Model.State.isFishing) end
+                    if Toggles.T_Buy then Toggles.T_Buy:Set(Model.State.autoBuy) end
+                    if Toggles.T_Sell then Toggles.T_Sell:Set(Model.State.autoSell) end
+                    if Toggles.T_Travel then Toggles.T_Travel:Set(Model.State.isAutoTraveling) end
+                    if Toggles.T_Craft then Toggles.T_Craft:Set(Model.State.autoCraft) end
+                    if Toggles.T_AntiLag and savedState.antiLag then if Toggles.T_AntiLag then Toggles.T_AntiLag:Set(true) end end
+                    if Toggles.T_DeepSea then Toggles.T_DeepSea:Set(savedState.deepSea) end
+                    if Toggles.T_MegStack then Toggles.T_MegStack:Set(savedState.megStack) end
+                    if Toggles.T_MegStackLoc then Toggles.T_MegStackLoc:Set(savedState.megStackLoc) end
                 end
 
                 -- Resume traveling if needed
