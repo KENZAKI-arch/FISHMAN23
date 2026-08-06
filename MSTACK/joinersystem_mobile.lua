@@ -2017,16 +2017,59 @@ function redzlib:MakeWindow(config)
     local normalSize = UDim2.new(0, 500, 0, 350)
     local normalPos = mainFrame.Position
     
+    local resizeHandle = Instance.new("TextButton")
+    resizeHandle.Name = "ResizeHandle"
+    resizeHandle.Size = UDim2.new(0, 20, 0, 20)
+    resizeHandle.Position = UDim2.new(1, -20, 1, -20)
+    resizeHandle.BackgroundTransparency = 1
+    resizeHandle.Text = "◢"
+    resizeHandle.TextColor3 = Color3.fromRGB(150, 150, 150)
+    resizeHandle.TextSize = 14
+    resizeHandle.Parent = mainFrame
+
+    local UserInputService = game:GetService("UserInputService")
+    local resizing = false
+    local dragStartPos = nil
+    local startSize = nil
+
+    resizeHandle.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            resizing = true
+            dragStartPos = input.Position
+            startSize = mainFrame.AbsoluteSize
+        end
+    end)
+
+    UserInputService.InputChanged:Connect(function(input)
+        if resizing and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            local delta = input.Position - dragStartPos
+            local newWidth = math.max(300, startSize.X + delta.X)
+            local newHeight = math.max(200, startSize.Y + delta.Y)
+            mainFrame.Size = UDim2.new(0, newWidth, 0, newHeight)
+        end
+    end)
+
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            if resizing then
+                resizing = false
+                normalSize = mainFrame.Size
+            end
+        end
+    end)
+
     minimizeBtn.MouseButton1Click:Connect(function()
         isMinimized = not isMinimized
         if isMinimized then
             mainFrame.Size = UDim2.new(normalSize.X.Scale, normalSize.X.Offset, 0, 40)
             tabContainer.Visible = false
             contentContainer.Visible = false
+            resizeHandle.Visible = false
         else
             mainFrame.Size = normalSize
             tabContainer.Visible = true
             contentContainer.Visible = true
+            resizeHandle.Visible = true
         end
     end)
     
