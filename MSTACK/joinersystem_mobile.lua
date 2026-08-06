@@ -1374,7 +1374,7 @@ if not isLobby then
                             end
                             
                             task.wait(0.1)
-                            bWaited += 0.1
+                            bWaited = bWaited + 0.1
                         end
                         
                         if beastDetected then
@@ -1414,7 +1414,7 @@ if not isLobby then
                         break
                     end
                 end
-                task.wait(0.1); waited += 0.1
+                task.wait(0.1); waited = waited + 0.1
             end
         end
         pcall(function() Remote:InvokeServer({ Action = "Cancel" }) end)
@@ -1427,7 +1427,7 @@ if not isLobby then
     task.spawn(function()
         while _running and task.wait(1) do
             if isAFKModeActive then
-                secondsSinceLastInput += 1
+                secondsSinceLastInput = secondsSinceLastInput + 1
                 if secondsSinceLastInput == 10 then
                     if true then
                         if Toggles.T_Buy then Toggles.T_Buy:Set(true) end
@@ -1453,23 +1453,25 @@ if not isLobby then
 
     task.spawn(function()
         while _running and task.wait(3) do
-            if not Model.State.autoCraft or Model.State.isCurrentlyCrafting then continue end
-            local inventoryData = Model.GetInventoryData()
-            if not inventoryData then continue end
-            local craftQueue = {}
-            local totalBatches = 0
-            for _, legFish in ipairs(LEGENDARY_FISHES) do
-                local fishCount = inventoryData[legFish] or 0
-                if fishCount >= 40 then
-                    local timesToCraft = math.floor(fishCount / 40)
-                    table.insert(craftQueue, { Name = legFish, Batches = timesToCraft })
-                    totalBatches += timesToCraft
+            if Model.State.autoCraft and not Model.State.isCurrentlyCrafting then
+                local inventoryData = Model.GetInventoryData()
+                if inventoryData then
+                    local craftQueue = {}
+                    local totalBatches = 0
+                    for _, legFish in ipairs(LEGENDARY_FISHES) do
+                        local fishCount = inventoryData[legFish] or 0
+                        if fishCount >= 40 then
+                            local timesToCraft = math.floor(fishCount / 40)
+                            table.insert(craftQueue, { Name = legFish, Batches = timesToCraft })
+                            totalBatches = totalBatches + timesToCraft
+                        end
+                    end
+                    if totalBatches > 0 then
+                        Model.State.isCurrentlyCrafting = true
+                        Model.ExecuteLegendaryCraft(craftQueue)
+                        Model.State.isCurrentlyCrafting = false
+                    end
                 end
-            end
-            if totalBatches > 0 then
-                Model.State.isCurrentlyCrafting = true
-                Model.ExecuteLegendaryCraft(craftQueue)
-                Model.State.isCurrentlyCrafting = false
             end
         end
     end)
@@ -2242,13 +2244,14 @@ Tabs.Teleport:AddButton({"⬇️ Reset to Normal", function()
 
     local selectedIslandPos = nil
 
-    local D_Island = Toggles.D_Island = Tabs.Navigation:AddDropdown({ Name = "Select Island",
+    local D_Island = Tabs.Navigation:AddDropdown({ Name = "Select Island",
         Options = islandNames,
         Multi = false,
         Default = islandNames[1],
         Callback = function(Value)
             selectedIslandPos = islandPositions[Value]
         end })
+    Toggles.D_Island = D_Island
     
     Tabs.Navigation:AddButton({"🔄 Refresh Islands", function()
             refreshIslands()
@@ -3008,7 +3011,6 @@ Tabs.Settings:AddButton({"Destroy UI & Shutdown", function()
 
 game.StarterGui:SetCore("SendNotification", {Title = "Fishman Unified", Text = "Script loaded successfully!", Duration = 5})
 
-    end
     if not safeParent then
         pcall(function() safeParent = game:GetService("CoreGui") end)
     end
@@ -3054,7 +3056,6 @@ game.StarterGui:SetCore("SendNotification", {Title = "Fishman Unified", Text = "
             end
         end
     end)
-end)
 
 local isPaused = false
 local savedState = {}
