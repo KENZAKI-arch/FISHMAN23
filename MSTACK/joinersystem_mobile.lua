@@ -2066,7 +2066,7 @@ end
             GlobalMem.FishmanAutoTeleport = true
             SaveConfig()
             
-            game.StarterGui:SetCore("Send})
+            game.StarterGui:SetCore("SendNotification", {Title = "Teleport", Text = "Returning to Base...", Duration = 3})
             
             ExecuteTeleport(GlobalMem.FishmanDestination, GlobalMem.FishmanPSCode)
         end
@@ -2078,7 +2078,7 @@ end
             GlobalMem.FishmanAutoTeleport = true
             SaveConfig()
             
-            if Toggles.Input then if Toggles.Input then Toggles.Input:Set("qj1ttW4JG1") end})
+            if Toggles.Input then Toggles.Input:Set("qj1ttW4JG1") end
             
             ExecuteTeleport("tradeHub", "qj1ttW4JG1")
         end
@@ -2253,7 +2253,7 @@ Tabs.Teleport:AddButton({"⬇️ Reset to Normal", function()
     Tabs.Navigation:AddButton({"🔄 Refresh Islands", function()
             refreshIslands()
             D_Island:SetValues(islandNames)
-            game.StarterGui:SetCore("Send})
+            game.StarterGui:SetCore("SendNotification", {Title = "Refreshed", Text = "Islands list refreshed", Duration = 3})
         end
     })
     
@@ -2261,9 +2261,7 @@ Tabs.Teleport:AddButton({"⬇️ Reset to Normal", function()
     
     Tabs.Navigation:AddButton({"🛫 Start Flight", function()
             local character = LocalPlayer.Character
-            if not character or not character.PrimaryPart then return end})
-                return
-            end
+            if not character or not character.PrimaryPart then return end
             
             if not selectedIslandPos then
                 game.StarterGui:SetCore("SendNotification", {Title = "No Island", Text = "Please select a valid island first.", Duration = 3})
@@ -2293,7 +2291,7 @@ Tabs.Teleport:AddButton({"⬇️ Reset to Normal", function()
             if Model.State.activeNavigation and Model.State.activeNavigation._isNavigating then
                 local isPaused = Model.State.activeNavigation:TogglePause()
                 if isPaused then
-                    game.StarterGui:SetCore("Send})
+                    game.StarterGui:SetCore("SendNotification", {Title = "Paused", Text = "Flight paused.", Duration = 3})
                 else
                     game.StarterGui:SetCore("SendNotification", {Title = "Resumed", Text = "Flight resumed.", Duration = 3})
                 end
@@ -2306,7 +2304,7 @@ Tabs.Teleport:AddButton({"⬇️ Reset to Normal", function()
                 Model.State.activeNavigation:Cancel()
                 Model.State.activeNavigation = nil
                 flightStatus:SetDesc("Idle")
-                game.StarterGui:SetCore("Send})
+                game.StarterGui:SetCore("SendNotification", {Title = "Cancelled", Text = "Flight cancelled.", Duration = 3})
             end
         end
     })
@@ -2704,7 +2702,7 @@ Tabs.Teleport:AddButton({"⬇️ Reset to Normal", function()
     end })
     
     Tabs.Fishing:AddButton({"Return to Hoverboard", function()
-            if isLobby then game.StarterGui:SetCore("Send}); return end
+            if isLobby then game.StarterGui:SetCore("SendNotification", {Title = "Error", Text = "Cannot return to hoverboard in Lobby!", Duration = 3}); return end
             task.spawn(function()
                 local success = Model.ReturnToShip()
                 if success then
@@ -2754,7 +2752,7 @@ Tabs.Teleport:AddButton({"⬇️ Reset to Normal", function()
     end })
     Tabs.Fishing:AddButton({"🔨 Craft All Legendary Fish Now", function()
             if isLobby then
-                game.StarterGui:SetCore("Send})
+                game.StarterGui:SetCore("SendNotification", {Title = "Error", Text = "Cannot craft in Lobby!", Duration = 3})
                 return
             end
             task.spawn(Model.ForceCraftAll)
@@ -2926,14 +2924,14 @@ Toggles.T_CyborgAuto = Tabs.Autofarm:AddToggle({ Name = "Toggle Cyborg Autofarm"
 Tabs.Autofarm:AddButton({"Load MeleeFactory", function()
         local scriptURL = "https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/main/MSTACK/meleefactory.lua?t="..tostring(tick())
         loadstring(game:HttpGet(scriptURL))()
-        game.StarterGui:SetCore("Send})
+        game.StarterGui:SetCore("SendNotification", {Title = "Loaded", Text = "MeleeFactory loaded", Duration = 3})
     end
 })
 
 Tabs.Autofarm:AddButton({"Auto Reroll Skypian", function()
         local scriptURL = "https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/main/MSTACK/auto_reroll_skypian.lua?t="..tostring(tick())
         loadstring(game:HttpGet(scriptURL))()
-        game.StarterGui:SetCore("Send})
+        game.StarterGui:SetCore("SendNotification", {Title = "Loaded", Text = "Auto Reroll Skypian loaded", Duration = 3})
     end
 })
 
@@ -2944,7 +2942,7 @@ Tabs.Autofarm:AddButton({"Load CombinedAutoLoad (Autofarm)", function()
         -- Execute the script. It will automatically queue itself for future teleports.
         loadstring(game:HttpGet(scriptURL))()
         
-        game.StarterGui:SetCore("Send})
+        game.StarterGui:SetCore("SendNotification", {Title = "Loaded", Text = "CombinedAutoLoad loaded", Duration = 3})
     end
 })
 
@@ -2955,7 +2953,7 @@ Tabs.Autofarm:AddButton({"Stop & Clear Autofarm Queue", function()
         local clear_queue = clear_teleport_queue or (syn and syn.clear_teleport_queue) or (fluxus and fluxus.clear_teleport_queue)
         if clear_queue then
             pcall(clear_queue)
-        end})
+        end
     end
 })
 
@@ -2990,7 +2988,7 @@ Tabs.Settings:AddButton({"🥔 Potato Graphics", function()
     end})
 
 Tabs.Settings:AddButton({"🔄 Update / Load Latest Version", function()
-        game.StarterGui:SetCore("Send})
+        game.StarterGui:SetCore("SendNotification", {Title = "Updating", Text = "Loading latest version...", Duration = 3})
         ShutdownEverything()
         if Window and Window.Destroy then
             Window:Destroy()
