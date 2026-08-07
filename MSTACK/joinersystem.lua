@@ -1,4 +1,4 @@
--- Version 3.8
+-- Version 3.9
 -- ======================================================================
 -- 🛑 GLOBAL SETUP & DUPLICATE PREVENTION
 -- ======================================================================
@@ -233,9 +233,10 @@ local Model = { State = {} }
 local shopEvent, buyableItems, sellEvent, questEvent, craftingRemote, Remote
 local statsFolder, inventoryObj, peliObject
 local cachedBaitItems = nil
-local loadedAnimations = {}
-local isAFKModeActive = false
-local secondsSinceLastInput = 0
+    local loadedAnimations = {}
+    addConn(LocalPlayer.CharacterAdded:Connect(function() table.clear(loadedAnimations) end))
+    local isAFKModeActive = false
+    local secondsSinceLastInput = 0
 local craftHeartbeatConn = nil
 local craftFlyTarget = nil
 
@@ -500,6 +501,7 @@ if not isLobby then
         end
 
         noclipConnection = RunService.Stepped:Connect(function()
+            if not _running then navigator:Cancel() return end
             if not navigator._isNavigating or navigator._isPaused then return end
             if object then
                 for _, part in ipairs(object:GetDescendants()) do
@@ -509,6 +511,7 @@ if not isLobby then
         end)
 
         connection = RunService.Heartbeat:Connect(function(deltaTime)
+            if not _running then navigator:Cancel() return end
             if not navigator._isNavigating then
                 navigator:Cancel()
                 return
@@ -1309,15 +1312,15 @@ if not isLobby then
                             end
                             
                             -- Listen for when the game clones the sound from ReplicatedStorage!
-                            workspace.DescendantAdded:Connect(onNewSound)
-                            game:GetService("SoundService").DescendantAdded:Connect(onNewSound)
+                            addConn(workspace.DescendantAdded:Connect(onNewSound))
+                            addConn(game:GetService("SoundService").DescendantAdded:Connect(onNewSound))
                             
                             if LocalPlayer.Character then
-                                LocalPlayer.Character.DescendantAdded:Connect(onNewSound)
+                                addConn(LocalPlayer.Character.DescendantAdded:Connect(onNewSound))
                             end
-                            LocalPlayer.CharacterAdded:Connect(function(char)
-                                char.DescendantAdded:Connect(onNewSound)
-                            end)
+                            addConn(LocalPlayer.CharacterAdded:Connect(function(char)
+                                addConn(char.DescendantAdded:Connect(onNewSound))
+                            end))
                             
                             -- Grab any that might already exist right now (just once, instantly)
                             local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
@@ -1536,7 +1539,11 @@ if not isLobby then
                 if character ~= lastCharacter then
                     lastCharacter = character
                     table.clear(noclipCache)
-                    if descAddedConn then descAddedConn:Disconnect() end
+                    if descAddedConn then
+                        descAddedConn:Disconnect()
+                        local idx = table.find(_connections, descAddedConn)
+                        if idx then table.remove(_connections, idx) end
+                    end
                     for _, part in ipairs(character:GetDescendants()) do
                         if part:IsA("BasePart") then table.insert(noclipCache, part) end
                     end
@@ -1561,6 +1568,7 @@ local function ShutdownEverything()
     if not isLobby then
         Model.DisableFlight()
     end
+    if getgenv().DSC_SoundCache then getgenv().DSC_SoundCache = nil end
     if getgenv().StopAutofarm then
         pcall(getgenv().StopAutofarm)
     end
@@ -1915,7 +1923,7 @@ end
 Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
 local Window = Fluent:CreateWindow({
     Title = "🐟 Fishman Hub",
-    SubTitle = "Unified Auto-Fisher 1.0.3 v3.8",
+    SubTitle = "Unified Auto-Fisher 1.0.3 v3.9",
     TabWidth = 160,
     Size = UDim2.fromOffset(500, 350),
     Theme = "Darker",
@@ -2384,7 +2392,7 @@ Tabs.Teleport:AddButton({
             Model.State.activeNavigation = Model.NavigateTo(character, selectedIslandPos, 90, 20)
             
             task.spawn(function()
-                while Model.State.activeNavigation and Model.State.activeNavigation._isNavigating do
+                while _running and Model.State.activeNavigation and Model.State.activeNavigation._isNavigating do
                     local nav = Model.State.activeNavigation
                     if nav._isPaused then
                         flightStatus:SetDesc("Paused (" .. tostring(nav.Distance) .. " studs)")
@@ -2620,7 +2628,7 @@ Tabs.Teleport:AddButton({
             if Fluent.Options.T_AutoReturn then Fluent.Options.T_AutoReturn:SetValue(true) end
             print("🌊 [MegStack] Meg stack starting now! Enabling deep sea catcher for 10 megalodons.")
             task.spawn(function()
-                while Model.State.isMegStacking do
+                while _running and Model.State.isMegStacking do
                     local megCount = Model.countMegalodons()
                     if megCount >= 10 and not Model.State.isBuying and not Model.State.isAutoTraveling and not Model.State.isRefillingMegBait and not Model.State.isManualTraveling then
                         print("🔥 [MegStack] 10 Megalodons reached! Disabling fishing and automatically toggling Cyborg Autofarm ON...")
@@ -2634,7 +2642,7 @@ Tabs.Teleport:AddButton({
                         
                         local waitTime = 0
                         local lastCount = Model.countMegalodons()
-                        while Model.countMegalodons() > 0 and Model.State.isMegStacking and waitTime < 180 do
+                        while _running and Model.countMegalodons() > 0 and Model.State.isMegStacking and waitTime < 180 do
                             task.wait(1)
                             waitTime = waitTime + 1
                             local curCount = Model.countMegalodons()
@@ -2964,7 +2972,7 @@ Tabs.Teleport:AddButton({
                     return
                 end
                 task.spawn(function()
-                    while autoStoreEnabled do
+                    while _running and autoStoreEnabled do
                         getgenv()._cancelStoreFruits = false
                         storeFruits(targetFruits)
                         task.wait(600)
