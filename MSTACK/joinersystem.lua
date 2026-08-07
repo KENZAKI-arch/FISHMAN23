@@ -500,15 +500,31 @@ if not isLobby then
             return result
         end
 
+        local cachedParts = {}
+        for _, part in ipairs(object:GetDescendants()) do
+            if part:IsA("BasePart") then table.insert(cachedParts, part) end
+        end
+        local descAdded = object.DescendantAdded:Connect(function(part)
+            if part:IsA("BasePart") then table.insert(cachedParts, part) end
+        end)
+
         noclipConnection = RunService.Stepped:Connect(function()
-            if not _running then navigator:Cancel() return end
+            if not _running then 
+                if descAdded then descAdded:Disconnect() end
+                navigator:Cancel() 
+                return 
+            end
             if not navigator._isNavigating or navigator._isPaused then return end
-            if object then
-                for _, part in ipairs(object:GetDescendants()) do
-                    if part:IsA("BasePart") then part.CanCollide = false end
-                end
+            for _, part in ipairs(cachedParts) do
+                if part.CanCollide then part.CanCollide = false end
             end
         end)
+        
+        local originalCancel = navigator.Cancel
+        function navigator:Cancel()
+            if descAdded then descAdded:Disconnect() end
+            originalCancel(self)
+        end
 
         connection = RunService.Heartbeat:Connect(function(deltaTime)
             if not _running then navigator:Cancel() return end
@@ -662,6 +678,9 @@ if not isLobby then
         return navigator
     end
     
+    local cachedTravelParams = RaycastParams.new()
+    cachedTravelParams.FilterType = Enum.RaycastFilterType.Exclude
+
     function Model.HandleMovement(deltaTime)
         local rootPart = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
         if not rootPart then return end
@@ -709,16 +728,14 @@ if not isLobby then
 
         local newY = cur.Y
         if Model.State.travelStage > 1 and not goingUp then
-            local params = RaycastParams.new()
-            params.FilterDescendantsInstances = {LocalPlayer.Character}
-            params.FilterType = Enum.RaycastFilterType.Exclude
+            cachedTravelParams.FilterDescendantsInstances = {LocalPlayer.Character}
 
             local floorY = tgtY
             local rayStart = Vector3.new(newX, cur.Y + 10, newZ)
             local remainingDist = 500
             
             while remainingDist > 0 do
-                local res = workspace:Raycast(rayStart, Vector3.new(0, -remainingDist, 0), params)
+                local res = workspace:Raycast(rayStart, Vector3.new(0, -remainingDist, 0), cachedTravelParams)
                 if res then
                     if res.Instance.CanCollide and res.Instance.Anchored then
                         floorY = math.max(tgtY, res.Position.Y + 3.5)
