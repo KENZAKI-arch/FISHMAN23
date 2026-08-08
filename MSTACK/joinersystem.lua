@@ -3188,6 +3188,112 @@ Tabs.Autofarm:AddButton({
     Description = "Opens shop and buys selected items if available.",
     Callback = function()
         task.spawn(function()
+            print("[Logic] Searching for Merchant location...")
+            local targetPos = nil
+            
+            local guider = game:GetService("ReplicatedStorage"):FindFirstChild("CompassGuider")
+            if guider then
+                for _, child in ipairs(guider:GetChildren()) do
+                    if string.find(string.lower(child.Name), "merchant") then
+                        if typeof(child.Value) == "Vector3" then
+                            targetPos = child.Value
+                            print("[Logic] Found Merchant in CompassGuider at: ", targetPos)
+                            break
+                        end
+                    end
+                end
+            end
+            
+            if not targetPos then
+                for _, obj in ipairs(game.Workspace:GetDescendants()) do
+                    if obj:IsA("Model") and string.find(string.lower(obj.Name), "merchant") and obj:FindFirstChild("HumanoidRootPart") then
+                        targetPos = obj.HumanoidRootPart.Position
+                        print("[Logic] Found Merchant Model in Workspace at: ", targetPos)
+                        break
+                    end
+                end
+            end
+            
+            if targetPos then
+                if Fluent then Fluent:Notify({ Title = "Merchant Auto-Buy", Content = "Pathfinding to Merchant...", Duration = 3 }) end
+                print("[Logic] Pathfinding to Merchant...")
+                local hrp = game:GetService("Players").LocalPlayer.Character and game:GetService("Players").LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+                if hrp then
+                    local PathfindingService = game:GetService("PathfindingService")
+                    local path = PathfindingService:CreatePath({
+                        AgentRadius = 3,
+                        AgentHeight = 5,
+                        AgentCanJump = true,
+                        WaypointSpacing = 4,
+                        Costs = { Water = 20 }
+                    })
+                    
+                    local success, err = pcall(function()
+                        path:ComputeAsync(hrp.Position, targetPos)
+                    end)
+                    
+                    if success and path.Status == Enum.PathStatus.Success then
+                        local waypoints = path:GetWaypoints()
+                        local bv = hrp:FindFirstChild("MerchantAntiGravity") or Instance.new("BodyVelocity")
+                        bv.Name = "MerchantAntiGravity"
+                        bv.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+                        bv.Velocity = Vector3.new(0, 0, 0)
+                        bv.Parent = hrp
+                        
+                        for i, waypoint in ipairs(waypoints) do
+                            if not _running then break end
+                            local wpPos = waypoint.Position
+                            wpPos = wpPos + Vector3.new(0, 5, 0)
+                            
+                            local stuckTimer = 0
+                            local lastDist = (hrp.Position - wpPos).Magnitude
+                            
+                            while _running and hrp.Parent do
+                                local dist = (hrp.Position - wpPos).Magnitude
+                                if dist <= 3 then break end
+                                
+                                local dt = task.wait()
+                                
+                                if lastDist - dist < 0.1 then
+                                    stuckTimer = stuckTimer + dt
+                                else
+                                    stuckTimer = 0
+                                    lastDist = dist
+                                end
+                                
+                                if stuckTimer > 0.5 then
+                                    for _, part in ipairs(hrp.Parent:GetDescendants()) do
+                                        if part:IsA("BasePart") then
+                                            part.CanCollide = false
+                                        end
+                                    end
+                                end
+                                
+                                local flySpeed = 50
+                                local lerpAlpha = math.clamp((flySpeed * dt) / dist, 0, 1)
+                                
+                                local lookAtCFrame
+                                if dist > 0.1 then
+                                    lookAtCFrame = CFrame.lookAt(hrp.Position, wpPos)
+                                else
+                                    lookAtCFrame = hrp.CFrame
+                                end
+                                
+                                hrp.CFrame = hrp.CFrame:Lerp(CFrame.new(wpPos) * lookAtCFrame.Rotation, lerpAlpha)
+                                hrp.Velocity = Vector3.new(0, 0, 0)
+                                hrp.RotVelocity = Vector3.new(0, 0, 0)
+                            end
+                        end
+                        if bv then bv:Destroy() end
+                        print("[Logic] Arrived at Merchant!")
+                    else
+                        print("[Logic] Failed to compute path. Attempting fallback bypass...")
+                    end
+                end
+            else
+                print("[Logic] Could not locate Traveling Merchant. Trying remote anyway.")
+            end
+
             print("[Logic] Opening Traveling Merchant Shop...")
             local openArgs = { [1] = "OpenShop" }
             pcall(function()
