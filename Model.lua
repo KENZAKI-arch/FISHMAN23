@@ -3,6 +3,7 @@ local Model = {}
 local Players = game:GetService("Players")
 local workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local PathfindingService = game:GetService("PathfindingService")
 
 local LocalPlayer = Players.LocalPlayer
 local combatRegister = ReplicatedStorage:WaitForChild("Events", 9e9):WaitForChild("CombatRegister", 9e9)
@@ -23,6 +24,10 @@ local absoluteFloorHeight = nil
 local targetSwitchTimer = 2
 local switchInterval = 2
 
+local currentPath = nil
+local currentWaypointIndex = 1
+local lastPathTime = 0
+
 function Model.ResetPhysics()
     local character = LocalPlayer.Character
     if character and character:FindFirstChild("HumanoidRootPart") then
@@ -33,6 +38,7 @@ function Model.ResetPhysics()
     end
     currentEnemy = nil
     absoluteFloorHeight = nil
+    currentPath = nil
 end
 
 function Model.ApplyNoclip()
@@ -64,6 +70,7 @@ function Model.UpdateTracking(deltaTime)
     -- Clear enemy if it is dead, destroyed, or missing its RootPart
     if currentEnemy and (currentEnemy.Parent == nil or not currentEnemy:FindFirstChild("HumanoidRootPart") or not currentEnemy:FindFirstChild("Humanoid") or currentEnemy.Humanoid.Health <= 0) then
         currentEnemy = nil
+        currentPath = nil
         targetSwitchTimer = switchInterval
     end
 
@@ -81,7 +88,11 @@ function Model.UpdateTracking(deltaTime)
             end
         end
         if #nearbyEnemies > 0 then
-            currentEnemy = nearbyEnemies[math.random(1, #nearbyEnemies)]
+            local nextEnemy = nearbyEnemies[math.random(1, #nearbyEnemies)]
+            if currentEnemy ~= nextEnemy then
+                currentEnemy = nextEnemy
+                currentPath = nil
+            end
         end
     end
 
@@ -98,7 +109,10 @@ function Model.UpdateTracking(deltaTime)
                 end
             end
         end
-        currentEnemy = closestEnemy
+        if currentEnemy ~= closestEnemy then
+            currentEnemy = closestEnemy
+            currentPath = nil
+        end
     end
 
     if currentEnemy then
@@ -114,7 +128,47 @@ function Model.UpdateTracking(deltaTime)
         bv.Velocity = Vector3.new(0, 0, 0)
         bv.Parent = rootPart
 
+        local distanceToTarget = (rootPart.Position - targetRoot.Position).Magnitude
         local targetSpot = Vector3.new(targetRoot.Position.X, dynamicAltitude, targetRoot.Position.Z)
+
+        -- If far, calculate a path to avoid walls
+        if distanceToTarget > 15 then
+            if tick() - lastPathTime > 1.5 then
+                lastPathTime = tick()
+                task.spawn(function()
+                    local path = PathfindingService:CreatePath({
+                        AgentRadius = 3,
+                        AgentHeight = 5,
+                        AgentCanJump = true,
+                        WaypointSpacing = 4,
+                    })
+                    -- Compute from ground-level so the navmesh works
+                    local startPos = Vector3.new(rootPart.Position.X, targetRoot.Position.Y, rootPart.Position.Z)
+                    local success = pcall(function()
+                        path:ComputeAsync(startPos, targetRoot.Position)
+                    end)
+                    if success and path.Status == Enum.PathStatus.Success then
+                        currentPath = path:GetWaypoints()
+                        currentWaypointIndex = 2 -- Skip current position
+                    else
+                        currentPath = nil
+                    end
+                end)
+            end
+
+            -- If we have a path, follow its waypoints
+            if currentPath and currentWaypointIndex <= #currentPath then
+                local wp = currentPath[currentWaypointIndex]
+                -- Move to the waypoint but retain the hover altitude
+                targetSpot = Vector3.new(wp.Position.X, dynamicAltitude, wp.Position.Z)
+                if (rootPart.Position - targetSpot).Magnitude < 4 then
+                    currentWaypointIndex = currentWaypointIndex + 1
+                end
+            end
+        else
+            currentPath = nil -- Clear path if we get close
+        end
+
         local finalCFrame = CFrame.lookAt(targetSpot, targetRoot.Position)
         local distance = (rootPart.Position - targetSpot).Magnitude
         
