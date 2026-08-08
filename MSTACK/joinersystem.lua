@@ -2692,6 +2692,7 @@ Tabs.Teleport:AddButton({
             end
             if Fluent.Options.T_AutoReturn and Fluent.Options.T_AutoReturn.Value == true then
                 Fluent.Options.T_AutoReturn:SetValue(false)
+            end
         end
     end })
     
