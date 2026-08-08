@@ -2576,7 +2576,7 @@ Tabs.Teleport:AddButton({
                             adjustedTarget = raycastResult.Position + Vector3.new(0, 200, 0)
                             flightStatus:SetDesc("Dodging Obstacle! (" .. tostring(navControl.Distance) .. " studs)")
                         else
-                            local downRay = game.Workspace:Raycast(hrp.Position, Vector3.new(0, -500, 0), rayParams)
+                            local downRay = game.Workspace:Raycast(hrp.Position, Vector3.new(0, -10000, 0), rayParams)
                             local isDownWater = false
                             if downRay and downRay.Instance then
                                 local ln = string.lower(downRay.Instance.Name)
@@ -2585,6 +2585,9 @@ Tabs.Teleport:AddButton({
                             
                             if isDownWater then
                                 adjustedTarget = Vector3.new(selectedIslandPos.X, downRay.Position.Y + 3, selectedIslandPos.Z)
+                            else
+                                -- If we're so high or over land and didn't hit water, just use the target's Y or 3 as a fallback
+                                adjustedTarget = Vector3.new(selectedIslandPos.X, 3, selectedIslandPos.Z)
                             end
                             flightStatus:SetDesc("Direct Flight... (" .. tostring(navControl.Distance) .. " studs)")
                         end
