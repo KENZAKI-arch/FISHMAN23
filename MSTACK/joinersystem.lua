@@ -2071,9 +2071,9 @@ Tabs = {
 
     Tabs.Teleport:AddDropdown("Dropdown", {
         Title = "Destination",
-        Values = {"fishHub", "tradeHub", "Second Sea", "Lobby"},
+        Values = {"fishHub", "tradeHub", "First Sea", "Second Sea", "Lobby"},
         Multi = false,
-        Default = (table.find({"fishHub", "tradeHub", "Second Sea", "Lobby"}, GlobalMem.FishmanDestination) or 2),
+        Default = (table.find({"fishHub", "tradeHub", "First Sea", "Second Sea", "Lobby"}, GlobalMem.FishmanDestination) or 2),
         Callback = function(Value)
             GlobalMem.FishmanDestination = Value
             SaveConfig()
@@ -2115,8 +2115,8 @@ Tabs = {
                     local frame = chooseType:WaitForChild("Frame", 20)
                     local remoteEvent = frame:WaitForChild("RemoteEvent", 20)
                     
-                    if destination == "Second Sea" then
-                        print("Teleporting to Second Sea...")
+                    if destination == "Second Sea" or destination == "First Sea" then
+                        print("Teleporting to " .. destination .. "...")
                         if not game:IsLoaded() then
                             game.Loaded:Wait()
                         end
@@ -2131,7 +2131,7 @@ Tabs = {
 
                         -- Step 2: Confirm on ConfirmationPrompt
                         local args2 = {
-                            [1] = "Second Sea";
+                            [1] = destination;
                         }
                         local confirmationPrompt = LocalPlayer:WaitForChild("PlayerGui", 9e9):WaitForChild("ConfirmationPrompt", 9e9)
                         confirmationPrompt:WaitForChild("RemoteEvent", 9e9):FireServer(unpack(args2))
