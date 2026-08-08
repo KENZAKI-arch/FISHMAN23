@@ -2692,6 +2692,59 @@ Tabs.Teleport:AddButton({
             end
             if Fluent.Options.T_AutoReturn and Fluent.Options.T_AutoReturn.Value == true then
                 Fluent.Options.T_AutoReturn:SetValue(false)
+        end
+    end })
+    
+    Tabs.Fishing:AddToggle("T_MegStackPassive", { Title = "Megalodon Stack (Wait 10, Wait for Kill)", Default = false, Callback = function(Value) 
+        if isLobby then if Value then Fluent:Notify({ Title = "Error", Content = "Cannot stack in Lobby!", Duration = 3 }); Fluent.Options.T_MegStackPassive:SetValue(false) end return end
+        Model.State.isMegStackPassive = Value
+        if Value then
+            if Fluent.Options.T_DeepSea then Fluent.Options.T_DeepSea:SetValue(true) end
+            if Fluent.Options.T_Buy then Fluent.Options.T_Buy:SetValue(true) end
+            if Fluent.Options.T_MegStackLoc then Fluent.Options.T_MegStackLoc:SetValue(true) end
+            if Fluent.Options.T_AutoStoreFruit then Fluent.Options.T_AutoStoreFruit:SetValue(true) end
+            if Fluent.Options.T_AutoReturn then Fluent.Options.T_AutoReturn:SetValue(true) end
+            print("🌊 [MegStackPassive] Meg stack starting now! Enabling deep sea catcher for 10 megalodons.")
+            task.spawn(function()
+                while _running and Model.State.isMegStackPassive do
+                    local megCount = Model.countMegalodons()
+                    if megCount >= 10 and not Model.State.isBuying and not Model.State.isAutoTraveling and not Model.State.isRefillingMegBait and not Model.State.isManualTraveling then
+                        print("🔥 [MegStackPassive] 10 Megalodons reached! Disabling fishing and waiting for kill...")
+                        if Fluent.Options.T_DeepSea.Value == true then
+                            Fluent.Options.T_DeepSea:SetValue(false)
+                        end
+                        
+                        local waitTime = 0
+                        local lastCount = Model.countMegalodons()
+                        while _running and Model.countMegalodons() > 0 and Model.State.isMegStackPassive and waitTime < 180 do
+                            task.wait(1)
+                            waitTime = waitTime + 1
+                            local curCount = Model.countMegalodons()
+                            if curCount < lastCount then
+                                waitTime = 0
+                                lastCount = curCount
+                            end
+                        end
+                        
+                        print("✅ [MegStackPassive] Stack cleared! Resuming fishing...")
+                        
+                        if Model.State.isMegStackPassive then
+                            Fluent.Options.T_DeepSea:SetValue(true)
+                        end
+                    end
+                    task.wait(1)
+                end
+            end)
+        else
+            print("🛑 [MegStackPassive] Stacking aborted. Shutting down deep sea catcher.")
+            if Fluent.Options.T_DeepSea and Fluent.Options.T_DeepSea.Value == true then
+                Fluent.Options.T_DeepSea:SetValue(false)
+            end
+            if Fluent.Options.T_AutoStoreFruit and Fluent.Options.T_AutoStoreFruit.Value == true then
+                Fluent.Options.T_AutoStoreFruit:SetValue(false)
+            end
+            if Fluent.Options.T_AutoReturn and Fluent.Options.T_AutoReturn.Value == true then
+                Fluent.Options.T_AutoReturn:SetValue(false)
             end
         end
     end })
