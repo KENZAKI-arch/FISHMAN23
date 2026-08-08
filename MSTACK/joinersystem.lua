@@ -2506,7 +2506,76 @@ Tabs.Teleport:AddButton({
                         Fluent:Notify({ Title = "Arrived", Content = "Successfully reached the island!", Duration = 3 })
                     end
                 else
-                    Fluent:Notify({ Title = "Pathfinding Error", Content = "Could not compute path to destination.", Duration = 3 })
+                    Fluent:Notify({ Title = "Pathfinding Error", Content = "No navmesh found. Falling back to direct AntiGravity flight...", Duration = 3 })
+                    
+                    local bv = hrp:FindFirstChild("IslandAntiGravity") or Instance.new("BodyVelocity")
+                    bv.Name = "IslandAntiGravity"
+                    bv.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+                    bv.Velocity = Vector3.new(0, 0, 0)
+                    bv.Parent = hrp
+                    
+                    local stuckTimer = 0
+                    local lastDist = (hrp.Position - selectedIslandPos).Magnitude
+                    
+                    -- Fly high first to avoid immediate obstacles
+                    local targetY = math.max(hrp.Position.Y, selectedIslandPos.Y) + 200
+                    
+                    while _running and navControl._isNavigating and hrp.Parent do
+                        if navControl._isPaused then
+                            flightStatus:SetDesc("Paused (" .. tostring(navControl.Distance) .. " studs)")
+                            bv.Velocity = Vector3.new(0, 0, 0)
+                            task.wait(0.1)
+                            continue
+                        end
+                        
+                        local currentDist = (hrp.Position - selectedIslandPos).Magnitude
+                        navControl.Distance = math.floor(currentDist)
+                        flightStatus:SetDesc("Direct Flight... (" .. tostring(navControl.Distance) .. " studs)")
+                        
+                        if currentDist <= 10 then break end
+                        
+                        local dt = task.wait()
+                        
+                        if lastDist - currentDist < 0.1 then
+                            stuckTimer = stuckTimer + dt
+                        else
+                            stuckTimer = 0
+                            lastDist = currentDist
+                        end
+                        
+                        if stuckTimer > 0.5 then
+                            for _, part in ipairs(character:GetDescendants()) do
+                                if part:IsA("BasePart") then
+                                    part.CanCollide = false
+                                end
+                            end
+                        end
+                        
+                        local adjustedTarget = selectedIslandPos
+                        if currentDist > 200 then
+                            adjustedTarget = Vector3.new(selectedIslandPos.X, targetY, selectedIslandPos.Z)
+                        end
+                        
+                        local distToTarget = (hrp.Position - adjustedTarget).Magnitude
+                        local flySpeed = 120
+                        local lerpAlpha = math.clamp((flySpeed * dt) / distToTarget, 0, 1)
+                        
+                        local lookAtCFrame
+                        if distToTarget > 0.1 then
+                            lookAtCFrame = CFrame.lookAt(hrp.Position, adjustedTarget)
+                        else
+                            lookAtCFrame = hrp.CFrame
+                        end
+                        
+                        hrp.CFrame = hrp.CFrame:Lerp(CFrame.new(adjustedTarget) * lookAtCFrame.Rotation, lerpAlpha)
+                        hrp.Velocity = Vector3.new(0, 0, 0)
+                        hrp.RotVelocity = Vector3.new(0, 0, 0)
+                    end
+                    
+                    if bv then bv:Destroy() end
+                    if navControl._isNavigating then
+                        Fluent:Notify({ Title = "Arrived", Content = "Successfully reached the island!", Duration = 3 })
+                    end
                 end
                 
                 navControl._isNavigating = false
