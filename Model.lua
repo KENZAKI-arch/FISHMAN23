@@ -142,6 +142,18 @@ function Model.GrabQuest()
     
     if not rootPart or not beckyRoot then return end
 
+    -- Prevent getting the quest if player is below level 190
+    local isHighEnoughLevel = true
+    pcall(function()
+        local levelLabel = LocalPlayer.PlayerGui.HUD.Main.Bars.Experience.Detail.Level
+        local levelNum = tonumber(string.match(levelLabel.Text, "%d+"))
+        if levelNum and levelNum < 190 then
+            isHighEnoughLevel = false
+        end
+    end)
+    
+    if not isHighEnoughLevel then return end
+
     -- Turn ON questing mode to pause combat smoothly
     Model.State.isQuesting = true 
 
