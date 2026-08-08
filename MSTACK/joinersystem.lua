@@ -2566,12 +2566,24 @@ Tabs.Teleport:AddButton({
                         local dirToTarget = (selectedIslandPos - hrp.Position).Unit
                         local raycastResult = game.Workspace:Raycast(hrp.Position, dirToTarget * 150, rayParams)
                         
-                        if raycastResult and raycastResult.Instance and raycastResult.Instance.CanCollide and not string.find(string.lower(raycastResult.Instance.Name), "water") then
+                        local isWater = false
+                        if raycastResult and raycastResult.Instance then
+                            local ln = string.lower(raycastResult.Instance.Name)
+                            isWater = string.find(ln, "water") or string.find(ln, "ocean")
+                        end
+                        
+                        if raycastResult and raycastResult.Instance and raycastResult.Instance.CanCollide and not isWater then
                             adjustedTarget = raycastResult.Position + Vector3.new(0, 200, 0)
                             flightStatus:SetDesc("Dodging Obstacle! (" .. tostring(navControl.Distance) .. " studs)")
                         else
                             local downRay = game.Workspace:Raycast(hrp.Position, Vector3.new(0, -500, 0), rayParams)
-                            if downRay and string.find(string.lower(downRay.Instance.Name), "water") then
+                            local isDownWater = false
+                            if downRay and downRay.Instance then
+                                local ln = string.lower(downRay.Instance.Name)
+                                isDownWater = string.find(ln, "water") or string.find(ln, "ocean")
+                            end
+                            
+                            if isDownWater then
                                 adjustedTarget = Vector3.new(selectedIslandPos.X, downRay.Position.Y + 3, selectedIslandPos.Z)
                             end
                             flightStatus:SetDesc("Direct Flight... (" .. tostring(navControl.Distance) .. " studs)")
