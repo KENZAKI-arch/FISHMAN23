@@ -76,6 +76,7 @@ local corner = Instance.new("UICorner")
 corner.CornerRadius = UDim.new(0, 8)
 corner.Parent = toggleBtn
 
+
 -- UI Dragging Logic
 local dragging, dragInput, dragStart, startPos
 toggleBtn.InputBegan:Connect(function(input)

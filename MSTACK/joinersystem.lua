@@ -3117,6 +3117,61 @@ Tabs.Autofarm:AddButton({
     end
 })
 
+local selectedMerchantItems = {}
+Tabs.Autofarm:AddDropdown("D_MerchantItems", {
+    Title = "Traveling Merchant Buy List",
+    Description = "Select items to auto-buy from the Traveling Merchant.",
+    Values = {"Dark Root", "Hoverboard", "Mythical Fruit Chest", "Fruit Bag", "Merchants Banana Rod"},
+    Multi = true,
+    Default = {},
+    Callback = function(Value)
+        selectedMerchantItems = Value 
+    end
+})
+
+Tabs.Autofarm:AddButton({
+    Title = "Auto-Buy From Traveling Merchant",
+    Description = "Opens shop and buys selected items if available.",
+    Callback = function()
+        task.spawn(function()
+            print("[Logic] Opening Traveling Merchant Shop...")
+            local openArgs = { [1] = "OpenShop" }
+            pcall(function()
+                game:GetService("ReplicatedStorage"):WaitForChild("Events", 5):WaitForChild("TravelingMerchentRemote", 5):InvokeServer(unpack(openArgs))
+            end)
+            
+            task.wait(1)
+            
+            local playerGui = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
+            local redeemables = playerGui:FindFirstChild("MerchentShop") and 
+                                playerGui.MerchentShop:FindFirstChild("Main") and 
+                                playerGui.MerchentShop.Main:FindFirstChild("List") and 
+                                playerGui.MerchentShop.Main.List:FindFirstChild("Redeemables")
+
+            for itemName, isSelected in pairs(selectedMerchantItems) do
+                if isSelected then
+                    local hasItem = true
+                    if redeemables then
+                        hasItem = redeemables:FindFirstChild(itemName) ~= nil
+                    end
+                    
+                    if hasItem then
+                        print("[Logic] Buying Item: " .. tostring(itemName))
+                        local buyArgs = { itemName }
+                        pcall(function()
+                            game:GetService("ReplicatedStorage"):WaitForChild("Events"):WaitForChild("TravelingMerchentRemote"):InvokeServer(unpack(buyArgs))
+                        end)
+                        task.wait(0.5)
+                    else
+                        print("[Logic] Item not found in shop: " .. tostring(itemName))
+                    end
+                end
+            end
+            if Fluent then Fluent:Notify({ Title = "Merchant Auto-Buy", Content = "Finished purchasing selected items.", Duration = 3 }) end
+        end)
+    end
+})
+
 Tabs.Autofarm:AddButton({
     Title = "Stop & Clear Autofarm Queue",
     Description = "Tries to halt the autofarm and wipes the teleport queue.",
