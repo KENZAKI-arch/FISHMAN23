@@ -2320,7 +2320,7 @@ Tabs.Teleport:AddButton({
     end
     refreshIslands()
 
-    local selectedIslandPos = nil
+    local selectedIslandName = islandNames[1]
 
     local D_Island = Tabs.Navigation:AddDropdown("D_Island", {
         Title = "Select Island",
@@ -2328,7 +2328,7 @@ Tabs.Teleport:AddButton({
         Multi = false,
         Default = islandNames[1],
         Callback = function(Value)
-            selectedIslandPos = islandPositions[Value]
+            selectedIslandName = Value
         end
     })
     
@@ -2338,6 +2338,10 @@ Tabs.Teleport:AddButton({
         Callback = function()
             refreshIslands()
             D_Island:SetValues(islandNames)
+            if table.find(islandNames, selectedIslandName) == nil then
+                selectedIslandName = islandNames[1]
+                D_Island:SetValue(selectedIslandName)
+            end
             Fluent:Notify({ Title = "Refreshed", Content = "Island list updated.", Duration = 3 })
         end
     })
@@ -2356,12 +2360,24 @@ Tabs.Teleport:AddButton({
                 return
             end
             
-            if not selectedIslandPos then
+            local targetPos = nil
+            if selectedIslandName and selectedIslandName ~= "None" then
+                local guider = game.ReplicatedStorage:FindFirstChild("CompassGuider")
+                local islandObj = guider and guider:FindFirstChild(selectedIslandName)
+                if islandObj and islandObj:IsA("Vector3Value") then
+                    targetPos = islandObj.Value
+                else
+                    -- Fallback to cached position if object was removed
+                    targetPos = islandPositions[selectedIslandName]
+                end
+            end
+            
+            if not targetPos then
                 Fluent:Notify({ Title = "No Island", Content = "Please select a valid island first.", Duration = 3 })
                 return
             end
             
-            Model.State.activeNavigation = Model.NavigateTo(character, selectedIslandPos, 90, 20)
+            Model.State.activeNavigation = Model.NavigateTo(character, targetPos, 90, 20)
             
             task.spawn(function()
                 while Model.State.activeNavigation and Model.State.activeNavigation._isNavigating do
