@@ -2506,7 +2506,7 @@ Tabs.Teleport:AddButton({
                         Fluent:Notify({ Title = "Arrived", Content = "Successfully reached the island!", Duration = 3 })
                     end
                 else
-                    Fluent:Notify({ Title = "Pathfinding Error", Content = "No navmesh found. Falling back to direct AntiGravity flight...", Duration = 3 })
+                    Fluent:Notify({ Title = "Pathfinding Error", Content = "No navmesh found. Falling back to Seagull AntiGravity flight...", Duration = 3 })
                     
                     local bv = hrp:FindFirstChild("IslandAntiGravity") or Instance.new("BodyVelocity")
                     bv.Name = "IslandAntiGravity"
@@ -2517,8 +2517,9 @@ Tabs.Teleport:AddButton({
                     local stuckTimer = 0
                     local lastDist = (hrp.Position - selectedIslandPos).Magnitude
                     
-                    -- Fly high first to avoid immediate obstacles
-                    local targetY = math.max(hrp.Position.Y, selectedIslandPos.Y) + 200
+                    local rayParams = RaycastParams.new()
+                    rayParams.FilterType = Enum.RaycastFilterType.Exclude
+                    rayParams.FilterDescendantsInstances = {character}
                     
                     while _running and navControl._isNavigating and hrp.Parent do
                         if navControl._isPaused then
@@ -2530,7 +2531,6 @@ Tabs.Teleport:AddButton({
                         
                         local currentDist = (hrp.Position - selectedIslandPos).Magnitude
                         navControl.Distance = math.floor(currentDist)
-                        flightStatus:SetDesc("Direct Flight... (" .. tostring(navControl.Distance) .. " studs)")
                         
                         if currentDist <= 10 then break end
                         
@@ -2552,8 +2552,14 @@ Tabs.Teleport:AddButton({
                         end
                         
                         local adjustedTarget = selectedIslandPos
-                        if currentDist > 200 then
-                            adjustedTarget = Vector3.new(selectedIslandPos.X, targetY, selectedIslandPos.Z)
+                        local dirToTarget = (selectedIslandPos - hrp.Position).Unit
+                        local raycastResult = game.Workspace:Raycast(hrp.Position, dirToTarget * 150, rayParams)
+                        
+                        if raycastResult and raycastResult.Instance and raycastResult.Instance.CanCollide and not string.find(string.lower(raycastResult.Instance.Name), "water") then
+                            adjustedTarget = raycastResult.Position + Vector3.new(0, 200, 0)
+                            flightStatus:SetDesc("Dodging Obstacle! (" .. tostring(navControl.Distance) .. " studs)")
+                        else
+                            flightStatus:SetDesc("Direct Flight... (" .. tostring(navControl.Distance) .. " studs)")
                         end
                         
                         local distToTarget = (hrp.Position - adjustedTarget).Magnitude
