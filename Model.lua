@@ -70,11 +70,12 @@ function Model.UpdateTracking(deltaTime)
     targetSwitchTimer = targetSwitchTimer + deltaTime
     if targetSwitchTimer >= switchInterval and npcsFolder then
         targetSwitchTimer = 0
-        -- Switch between NEARBY valid enemies (within 40 studs) to keep combat dynamic without causing slow cross-map floating
+        -- Switch between NEARBY valid enemies to keep combat dynamic without causing slow cross-map floating
         local nearbyEnemies = {}
         for _, npc in pairs(npcsFolder:GetChildren()) do
             if npc.Name == "Fishman Karate User" and npc:FindFirstChild("HumanoidRootPart") and npc:FindFirstChild("Humanoid") and npc.Humanoid.Health > 0 then
-                if npc ~= currentEnemy and (rootPart.Position - npc.HumanoidRootPart.Position).Magnitude <= 40 then
+                -- Increased radius from 40 to 150 to ensure it detects the rest of the mob cluster
+                if npc ~= currentEnemy and (rootPart.Position - npc.HumanoidRootPart.Position).Magnitude <= 150 then
                     table.insert(nearbyEnemies, npc)
                 end
             end
