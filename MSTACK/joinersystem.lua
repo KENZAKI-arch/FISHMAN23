@@ -2576,7 +2576,7 @@ Tabs.Teleport:AddButton({
                         
                         if raycastResult and raycastResult.Instance and raycastResult.Instance.CanCollide and not isWater then
                             local localTarget = hrp.Position + (dirXZ * 50)
-                            adjustedTarget = Vector3.new(localTarget.X, raycastResult.Position.Y + 200, localTarget.Z)
+                            adjustedTarget = Vector3.new(localTarget.X, raycastResult.Position.Y + 50, localTarget.Z)
                             flightStatus:SetDesc("Dodging Obstacle! (" .. tostring(navControl.Distance) .. " studs)")
                         else
                             local downRay = game.Workspace:Raycast(hrp.Position, Vector3.new(0, -500, 0), rayParams)
@@ -2592,7 +2592,7 @@ Tabs.Teleport:AddButton({
                                 adjustedTarget = Vector3.new(localTarget.X, downRay.Position.Y + 3, localTarget.Z)
                             elseif downRay then
                                 -- Over land/rock! Hover high above it so we don't shake by diving back into it
-                                adjustedTarget = Vector3.new(localTarget.X, downRay.Position.Y + 150, localTarget.Z)
+                                adjustedTarget = Vector3.new(localTarget.X, downRay.Position.Y + 50, localTarget.Z)
                             else
                                 adjustedTarget = Vector3.new(localTarget.X, 3, localTarget.Z)
                             end
