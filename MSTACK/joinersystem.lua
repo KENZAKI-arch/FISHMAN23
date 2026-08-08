@@ -2406,20 +2406,111 @@ Tabs.Teleport:AddButton({
                 return
             end
             
-            Model.State.activeNavigation = Model.NavigateTo(character, selectedIslandPos, 90, 20)
+            local hrp = character:FindFirstChild("HumanoidRootPart")
+            if not hrp then return end
+            
+            local navControl = {
+                _isNavigating = true,
+                _isPaused = false,
+                Distance = math.floor((hrp.Position - selectedIslandPos).Magnitude),
+                TogglePause = function(self)
+                    self._isPaused = not self._isPaused
+                    return self._isPaused
+                end,
+                Cancel = function(self)
+                    self._isNavigating = false
+                end
+            }
+            Model.State.activeNavigation = navControl
             
             task.spawn(function()
-                while _running and Model.State.activeNavigation and Model.State.activeNavigation._isNavigating do
-                    local nav = Model.State.activeNavigation
-                    if nav._isPaused then
-                        flightStatus:SetDesc("Paused (" .. tostring(nav.Distance) .. " studs)")
-                    elseif nav._roboTarget then
-                        flightStatus:SetDesc("Lock: Robo! (" .. tostring(nav.Distance) .. " studs)")
-                    else
-                        flightStatus:SetDesc("Flying... (" .. tostring(nav.Distance) .. " studs)")
+                flightStatus:SetDesc("Calculating path...")
+                local PathfindingService = game:GetService("PathfindingService")
+                local path = PathfindingService:CreatePath({
+                    AgentRadius = 3,
+                    AgentHeight = 5,
+                    AgentCanJump = true,
+                    WaypointSpacing = 4,
+                    Costs = { Water = 20 }
+                })
+                
+                local success, err = pcall(function()
+                    path:ComputeAsync(hrp.Position, selectedIslandPos)
+                end)
+                
+                if success and path.Status == Enum.PathStatus.Success then
+                    local waypoints = path:GetWaypoints()
+                    local bv = hrp:FindFirstChild("IslandAntiGravity") or Instance.new("BodyVelocity")
+                    bv.Name = "IslandAntiGravity"
+                    bv.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+                    bv.Velocity = Vector3.new(0, 0, 0)
+                    bv.Parent = hrp
+                    
+                    for i, waypoint in ipairs(waypoints) do
+                        if not _running or not navControl._isNavigating then break end
+                        
+                        local wpPos = waypoint.Position + Vector3.new(0, 5, 0)
+                        local stuckTimer = 0
+                        local lastDist = (hrp.Position - wpPos).Magnitude
+                        
+                        while _running and navControl._isNavigating and hrp.Parent do
+                            if navControl._isPaused then
+                                flightStatus:SetDesc("Paused (" .. tostring(navControl.Distance) .. " studs)")
+                                bv.Velocity = Vector3.new(0, 0, 0)
+                                task.wait(0.1)
+                                continue
+                            end
+                            
+                            local distToWp = (hrp.Position - wpPos).Magnitude
+                            local distToFinal = (hrp.Position - selectedIslandPos).Magnitude
+                            navControl.Distance = math.floor(distToFinal)
+                            flightStatus:SetDesc("Flying... (" .. tostring(navControl.Distance) .. " studs)")
+                            
+                            if distToWp <= 3 then break end
+                            
+                            local dt = task.wait()
+                            
+                            if lastDist - distToWp < 0.1 then
+                                stuckTimer = stuckTimer + dt
+                            else
+                                stuckTimer = 0
+                                lastDist = distToWp
+                            end
+                            
+                            if stuckTimer > 0.5 then
+                                for _, part in ipairs(character:GetDescendants()) do
+                                    if part:IsA("BasePart") then
+                                        part.CanCollide = false
+                                    end
+                                end
+                            end
+                            
+                            local flySpeed = 90
+                            local lerpAlpha = math.clamp((flySpeed * dt) / distToWp, 0, 1)
+                            
+                            local lookAtCFrame
+                            if distToWp > 0.1 then
+                                lookAtCFrame = CFrame.lookAt(hrp.Position, wpPos)
+                            else
+                                lookAtCFrame = hrp.CFrame
+                            end
+                            
+                            hrp.CFrame = hrp.CFrame:Lerp(CFrame.new(wpPos) * lookAtCFrame.Rotation, lerpAlpha)
+                            hrp.Velocity = Vector3.new(0, 0, 0)
+                            hrp.RotVelocity = Vector3.new(0, 0, 0)
+                        end
                     end
-                    task.wait(0.1)
+                    
+                    if bv then bv:Destroy() end
+                    if navControl._isNavigating then
+                        Fluent:Notify({ Title = "Arrived", Content = "Successfully reached the island!", Duration = 3 })
+                    end
+                else
+                    Fluent:Notify({ Title = "Pathfinding Error", Content = "Could not compute path to destination.", Duration = 3 })
                 end
+                
+                navControl._isNavigating = false
+                Model.State.activeNavigation = nil
                 flightStatus:SetDesc("Idle")
             end)
         end
