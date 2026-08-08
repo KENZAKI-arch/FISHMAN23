@@ -2588,11 +2588,9 @@ Tabs.Teleport:AddButton({
                             
                             local localTarget = hrp.Position + (dirXZ * 50)
                             
-                            if isDownWater then
+                            if downRay then
+                                -- Adaptively hover 3 studs above ANY surface (water or land)
                                 adjustedTarget = Vector3.new(localTarget.X, downRay.Position.Y + 3, localTarget.Z)
-                            elseif downRay then
-                                -- Over land/rock! Hover high above it so we don't shake by diving back into it
-                                adjustedTarget = Vector3.new(localTarget.X, downRay.Position.Y + 50, localTarget.Z)
                             else
                                 adjustedTarget = Vector3.new(localTarget.X, 3, localTarget.Z)
                             end
