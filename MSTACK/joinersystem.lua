@@ -2583,10 +2583,13 @@ Tabs.Teleport:AddButton({
                                 isDownWater = string.find(ln, "water") or string.find(ln, "ocean") or string.find(ln, "oceanmeshes")
                             end
                             
+                            local dirXZ = (Vector3.new(selectedIslandPos.X, 0, selectedIslandPos.Z) - Vector3.new(hrp.Position.X, 0, hrp.Position.Z)).Unit
+                            local localTarget = hrp.Position + (dirXZ * 50)
+                            
                             if isDownWater then
-                                adjustedTarget = Vector3.new(selectedIslandPos.X, downRay.Position.Y + 3, selectedIslandPos.Z)
+                                adjustedTarget = Vector3.new(localTarget.X, downRay.Position.Y + 3, localTarget.Z)
                             else
-                                adjustedTarget = Vector3.new(selectedIslandPos.X, 3, selectedIslandPos.Z)
+                                adjustedTarget = Vector3.new(localTarget.X, 3, localTarget.Z)
                             end
                             flightStatus:SetDesc("Direct Flight... (" .. tostring(navControl.Distance) .. " studs)")
                         end
