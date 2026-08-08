@@ -133,7 +133,7 @@ function Model.UpdateTracking(deltaTime)
 
         -- If far, calculate a path to avoid walls
         if distanceToTarget > 15 then
-            if tick() - lastPathTime > 1.5 then
+            if tick() - lastPathTime > 1.0 then
                 lastPathTime = tick()
                 task.spawn(function()
                     local path = PathfindingService:CreatePath({
@@ -142,14 +142,24 @@ function Model.UpdateTracking(deltaTime)
                         AgentCanJump = true,
                         WaypointSpacing = 4,
                     })
-                    -- Compute from ground-level so the navmesh works
-                    local startPos = Vector3.new(rootPart.Position.X, targetRoot.Position.Y, rootPart.Position.Z)
+                    -- Compute from our actual position so navmesh correctly traces the terrain below us
                     local success = pcall(function()
-                        path:ComputeAsync(startPos, targetRoot.Position)
+                        path:ComputeAsync(rootPart.Position, targetRoot.Position)
                     end)
                     if success and path.Status == Enum.PathStatus.Success then
                         currentPath = path:GetWaypoints()
-                        currentWaypointIndex = 2 -- Skip current position
+                        
+                        -- Find the closest waypoint that is IN FRONT of us to prevent walking backwards
+                        local closestIdx = 2
+                        local closestDist = math.huge
+                        for i = 2, math.min(5, #currentPath) do
+                            local dist = (Vector3.new(rootPart.Position.X, 0, rootPart.Position.Z) - Vector3.new(currentPath[i].Position.X, 0, currentPath[i].Position.Z)).Magnitude
+                            if dist < closestDist then
+                                closestDist = dist
+                                closestIdx = i
+                            end
+                        end
+                        currentWaypointIndex = closestIdx
                     else
                         currentPath = nil
                     end
@@ -159,9 +169,12 @@ function Model.UpdateTracking(deltaTime)
             -- If we have a path, follow its waypoints
             if currentPath and currentWaypointIndex <= #currentPath then
                 local wp = currentPath[currentWaypointIndex]
-                -- Move to the waypoint but retain the hover altitude
-                targetSpot = Vector3.new(wp.Position.X, dynamicAltitude, wp.Position.Z)
-                if (rootPart.Position - targetSpot).Magnitude < 4 then
+                -- Hover exactly 7.5 studs above the ground at the waypoint instead of a fixed global altitude
+                targetSpot = Vector3.new(wp.Position.X, wp.Position.Y + 7.5, wp.Position.Z)
+                
+                -- Use horizontal distance to prevent getting stuck if slightly off vertically
+                local flatDist = Vector3.new(rootPart.Position.X - targetSpot.X, 0, rootPart.Position.Z - targetSpot.Z).Magnitude
+                if flatDist < 5 then
                     currentWaypointIndex = currentWaypointIndex + 1
                 end
             end
