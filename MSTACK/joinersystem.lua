@@ -2517,7 +2517,7 @@ Tabs.Teleport:AddButton({
                         Fluent:Notify({ Title = "Arrived", Content = "Successfully reached the island!", Duration = 3 })
                     end
                 else
-                    Fluent:Notify({ Title = "Pathfinding Error", Content = "No navmesh found. Falling back to Seagull AntiGravity flight...", Duration = 3 })
+                    Fluent:Notify({ Title = "Seagull Flight", Content = "Flying over the ocean...", Duration = 3 })
                     
                     local bv = hrp:FindFirstChild("IslandAntiGravity") or Instance.new("BodyVelocity")
                     bv.Name = "IslandAntiGravity"
