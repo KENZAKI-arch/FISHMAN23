@@ -2569,7 +2569,7 @@ Tabs.Teleport:AddButton({
                         local isWater = false
                         if raycastResult and raycastResult.Instance then
                             local ln = string.lower(raycastResult.Instance.Name)
-                            isWater = string.find(ln, "water") or string.find(ln, "ocean")
+                            isWater = string.find(ln, "water") or string.find(ln, "ocean") or string.find(ln, "oceanmeshes")
                         end
                         
                         if raycastResult and raycastResult.Instance and raycastResult.Instance.CanCollide and not isWater then
