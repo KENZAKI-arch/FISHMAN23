@@ -113,8 +113,109 @@ if game.PlaceId == targetPlaceId and game.PrivateServerId == "" then
 else
     
     -- PATH B: We are in the Private Server.
-    print("[Logic] In Private Server. Loading Auto-Farm...")
+    print("[Logic] In Private Server. Setting up Auto-Farm Tween UI...")
     
-    loadstring(game:HttpGet("https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/Controller.lua"))()
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "TweenToFarmGui"
+    screenGui.ResetOnSpawn = false
     
+    local success = pcall(function() screenGui.Parent = CoreGui end)
+    if not success then screenGui.Parent = LocalPlayer:WaitForChild("PlayerGui") end
+
+    local tweenBtn = Instance.new("TextButton")
+    tweenBtn.Size = UDim2.new(0, 200, 0, 50)
+    tweenBtn.Position = UDim2.new(0.5, -100, 0.2, 0)
+    tweenBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
+    tweenBtn.Text = "AUTO FARM"
+    tweenBtn.TextColor3 = Color3.fromRGB(85, 255, 85)
+    tweenBtn.Font = Enum.Font.GothamBold
+    tweenBtn.TextSize = 20
+    tweenBtn.Parent = screenGui
+    Instance.new("UICorner", tweenBtn).CornerRadius = UDim.new(0, 8)
+    
+    local stroke = Instance.new("UIStroke", tweenBtn)
+    stroke.Color = Color3.fromRGB(85, 255, 85)
+    stroke.Thickness = 2
+
+    tweenBtn.MouseButton1Click:Connect(function()
+        tweenBtn.Text = "TRAVELING..."
+        tweenBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        stroke.Color = Color3.fromRGB(255, 255, 255)
+        tweenBtn.Active = false
+
+        local RunService = game:GetService("RunService")
+        local targetX = 7976.704
+        local targetY = -2152.832
+        local targetZ = -17074.277
+        local targetLandingPos = Vector3.new(targetX, targetY, targetZ)
+        local flySpeed = 90
+
+        local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+        local rootPart = character:WaitForChild("HumanoidRootPart")
+
+        local bv = rootPart:FindFirstChild("AntiGravity") or Instance.new("BodyVelocity")
+        bv.Name = "AntiGravity"
+        bv.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+        bv.Velocity = Vector3.new(0, 0, 0)
+        bv.Parent = rootPart
+
+        local noclipLoop
+        local flightLoop
+
+        noclipLoop = RunService.Stepped:Connect(function()
+            if character then
+                for _, part in pairs(character:GetDescendants()) do
+                    if part:IsA("BasePart") then part.CanCollide = false end
+                end
+            end
+        end)
+
+        flightLoop = RunService.Heartbeat:Connect(function(deltaTime)
+            if not rootPart or not rootPart.Parent then return end
+
+            if _G.CancelAutoTravel == true then
+                if bv then bv:Destroy() end
+                if noclipLoop then noclipLoop:Disconnect() end
+                if flightLoop then flightLoop:Disconnect() end
+                screenGui:Destroy()
+                return
+            end
+
+            local currentPos = rootPart.Position
+            local nextPoint
+            
+            if math.abs(currentPos.X - targetX) > 1 then
+                nextPoint = Vector3.new(targetX, currentPos.Y, currentPos.Z)
+            elseif math.abs(currentPos.Z - targetZ) > 1 then
+                nextPoint = Vector3.new(targetX, currentPos.Y, targetZ)
+            elseif math.abs(currentPos.Y - targetY) > 1 then
+                nextPoint = Vector3.new(targetX, targetY, targetZ)
+            else
+                -- ARRIVED
+                if bv then bv:Destroy() end
+                if noclipLoop then noclipLoop:Disconnect() end
+                if flightLoop then flightLoop:Disconnect() end
+                
+                screenGui:Destroy()
+                
+                print("[Logic] Arrived at Fishman Island. Loading Controller...")
+                loadstring(game:HttpGet("https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/Controller.lua"))()
+                return
+            end
+
+            local finalCFrame = CFrame.lookAt(nextPoint, targetLandingPos) 
+            local distance = (currentPos - nextPoint).Magnitude
+            
+            if distance > 0.5 then
+                local lerpAlpha = math.clamp((flySpeed * deltaTime) / distance, 0, 1)
+                rootPart.CFrame = rootPart.CFrame:Lerp(finalCFrame, lerpAlpha)
+            else
+                rootPart.CFrame = finalCFrame
+            end
+            
+            rootPart.Velocity = Vector3.new(0, 0, 0)
+            rootPart.RotVelocity = Vector3.new(0, 0, 0)
+        end)
+    end)
+
 end
