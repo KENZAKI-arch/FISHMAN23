@@ -2572,8 +2572,11 @@ Tabs.Teleport:AddButton({
                             isWater = string.find(ln, "water") or string.find(ln, "ocean") or string.find(ln, "oceanmeshes")
                         end
                         
+                        local dirXZ = (Vector3.new(selectedIslandPos.X, 0, selectedIslandPos.Z) - Vector3.new(hrp.Position.X, 0, hrp.Position.Z)).Unit
+                        
                         if raycastResult and raycastResult.Instance and raycastResult.Instance.CanCollide and not isWater then
-                            adjustedTarget = raycastResult.Position + Vector3.new(0, 200, 0)
+                            local localTarget = hrp.Position + (dirXZ * 50)
+                            adjustedTarget = Vector3.new(localTarget.X, raycastResult.Position.Y + 200, localTarget.Z)
                             flightStatus:SetDesc("Dodging Obstacle! (" .. tostring(navControl.Distance) .. " studs)")
                         else
                             local downRay = game.Workspace:Raycast(hrp.Position, Vector3.new(0, -500, 0), rayParams)
@@ -2583,11 +2586,13 @@ Tabs.Teleport:AddButton({
                                 isDownWater = string.find(ln, "water") or string.find(ln, "ocean") or string.find(ln, "oceanmeshes")
                             end
                             
-                            local dirXZ = (Vector3.new(selectedIslandPos.X, 0, selectedIslandPos.Z) - Vector3.new(hrp.Position.X, 0, hrp.Position.Z)).Unit
                             local localTarget = hrp.Position + (dirXZ * 50)
                             
                             if isDownWater then
                                 adjustedTarget = Vector3.new(localTarget.X, downRay.Position.Y + 3, localTarget.Z)
+                            elseif downRay then
+                                -- Over land/rock! Hover high above it so we don't shake by diving back into it
+                                adjustedTarget = Vector3.new(localTarget.X, downRay.Position.Y + 150, localTarget.Z)
                             else
                                 adjustedTarget = Vector3.new(localTarget.X, 3, localTarget.Z)
                             end
