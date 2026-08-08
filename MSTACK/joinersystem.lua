@@ -2570,6 +2570,10 @@ Tabs.Teleport:AddButton({
                             adjustedTarget = raycastResult.Position + Vector3.new(0, 200, 0)
                             flightStatus:SetDesc("Dodging Obstacle! (" .. tostring(navControl.Distance) .. " studs)")
                         else
+                            local downRay = game.Workspace:Raycast(hrp.Position, Vector3.new(0, -500, 0), rayParams)
+                            if downRay and string.find(string.lower(downRay.Instance.Name), "water") then
+                                adjustedTarget = Vector3.new(selectedIslandPos.X, downRay.Position.Y + 3, selectedIslandPos.Z)
+                            end
                             flightStatus:SetDesc("Direct Flight... (" .. tostring(navControl.Distance) .. " studs)")
                         end
                         
