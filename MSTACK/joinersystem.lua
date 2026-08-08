@@ -2387,6 +2387,17 @@ Tabs.Teleport:AddButton({
         end
     })
     
+    local S_FlightSpeed = Tabs.Navigation:AddSlider("S_FlightSpeed", {
+        Title = "Flight Speed",
+        Description = "Adjusts how fast the auto-flight travels.",
+        Default = 90,
+        Min = 20,
+        Max = 250,
+        Rounding = 1,
+        Callback = function(Value)
+        end
+    })
+    
     local flightStatus = Tabs.Navigation:AddParagraph({ Title = "Flight Status", Content = "Idle" })
     
     Tabs.Navigation:AddButton({
@@ -2485,7 +2496,7 @@ Tabs.Teleport:AddButton({
                                 end
                             end
                             
-                            local flySpeed = 90
+                            local flySpeed = Fluent.Options.S_FlightSpeed and Fluent.Options.S_FlightSpeed.Value or 90
                             local lerpAlpha = math.clamp((flySpeed * dt) / distToWp, 0, 1)
                             
                             local lookAtCFrame
@@ -2563,7 +2574,7 @@ Tabs.Teleport:AddButton({
                         end
                         
                         local distToTarget = (hrp.Position - adjustedTarget).Magnitude
-                        local flySpeed = 120
+                        local flySpeed = Fluent.Options.S_FlightSpeed and Fluent.Options.S_FlightSpeed.Value or 120
                         local lerpAlpha = math.clamp((flySpeed * dt) / distToTarget, 0, 1)
                         
                         local lookAtCFrame
