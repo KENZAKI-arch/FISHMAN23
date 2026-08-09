@@ -2387,17 +2387,6 @@ Tabs.Teleport:AddButton({
         end
     })
     
-    local S_FlightSpeed = Tabs.Navigation:AddSlider("S_FlightSpeed", {
-        Title = "Flight Speed",
-        Description = "Adjusts how fast the auto-flight travels.",
-        Default = 90,
-        Min = 20,
-        Max = 250,
-        Rounding = 1,
-        Callback = function(Value)
-        end
-    })
-    
     local flightStatus = Tabs.Navigation:AddParagraph({ Title = "Flight Status", Content = "Idle" })
     
     Tabs.Navigation:AddButton({
@@ -2417,210 +2406,20 @@ Tabs.Teleport:AddButton({
                 return
             end
             
-            local hrp = character:FindFirstChild("HumanoidRootPart")
-            if not hrp then return end
-            
-            local navControl = {
-                _isNavigating = true,
-                _isPaused = false,
-                Distance = math.floor((hrp.Position - selectedIslandPos).Magnitude),
-                TogglePause = function(self)
-                    self._isPaused = not self._isPaused
-                    return self._isPaused
-                end,
-                Cancel = function(self)
-                    self._isNavigating = false
-                end
-            }
-            Model.State.activeNavigation = navControl
+            Model.State.activeNavigation = Model.NavigateTo(character, selectedIslandPos, 90, 20)
             
             task.spawn(function()
-                flightStatus:SetDesc("Calculating path...")
-                local PathfindingService = game:GetService("PathfindingService")
-                local path = PathfindingService:CreatePath({
-                    AgentRadius = 3,
-                    AgentHeight = 5,
-                    AgentCanJump = true,
-                    WaypointSpacing = 4,
-                    Costs = { Water = 20 }
-                })
-                
-                local success, err = pcall(function()
-                    path:ComputeAsync(hrp.Position, selectedIslandPos)
-                end)
-                
-                if success and path.Status == Enum.PathStatus.Success then
-                    local waypoints = path:GetWaypoints()
-                    local bv = hrp:FindFirstChild("IslandAntiGravity") or Instance.new("BodyVelocity")
-                    bv.Name = "IslandAntiGravity"
-                    bv.MaxForce = Vector3.new(9e9, 9e9, 9e9)
-                    bv.Velocity = Vector3.new(0, 0, 0)
-                    bv.Parent = hrp
-                    
-                    for i, waypoint in ipairs(waypoints) do
-                        if not _running or not navControl._isNavigating then break end
-                        
-                        local wpPos = waypoint.Position + Vector3.new(0, 5, 0)
-                        local stuckTimer = 0
-                        local lastDist = (hrp.Position - wpPos).Magnitude
-                        
-                        while _running and navControl._isNavigating and hrp.Parent do
-                            if navControl._isPaused then
-                                flightStatus:SetDesc("Paused (" .. tostring(navControl.Distance) .. " studs)")
-                                bv.Velocity = Vector3.new(0, 0, 0)
-                                task.wait(0.1)
-                                continue
-                            end
-                            
-                            local distToWp = (hrp.Position - wpPos).Magnitude
-                            local distToFinal = (hrp.Position - selectedIslandPos).Magnitude
-                            navControl.Distance = math.floor(distToFinal)
-                            flightStatus:SetDesc("Flying... (" .. tostring(navControl.Distance) .. " studs)")
-                            
-                            if distToWp <= 3 then break end
-                            
-                            local dt = task.wait()
-                            
-                            if lastDist - distToWp < 0.1 then
-                                stuckTimer = stuckTimer + dt
-                            else
-                                stuckTimer = 0
-                                lastDist = distToWp
-                            end
-                            
-                            if stuckTimer > 0.5 then
-                                for _, part in ipairs(character:GetDescendants()) do
-                                    if part:IsA("BasePart") then
-                                        part.CanCollide = false
-                                    end
-                                end
-                            end
-                            
-                            local flySpeed = Fluent.Options.S_FlightSpeed and Fluent.Options.S_FlightSpeed.Value or 90
-                            local lerpAlpha = math.clamp((flySpeed * dt) / distToWp, 0, 1)
-                            
-                            local lookAtCFrame
-                            if distToWp > 0.1 then
-                                lookAtCFrame = CFrame.lookAt(hrp.Position, wpPos)
-                            else
-                                lookAtCFrame = hrp.CFrame
-                            end
-                            
-                            hrp.CFrame = hrp.CFrame:Lerp(CFrame.new(wpPos) * lookAtCFrame.Rotation, lerpAlpha)
-                            hrp.Velocity = Vector3.new(0, 0, 0)
-                            hrp.RotVelocity = Vector3.new(0, 0, 0)
-                        end
+                while _running and Model.State.activeNavigation and Model.State.activeNavigation._isNavigating do
+                    local nav = Model.State.activeNavigation
+                    if nav._isPaused then
+                        flightStatus:SetDesc("Paused (" .. tostring(nav.Distance) .. " studs)")
+                    elseif nav._roboTarget then
+                        flightStatus:SetDesc("Lock: Robo! (" .. tostring(nav.Distance) .. " studs)")
+                    else
+                        flightStatus:SetDesc("Flying... (" .. tostring(nav.Distance) .. " studs)")
                     end
-                    
-                    if bv then bv:Destroy() end
-                    if navControl._isNavigating then
-                        Fluent:Notify({ Title = "Arrived", Content = "Successfully reached the island!", Duration = 3 })
-                    end
-                else
-                    Fluent:Notify({ Title = "Seagull Flight", Content = "Flying over the ocean...", Duration = 3 })
-                    
-                    local bv = hrp:FindFirstChild("IslandAntiGravity") or Instance.new("BodyVelocity")
-                    bv.Name = "IslandAntiGravity"
-                    bv.MaxForce = Vector3.new(9e9, 9e9, 9e9)
-                    bv.Velocity = Vector3.new(0, 0, 0)
-                    bv.Parent = hrp
-                    
-                    local stuckTimer = 0
-                    local lastDist = (hrp.Position - selectedIslandPos).Magnitude
-                    
-                    local rayParams = RaycastParams.new()
-                    rayParams.FilterType = Enum.RaycastFilterType.Exclude
-                    rayParams.FilterDescendantsInstances = {character}
-                    
-                    while _running and navControl._isNavigating and hrp.Parent do
-                        if navControl._isPaused then
-                            flightStatus:SetDesc("Paused (" .. tostring(navControl.Distance) .. " studs)")
-                            bv.Velocity = Vector3.new(0, 0, 0)
-                            task.wait(0.1)
-                            continue
-                        end
-                        
-                        local currentDist = (hrp.Position - selectedIslandPos).Magnitude
-                        navControl.Distance = math.floor(currentDist)
-                        
-                        if currentDist <= 10 then break end
-                        
-                        local dt = task.wait()
-                        
-                        if lastDist - currentDist < 0.1 then
-                            stuckTimer = stuckTimer + dt
-                        else
-                            stuckTimer = 0
-                            lastDist = currentDist
-                        end
-                        
-                        if stuckTimer > 0.5 then
-                            for _, part in ipairs(character:GetDescendants()) do
-                                if part:IsA("BasePart") then
-                                    part.CanCollide = false
-                                end
-                            end
-                        end
-                        
-                        local adjustedTarget = selectedIslandPos
-                        local dirToTarget = (selectedIslandPos - hrp.Position).Unit
-                        local raycastResult = game.Workspace:Raycast(hrp.Position, dirToTarget * 150, rayParams)
-                        
-                        local isWater = false
-                        if raycastResult and raycastResult.Instance then
-                            local ln = string.lower(raycastResult.Instance.Name)
-                            isWater = string.find(ln, "water") or string.find(ln, "ocean") or string.find(ln, "oceanmeshes")
-                        end
-                        
-                        local dirXZ = (Vector3.new(selectedIslandPos.X, 0, selectedIslandPos.Z) - Vector3.new(hrp.Position.X, 0, hrp.Position.Z)).Unit
-                        
-                        if raycastResult and raycastResult.Instance and raycastResult.Instance.CanCollide and not isWater then
-                            local localTarget = hrp.Position + (dirXZ * 50)
-                            adjustedTarget = Vector3.new(localTarget.X, raycastResult.Position.Y + 50, localTarget.Z)
-                            flightStatus:SetDesc("Dodging Obstacle! (" .. tostring(navControl.Distance) .. " studs)")
-                        else
-                            local downRay = game.Workspace:Raycast(hrp.Position, Vector3.new(0, -500, 0), rayParams)
-                            local isDownWater = false
-                            if downRay and downRay.Instance then
-                                local ln = string.lower(downRay.Instance.Name)
-                                isDownWater = string.find(ln, "water") or string.find(ln, "ocean") or string.find(ln, "oceanmeshes")
-                            end
-                            
-                            local localTarget = hrp.Position + (dirXZ * 50)
-                            
-                            if downRay then
-                                -- Adaptively hover 3 studs above ANY surface (water or land)
-                                adjustedTarget = Vector3.new(localTarget.X, downRay.Position.Y + 3, localTarget.Z)
-                            else
-                                adjustedTarget = Vector3.new(localTarget.X, 3, localTarget.Z)
-                            end
-                            flightStatus:SetDesc("Direct Flight... (" .. tostring(navControl.Distance) .. " studs)")
-                        end
-                        
-                        local distToTarget = (hrp.Position - adjustedTarget).Magnitude
-                        local flySpeed = Fluent.Options.S_FlightSpeed and Fluent.Options.S_FlightSpeed.Value or 120
-                        local lerpAlpha = math.clamp((flySpeed * dt) / distToTarget, 0, 1)
-                        
-                        local lookAtCFrame
-                        if distToTarget > 0.1 then
-                            lookAtCFrame = CFrame.lookAt(hrp.Position, adjustedTarget)
-                        else
-                            lookAtCFrame = hrp.CFrame
-                        end
-                        
-                        hrp.CFrame = hrp.CFrame:Lerp(CFrame.new(adjustedTarget) * lookAtCFrame.Rotation, lerpAlpha)
-                        hrp.Velocity = Vector3.new(0, 0, 0)
-                        hrp.RotVelocity = Vector3.new(0, 0, 0)
-                    end
-                    
-                    if bv then bv:Destroy() end
-                    if navControl._isNavigating then
-                        Fluent:Notify({ Title = "Arrived", Content = "Successfully reached the island!", Duration = 3 })
-                    end
+                    task.wait(0.1)
                 end
-                
-                navControl._isNavigating = false
-                Model.State.activeNavigation = nil
                 flightStatus:SetDesc("Idle")
             end)
         end
