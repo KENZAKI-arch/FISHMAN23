@@ -1940,22 +1940,23 @@ Fluent = {
                 if isTable then toggleArgs = id; id = nil end
                 
                 local toggleVal = toggleArgs.Default or false
-                local ToggleObj
-                ToggleObj = Tab:AddToggle({
+                local FakeToggle = {
+                    Value = toggleVal
+                }
+                
+                local ToggleObj = Tab:AddToggle({
                     Name = toggleArgs.Title,
                     Default = toggleVal,
                     Callback = function(val)
+                        FakeToggle.Value = val
                         if toggleArgs.Callback then toggleArgs.Callback(val) end
                     end
                 })
                 
-                local FakeToggle = {
-                    Value = toggleVal,
-                    SetValue = function(self, val)
-                        self.Value = val
-                        ToggleObj:Set(val)
-                    end
-                }
+                FakeToggle.SetValue = function(self, val)
+                    self.Value = val
+                    ToggleObj:Set(val)
+                end
                 
                 if not isTable and id then
                     Fluent.Options[id] = FakeToggle
@@ -1974,26 +1975,27 @@ Fluent = {
                 local isTable = type(id) == "table"
                 if isTable then dropArgs = id; id = nil end
                 
-                local DropdownObj
-                DropdownObj = Tab:AddDropdown({
+                local FakeDropdown = {
+                    Value = dropArgs.Default
+                }
+                
+                local DropdownObj = Tab:AddDropdown({
                     Name = dropArgs.Title,
                     Default = dropArgs.Default,
                     Options = dropArgs.Values or {},
                     Callback = function(val)
+                        FakeDropdown.Value = val
                         if dropArgs.Callback then dropArgs.Callback(val) end
                     end
                 })
                 
-                local FakeDropdown = {
-                    Value = dropArgs.Default,
-                    SetValue = function(self, val)
-                        self.Value = val
-                        DropdownObj:Set(val)
-                    end,
-                    SetValues = function(self, vals)
-                        DropdownObj:Refresh(vals, true)
-                    end
-                }
+                FakeDropdown.SetValue = function(self, val)
+                    self.Value = val
+                    DropdownObj:Set(val)
+                end
+                FakeDropdown.SetValues = function(self, vals)
+                    DropdownObj:Refresh(vals, true)
+                end
                 
                 if not isTable and id then
                     Fluent.Options[id] = FakeDropdown
@@ -2005,22 +2007,23 @@ Fluent = {
                 local isTable = type(id) == "table"
                 if isTable then inputArgs = id; id = nil end
                 
-                local InputObj
-                InputObj = Tab:AddTextbox({
+                local FakeInput = {
+                    Value = inputArgs.Default or ""
+                }
+                
+                local InputObj = Tab:AddTextbox({
                     Name = inputArgs.Title,
                     Default = inputArgs.Default or "",
                     TextDisappear = false,
                     Callback = function(val)
+                        FakeInput.Value = val
                         if inputArgs.Callback then inputArgs.Callback(val) end
                     end
                 })
                 
-                local FakeInput = {
-                    Value = inputArgs.Default or "",
-                    SetValue = function(self, val)
-                        self.Value = val
-                    end
-                }
+                FakeInput.SetValue = function(self, val)
+                    self.Value = val
+                end
                 
                 if not isTable and id then
                     Fluent.Options[id] = FakeInput
@@ -2032,8 +2035,11 @@ Fluent = {
                 local isTable = type(id) == "table"
                 if isTable then sliderArgs = id; id = nil end
                 
-                local SliderObj
-                SliderObj = Tab:AddSlider({
+                local FakeSlider = {
+                    Value = sliderArgs.Default or 0
+                }
+                
+                local SliderObj = Tab:AddSlider({
                     Name = sliderArgs.Title,
                     Min = sliderArgs.Min or 0,
                     Max = sliderArgs.Max or 100,
@@ -2042,17 +2048,15 @@ Fluent = {
                     Increment = 1,
                     ValueName = "",
                     Callback = function(val)
+                        FakeSlider.Value = val
                         if sliderArgs.Callback then sliderArgs.Callback(val) end
                     end
                 })
                 
-                local FakeSlider = {
-                    Value = sliderArgs.Default or 0,
-                    SetValue = function(self, val)
-                        self.Value = val
-                        SliderObj:Set(val)
-                    end
-                }
+                FakeSlider.SetValue = function(self, val)
+                    self.Value = val
+                    SliderObj:Set(val)
+                end
                 
                 if not isTable and id then
                     Fluent.Options[id] = FakeSlider
