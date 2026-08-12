@@ -2229,7 +2229,11 @@ function Fluent:CreateWindow(options)
             local isOpen = false
             btn.MouseButton1Click:Connect(function() isOpen = not isOpen; frame.Size = UDim2.new(1, 0, 0, isOpen and 102 or 22) end)
             
-            local FakeDrop = { Value = dArgs.Default or (dArgs.Multi and {} or "") }
+            local initVal = dArgs.Default
+            if type(initVal) == "number" and not dArgs.Multi and dArgs.Values and dArgs.Values[initVal] then
+                initVal = dArgs.Values[initVal]
+            end
+            local FakeDrop = { Value = initVal or (dArgs.Multi and {} or "") }
             local function populate(vals)
                 for _, c in ipairs(list:GetChildren()) do if c:IsA("TextButton") then c:Destroy() end end
                 for _, v in ipairs(vals) do
@@ -2275,7 +2279,7 @@ function Fluent:CreateWindow(options)
             if not isTable and id then Fluent.Options[id] = FakeDrop end
             populate(dArgs.Values or {})
             btn.Text = " ▼ " .. dArgs.Title .. ": " .. (dArgs.Multi and type(FakeDrop.Value) == "table" and #FakeDrop.Value .. " selected" or tostring(FakeDrop.Value))
-            if dArgs.Default and dArgs.Callback then task.spawn(dArgs.Callback, dArgs.Default) end
+            if initVal and dArgs.Callback then task.spawn(dArgs.Callback, initVal) end
             return FakeDrop
         end
         
