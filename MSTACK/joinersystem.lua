@@ -2269,11 +2269,12 @@ function Fluent:CreateWindow(options)
             FakeDrop.SetValues = function(self, vals) populate(vals) end
             FakeDrop.SetValue = function(self, val)
                 self.Value = val
-                btn.Text = " ▼ " .. dArgs.Title .. ": " .. (dArgs.Multi and #self.Value .. " selected" or tostring(self.Value))
+                btn.Text = " ▼ " .. dArgs.Title .. ": " .. (dArgs.Multi and type(self.Value) == "table" and #self.Value .. " selected" or tostring(self.Value))
                 if dArgs.Callback then task.spawn(dArgs.Callback, self.Value) end
             end
             if not isTable and id then Fluent.Options[id] = FakeDrop end
             populate(dArgs.Values or {})
+            btn.Text = " ▼ " .. dArgs.Title .. ": " .. (dArgs.Multi and type(FakeDrop.Value) == "table" and #FakeDrop.Value .. " selected" or tostring(FakeDrop.Value))
             if dArgs.Default and dArgs.Callback then task.spawn(dArgs.Callback, dArgs.Default) end
             return FakeDrop
         end
@@ -2348,7 +2349,8 @@ end
 
 local Window = Fluent:CreateWindow({
     Title = "🐟 Fishman Hub",
-    SubTitle = "Unified Auto-Fisher 1.0.3 v3.9"
+    SubTitle = "Unified Auto-Fisher 1.0.3 v3.9",
+    MinimizeKey = Enum.KeyCode.RightShift
 })
 
 -- Prevent game from detecting UI actions or internal UI errors (Anti-Cheat bypass)
