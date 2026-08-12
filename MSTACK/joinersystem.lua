@@ -167,7 +167,64 @@ local function GetCurrentPSCode()
     return ""
 end
 
+local function ActivatePotatoGraphics()
+    if _G.PotatoGraphicsActive then return end
+    _G.PotatoGraphicsActive = true
+    
+    local Lighting = game:GetService("Lighting")
+    local Terrain = workspace:FindFirstChildWhichIsA("Terrain")
+    if Terrain then
+        Terrain.WaterWaveSize = 0
+        Terrain.WaterWaveSpeed = 0
+        Terrain.WaterReflectance = 0
+        Terrain.WaterTransparency = 1
+    end
 
+    Lighting.GlobalShadows = false
+    Lighting.FogEnd = 9e9
+    Lighting.FogStart = 9e9
+
+    settings().Rendering.QualityLevel = 1
+
+    for _, v in pairs(game:GetDescendants()) do
+        if v:IsA("BasePart") then
+            v.CastShadow = false
+            v.Material = Enum.Material.Plastic
+            v.Reflectance = 0
+            pcall(function() v.BackSurface = "SmoothNoOutlines" end)
+            pcall(function() v.BottomSurface = "SmoothNoOutlines" end)
+            pcall(function() v.FrontSurface = "SmoothNoOutlines" end)
+            pcall(function() v.LeftSurface = "SmoothNoOutlines" end)
+            pcall(function() v.RightSurface = "SmoothNoOutlines" end)
+            pcall(function() v.TopSurface = "SmoothNoOutlines" end)
+        elseif v:IsA("Decal") then
+            v.Transparency = 1
+            v.Texture = ""
+        elseif v:IsA("ParticleEmitter") or v:IsA("Trail") then
+            v.Lifetime = NumberRange.new(0)
+        end
+    end
+
+    for _, v in pairs(Lighting:GetDescendants()) do
+        if v:IsA("PostEffect") then
+            v.Enabled = false
+        end
+    end
+
+    addConn(workspace.DescendantAdded:Connect(function(child)
+        task.spawn(function()
+            if child:IsA("ForceField") or child:IsA("Sparkles") or child:IsA("Smoke") or child:IsA("Fire") or child:IsA("Beam") then
+                RunService.Heartbeat:Wait()
+                child:Destroy()
+            elseif child:IsA("BasePart") then
+                child.CastShadow = false
+            end
+        end)
+    end))
+    
+    if Fluent then Fluent:Notify({ Title = "Anti-Lag", Content = "Potato Graphics Active!", Duration = 3 }) end
+    print("Anti-Lag: Active")
+end
 
 -- ======================================================================
 -- 🎣 FISHING ENGINE CORE (Only initialized if NOT in lobby)
@@ -1407,6 +1464,7 @@ if not isLobby then
                         Model.StartTraveling()
                         RunService:Set3dRenderingEnabled(false)
                     end
+                    ActivatePotatoGraphics()
                     Model.State.waitingForArrivalToFish = true
                 end
             end
@@ -1879,216 +1937,7 @@ end
 -- ======================================================================
 -- 🎨 FLUENT UI INTEGRATION
 -- ======================================================================
-local OrionLib
-local orionPath = "OrionLib_Fishman.lua"
-
-if isfile and readfile and isfile(orionPath) then
-    local success, result = pcall(function()
-        return loadstring(readfile(orionPath))()
-    end)
-    if success and type(result) == "table" then
-        OrionLib = result
-    end
-end
-
-if not OrionLib then
-    local success, result = pcall(function()
-        local code = game:HttpGet('https://raw.githubusercontent.com/shlexware/Orion/main/source')
-        if writefile then
-            pcall(writefile, orionPath, code)
-        end
-        return loadstring(code)()
-    end)
-    
-    if not success or type(result) ~= "table" then
-        warn("Failed to load Orion UI! GitHub might be rate-limiting you, or your executor failed the request. Wait a minute and try again.")
-        return
-    end
-    OrionLib = result
-end
-
-Fluent = {
-    Options = {},
-    Notify = function(self, args)
-        OrionLib:MakeNotification({
-            Name = args.Title or "Notification",
-            Content = args.Content or "",
-            Image = "rbxassetid://4483345998",
-            Time = args.Duration or 5
-        })
-    end,
-    CreateWindow = function(self, args)
-        local Window = OrionLib:MakeWindow({
-            Name = args.Title .. (args.SubTitle and (" - " .. args.SubTitle) or ""),
-            HidePremium = true,
-            SaveConfig = false,
-            IntroText = args.Title
-        })
-        
-        local FakeWindow = {}
-        function FakeWindow:SelectTab(idx) end
-        function FakeWindow:AddTab(tabArgs)
-            local Tab = Window:MakeTab({
-                Name = tabArgs.Title,
-                Icon = "rbxassetid://4483345998",
-                PremiumOnly = false
-            })
-            
-            local FakeTab = {}
-            function FakeTab:AddToggle(id, toggleArgs)
-                local isTable = type(id) == "table"
-                if isTable then toggleArgs = id; id = nil end
-                
-                local toggleVal = toggleArgs.Default or false
-                local FakeToggle = {
-                    Value = toggleVal
-                }
-                
-                local ToggleObj = Tab:AddToggle({
-                    Name = toggleArgs.Title,
-                    Default = toggleVal,
-                    Callback = function(val)
-                        FakeToggle.Value = val
-                        if toggleArgs.Callback then toggleArgs.Callback(val) end
-                    end
-                })
-                
-                FakeToggle.SetValue = function(self, val)
-                    self.Value = val
-                    ToggleObj:Set(val)
-                end
-                
-                if not isTable and id then
-                    Fluent.Options[id] = FakeToggle
-                end
-                return FakeToggle
-            end
-            
-            function FakeTab:AddButton(btnArgs)
-                Tab:AddButton({
-                    Name = btnArgs.Title,
-                    Callback = btnArgs.Callback
-                })
-            end
-            
-            function FakeTab:AddDropdown(id, dropArgs)
-                local isTable = type(id) == "table"
-                if isTable then dropArgs = id; id = nil end
-                
-                local FakeDropdown = {
-                    Value = dropArgs.Default
-                }
-                
-                local DropdownObj = Tab:AddDropdown({
-                    Name = dropArgs.Title,
-                    Default = dropArgs.Default,
-                    Options = dropArgs.Values or {},
-                    Callback = function(val)
-                        FakeDropdown.Value = val
-                        if dropArgs.Callback then dropArgs.Callback(val) end
-                    end
-                })
-                
-                FakeDropdown.SetValue = function(self, val)
-                    self.Value = val
-                    DropdownObj:Set(val)
-                end
-                FakeDropdown.SetValues = function(self, vals)
-                    DropdownObj:Refresh(vals, true)
-                end
-                
-                if not isTable and id then
-                    Fluent.Options[id] = FakeDropdown
-                end
-                return FakeDropdown
-            end
-            
-            function FakeTab:AddInput(id, inputArgs)
-                local isTable = type(id) == "table"
-                if isTable then inputArgs = id; id = nil end
-                
-                local FakeInput = {
-                    Value = inputArgs.Default or ""
-                }
-                
-                local InputObj = Tab:AddTextbox({
-                    Name = inputArgs.Title,
-                    Default = inputArgs.Default or "",
-                    TextDisappear = false,
-                    Callback = function(val)
-                        FakeInput.Value = val
-                        if inputArgs.Callback then inputArgs.Callback(val) end
-                    end
-                })
-                
-                FakeInput.SetValue = function(self, val)
-                    self.Value = val
-                end
-                
-                if not isTable and id then
-                    Fluent.Options[id] = FakeInput
-                end
-                return FakeInput
-            end
-            
-            function FakeTab:AddSlider(id, sliderArgs)
-                local isTable = type(id) == "table"
-                if isTable then sliderArgs = id; id = nil end
-                
-                local FakeSlider = {
-                    Value = sliderArgs.Default or 0
-                }
-                
-                local SliderObj = Tab:AddSlider({
-                    Name = sliderArgs.Title,
-                    Min = sliderArgs.Min or 0,
-                    Max = sliderArgs.Max or 100,
-                    Default = sliderArgs.Default or 0,
-                    Color = Color3.fromRGB(255,255,255),
-                    Increment = 1,
-                    ValueName = "",
-                    Callback = function(val)
-                        FakeSlider.Value = val
-                        if sliderArgs.Callback then sliderArgs.Callback(val) end
-                    end
-                })
-                
-                FakeSlider.SetValue = function(self, val)
-                    self.Value = val
-                    SliderObj:Set(val)
-                end
-                
-                if not isTable and id then
-                    Fluent.Options[id] = FakeSlider
-                end
-                return FakeSlider
-            end
-            
-            function FakeTab:AddParagraph(id, pArgs)
-                local isTable = type(id) == "table"
-                if isTable then pArgs = id; id = nil end
-                
-                local ParaObj = Tab:AddParagraph(pArgs.Title, pArgs.Content or "")
-                
-                local FakePara = {
-                    SetDesc = function(self, desc)
-                        ParaObj:Set(pArgs.Title, desc)
-                    end
-                }
-                
-                if not isTable and id then
-                    Fluent.Options[id] = FakePara
-                end
-                return FakePara
-            end
-            
-            return FakeTab
-        end
-        
-        return FakeWindow
-    end
-}
-
+Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
 local Window = Fluent:CreateWindow({
     Title = "🐟 Fishman Hub",
     SubTitle = "Unified Auto-Fisher 1.0.3 v3.9",
@@ -2100,9 +1949,60 @@ local Window = Fluent:CreateWindow({
 
 env.Fishman_DestroyUI = function()
     pcall(function()
-        if OrionLib then OrionLib:Destroy() end
+        if Window and Window.Destroy then Window:Destroy() end
     end)
 end
+
+-- Make the entire UI draggable by clicking anywhere
+task.spawn(function()
+    pcall(function()
+        task.wait(1)
+        local coreGui = game:GetService("CoreGui")
+        local mainFrame
+        
+        for _, gui in pairs(coreGui:GetDescendants()) do
+            if gui:IsA("Frame") and gui.Size == UDim2.fromOffset(500, 350) then
+                mainFrame = gui
+                break
+            end
+        end
+
+        if mainFrame then
+            local dragging, dragInput, dragStart, startPos
+
+            local function update(input)
+                local delta = input.Position - dragStart
+                mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+            end
+
+            mainFrame.InputBegan:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                    dragging = true
+                    dragStart = input.Position
+                    startPos = mainFrame.Position
+
+                    input.Changed:Connect(function()
+                        if input.UserInputState == Enum.UserInputState.End then
+                            dragging = false
+                        end
+                    end)
+                end
+            end)
+
+            mainFrame.InputChanged:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+                    dragInput = input
+                end
+            end)
+
+            addConn(UserInputService.InputChanged:Connect(function(input)
+                if input == dragInput and dragging then
+                    update(input)
+                end
+            end))
+        end
+    end)
+end)
 
 -- Prevent game from detecting UI actions or internal UI errors (Anti-Cheat bypass)
 pcall(function()
@@ -3484,6 +3384,14 @@ Tabs.Settings:AddSlider("S_FPSCap", {
 })
 
 Tabs.Settings:AddButton({
+    Title = "🥔 Potato Graphics",
+    Description = "Reduces all game graphics to the absolute minimum for maximum FPS.",
+    Callback = function()
+        ActivatePotatoGraphics()
+    end
+})
+
+Tabs.Settings:AddButton({
     Title = "🔄 Update / Load Latest Version",
     Description = "Destroys the current UI and executes the latest joinersystem from GitHub.",
     Callback = function()
@@ -3614,5 +3522,3 @@ addConn(UserInputService.InputBegan:Connect(function(input, gameProcessed)
     end
 end))
 addConn(UserInputService.InputChanged:Connect(function() secondsSinceLastInput = 0 end))
-
-if OrionLib then OrionLib:Init() end
