@@ -167,64 +167,7 @@ local function GetCurrentPSCode()
     return ""
 end
 
-local function ActivatePotatoGraphics()
-    if _G.PotatoGraphicsActive then return end
-    _G.PotatoGraphicsActive = true
-    
-    local Lighting = game:GetService("Lighting")
-    local Terrain = workspace:FindFirstChildWhichIsA("Terrain")
-    if Terrain then
-        Terrain.WaterWaveSize = 0
-        Terrain.WaterWaveSpeed = 0
-        Terrain.WaterReflectance = 0
-        Terrain.WaterTransparency = 1
-    end
 
-    Lighting.GlobalShadows = false
-    Lighting.FogEnd = 9e9
-    Lighting.FogStart = 9e9
-
-    settings().Rendering.QualityLevel = 1
-
-    for _, v in pairs(game:GetDescendants()) do
-        if v:IsA("BasePart") then
-            v.CastShadow = false
-            v.Material = Enum.Material.Plastic
-            v.Reflectance = 0
-            pcall(function() v.BackSurface = "SmoothNoOutlines" end)
-            pcall(function() v.BottomSurface = "SmoothNoOutlines" end)
-            pcall(function() v.FrontSurface = "SmoothNoOutlines" end)
-            pcall(function() v.LeftSurface = "SmoothNoOutlines" end)
-            pcall(function() v.RightSurface = "SmoothNoOutlines" end)
-            pcall(function() v.TopSurface = "SmoothNoOutlines" end)
-        elseif v:IsA("Decal") then
-            v.Transparency = 1
-            v.Texture = ""
-        elseif v:IsA("ParticleEmitter") or v:IsA("Trail") then
-            v.Lifetime = NumberRange.new(0)
-        end
-    end
-
-    for _, v in pairs(Lighting:GetDescendants()) do
-        if v:IsA("PostEffect") then
-            v.Enabled = false
-        end
-    end
-
-    addConn(workspace.DescendantAdded:Connect(function(child)
-        task.spawn(function()
-            if child:IsA("ForceField") or child:IsA("Sparkles") or child:IsA("Smoke") or child:IsA("Fire") or child:IsA("Beam") then
-                RunService.Heartbeat:Wait()
-                child:Destroy()
-            elseif child:IsA("BasePart") then
-                child.CastShadow = false
-            end
-        end)
-    end))
-    
-    if Fluent then Fluent:Notify({ Title = "Anti-Lag", Content = "Potato Graphics Active!", Duration = 3 }) end
-    print("Anti-Lag: Active")
-end
 
 -- ======================================================================
 -- 🎣 FISHING ENGINE CORE (Only initialized if NOT in lobby)
@@ -1464,7 +1407,6 @@ if not isLobby then
                         Model.StartTraveling()
                         RunService:Set3dRenderingEnabled(false)
                     end
-                    ActivatePotatoGraphics()
                     Model.State.waitingForArrivalToFish = true
                 end
             end
@@ -1937,7 +1879,16 @@ end
 -- ======================================================================
 -- 🎨 FLUENT UI INTEGRATION
 -- ======================================================================
-Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
+local success, result = pcall(function()
+    return loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
+end)
+
+if not success or type(result) ~= "table" then
+    warn("Failed to load Fluent UI! GitHub might be rate-limiting you, or your executor failed the request. Wait a minute and try again.")
+    return
+end
+
+Fluent = result
 local Window = Fluent:CreateWindow({
     Title = "🐟 Fishman Hub",
     SubTitle = "Unified Auto-Fisher 1.0.3 v3.9",
@@ -3380,14 +3331,6 @@ Tabs.Settings:AddSlider("S_FPSCap", {
     Rounding = 0,
     Callback = function(Value)
         if setfpscap then pcall(setfpscap, Value) end
-    end
-})
-
-Tabs.Settings:AddButton({
-    Title = "🥔 Potato Graphics",
-    Description = "Reduces all game graphics to the absolute minimum for maximum FPS.",
-    Callback = function()
-        ActivatePotatoGraphics()
     end
 })
 

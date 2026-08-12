@@ -1910,7 +1910,16 @@ end
 -- ======================================================================
 -- 🎨 FLUENT UI INTEGRATION
 -- ======================================================================
-Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
+local success, result = pcall(function()
+    return loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
+end)
+
+if not success or type(result) ~= "table" then
+    warn("Failed to load Fluent UI! GitHub might be rate-limiting you, or your executor failed the request. Wait a minute and try again.")
+    return
+end
+
+Fluent = result
 local Window = Fluent:CreateWindow({
     Title = "🐟 Fishman Hub",
     SubTitle = "Unified Auto-Fisher 1.0.3 v3.8",
