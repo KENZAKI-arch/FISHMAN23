@@ -1879,7 +1879,16 @@ end
 -- ======================================================================
 -- 🎨 FLUENT UI INTEGRATION
 -- ======================================================================
-local OrionLib = loadstring(game:HttpGet(('https://raw.githubusercontent.com/shlexware/Orion/main/source')))()
+local success, result = pcall(function()
+    return loadstring(game:HttpGet(('https://raw.githubusercontent.com/shlexware/Orion/main/source')))()
+end)
+
+if not success or type(result) ~= "table" then
+    warn("Failed to load Orion UI! GitHub might be rate-limiting you, or your executor failed the request. Wait a minute and try again.")
+    return
+end
+
+local OrionLib = result
 
 Fluent = {
     Options = {},
