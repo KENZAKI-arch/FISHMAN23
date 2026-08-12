@@ -1879,16 +1879,186 @@ end
 -- ======================================================================
 -- 🎨 FLUENT UI INTEGRATION
 -- ======================================================================
-local success, result = pcall(function()
-    return loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
-end)
+local OrionLib = loadstring(game:HttpGet(('https://raw.githubusercontent.com/shlexware/Orion/main/source')))()
 
-if not success or type(result) ~= "table" then
-    warn("Failed to load Fluent UI! GitHub might be rate-limiting you, or your executor failed the request. Wait a minute and try again.")
-    return
-end
+Fluent = {
+    Options = {},
+    Notify = function(self, args)
+        OrionLib:MakeNotification({
+            Name = args.Title or "Notification",
+            Content = args.Content or "",
+            Image = "rbxassetid://4483345998",
+            Time = args.Duration or 5
+        })
+    end,
+    CreateWindow = function(self, args)
+        local Window = OrionLib:MakeWindow({
+            Name = args.Title .. (args.SubTitle and (" - " .. args.SubTitle) or ""),
+            HidePremium = true,
+            SaveConfig = false,
+            IntroText = args.Title
+        })
+        
+        local FakeWindow = {}
+        function FakeWindow:SelectTab(idx) end
+        function FakeWindow:AddTab(tabArgs)
+            local Tab = Window:MakeTab({
+                Name = tabArgs.Title,
+                Icon = "rbxassetid://4483345998",
+                PremiumOnly = false
+            })
+            
+            local FakeTab = {}
+            function FakeTab:AddToggle(id, toggleArgs)
+                local isTable = type(id) == "table"
+                if isTable then toggleArgs = id; id = nil end
+                
+                local toggleVal = toggleArgs.Default or false
+                local ToggleObj
+                ToggleObj = Tab:AddToggle({
+                    Name = toggleArgs.Title,
+                    Default = toggleVal,
+                    Callback = function(val)
+                        if toggleArgs.Callback then toggleArgs.Callback(val) end
+                    end
+                })
+                
+                local FakeToggle = {
+                    Value = toggleVal,
+                    SetValue = function(self, val)
+                        self.Value = val
+                        ToggleObj:Set(val)
+                    end
+                }
+                
+                if not isTable and id then
+                    Fluent.Options[id] = FakeToggle
+                end
+                return FakeToggle
+            end
+            
+            function FakeTab:AddButton(btnArgs)
+                Tab:AddButton({
+                    Name = btnArgs.Title,
+                    Callback = btnArgs.Callback
+                })
+            end
+            
+            function FakeTab:AddDropdown(id, dropArgs)
+                local isTable = type(id) == "table"
+                if isTable then dropArgs = id; id = nil end
+                
+                local DropdownObj
+                DropdownObj = Tab:AddDropdown({
+                    Name = dropArgs.Title,
+                    Default = dropArgs.Default,
+                    Options = dropArgs.Values or {},
+                    Callback = function(val)
+                        if dropArgs.Callback then dropArgs.Callback(val) end
+                    end
+                })
+                
+                local FakeDropdown = {
+                    Value = dropArgs.Default,
+                    SetValue = function(self, val)
+                        self.Value = val
+                        DropdownObj:Set(val)
+                    end,
+                    SetValues = function(self, vals)
+                        DropdownObj:Refresh(vals, true)
+                    end
+                }
+                
+                if not isTable and id then
+                    Fluent.Options[id] = FakeDropdown
+                end
+                return FakeDropdown
+            end
+            
+            function FakeTab:AddInput(id, inputArgs)
+                local isTable = type(id) == "table"
+                if isTable then inputArgs = id; id = nil end
+                
+                local InputObj
+                InputObj = Tab:AddTextbox({
+                    Name = inputArgs.Title,
+                    Default = inputArgs.Default or "",
+                    TextDisappear = false,
+                    Callback = function(val)
+                        if inputArgs.Callback then inputArgs.Callback(val) end
+                    end
+                })
+                
+                local FakeInput = {
+                    Value = inputArgs.Default or "",
+                    SetValue = function(self, val)
+                        self.Value = val
+                    end
+                }
+                
+                if not isTable and id then
+                    Fluent.Options[id] = FakeInput
+                end
+                return FakeInput
+            end
+            
+            function FakeTab:AddSlider(id, sliderArgs)
+                local isTable = type(id) == "table"
+                if isTable then sliderArgs = id; id = nil end
+                
+                local SliderObj
+                SliderObj = Tab:AddSlider({
+                    Name = sliderArgs.Title,
+                    Min = sliderArgs.Min or 0,
+                    Max = sliderArgs.Max or 100,
+                    Default = sliderArgs.Default or 0,
+                    Color = Color3.fromRGB(255,255,255),
+                    Increment = 1,
+                    ValueName = "",
+                    Callback = function(val)
+                        if sliderArgs.Callback then sliderArgs.Callback(val) end
+                    end
+                })
+                
+                local FakeSlider = {
+                    Value = sliderArgs.Default or 0,
+                    SetValue = function(self, val)
+                        self.Value = val
+                        SliderObj:Set(val)
+                    end
+                }
+                
+                if not isTable and id then
+                    Fluent.Options[id] = FakeSlider
+                end
+                return FakeSlider
+            end
+            
+            function FakeTab:AddParagraph(id, pArgs)
+                local isTable = type(id) == "table"
+                if isTable then pArgs = id; id = nil end
+                
+                local ParaObj = Tab:AddParagraph(pArgs.Title, pArgs.Content or "")
+                
+                local FakePara = {
+                    SetDesc = function(self, desc)
+                        ParaObj:Set(pArgs.Title, desc)
+                    end
+                }
+                
+                if not isTable and id then
+                    Fluent.Options[id] = FakePara
+                end
+                return FakePara
+            end
+            
+            return FakeTab
+        end
+        
+        return FakeWindow
+    end
+}
 
-Fluent = result
 local Window = Fluent:CreateWindow({
     Title = "🐟 Fishman Hub",
     SubTitle = "Unified Auto-Fisher 1.0.3 v3.9",
@@ -1900,60 +2070,9 @@ local Window = Fluent:CreateWindow({
 
 env.Fishman_DestroyUI = function()
     pcall(function()
-        if Window and Window.Destroy then Window:Destroy() end
+        if OrionLib then OrionLib:Destroy() end
     end)
 end
-
--- Make the entire UI draggable by clicking anywhere
-task.spawn(function()
-    pcall(function()
-        task.wait(1)
-        local coreGui = game:GetService("CoreGui")
-        local mainFrame
-        
-        for _, gui in pairs(coreGui:GetDescendants()) do
-            if gui:IsA("Frame") and gui.Size == UDim2.fromOffset(500, 350) then
-                mainFrame = gui
-                break
-            end
-        end
-
-        if mainFrame then
-            local dragging, dragInput, dragStart, startPos
-
-            local function update(input)
-                local delta = input.Position - dragStart
-                mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-            end
-
-            mainFrame.InputBegan:Connect(function(input)
-                if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-                    dragging = true
-                    dragStart = input.Position
-                    startPos = mainFrame.Position
-
-                    input.Changed:Connect(function()
-                        if input.UserInputState == Enum.UserInputState.End then
-                            dragging = false
-                        end
-                    end)
-                end
-            end)
-
-            mainFrame.InputChanged:Connect(function(input)
-                if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-                    dragInput = input
-                end
-            end)
-
-            addConn(UserInputService.InputChanged:Connect(function(input)
-                if input == dragInput and dragging then
-                    update(input)
-                end
-            end))
-        end
-    end)
-end)
 
 -- Prevent game from detecting UI actions or internal UI errors (Anti-Cheat bypass)
 pcall(function()
@@ -3465,3 +3584,5 @@ addConn(UserInputService.InputBegan:Connect(function(input, gameProcessed)
     end
 end))
 addConn(UserInputService.InputChanged:Connect(function() secondsSinceLastInput = 0 end))
+
+if OrionLib then OrionLib:Init() end
