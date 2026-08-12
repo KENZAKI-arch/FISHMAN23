@@ -1910,16 +1910,33 @@ end
 -- ======================================================================
 -- 🎨 FLUENT UI INTEGRATION
 -- ======================================================================
-local success, result = pcall(function()
-    return loadstring(game:HttpGet(('https://raw.githubusercontent.com/shlexware/Orion/main/source')))()
-end)
+local OrionLib
+local orionPath = "OrionLib_Fishman.lua"
 
-if not success or type(result) ~= "table" then
-    warn("Failed to load Orion UI! GitHub might be rate-limiting you, or your executor failed the request. Wait a minute and try again.")
-    return
+if isfile and readfile and isfile(orionPath) then
+    local success, result = pcall(function()
+        return loadstring(readfile(orionPath))()
+    end)
+    if success and type(result) == "table" then
+        OrionLib = result
+    end
 end
 
-local OrionLib = result
+if not OrionLib then
+    local success, result = pcall(function()
+        local code = game:HttpGet('https://raw.githubusercontent.com/shlexware/Orion/main/source')
+        if writefile then
+            pcall(writefile, orionPath, code)
+        end
+        return loadstring(code)()
+    end)
+    
+    if not success or type(result) ~= "table" then
+        warn("Failed to load Orion UI! GitHub might be rate-limiting you, or your executor failed the request. Wait a minute and try again.")
+        return
+    end
+    OrionLib = result
+end
 
 Fluent = {
     Options = {},
