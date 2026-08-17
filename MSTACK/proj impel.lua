@@ -413,6 +413,7 @@ function Model.UpdateTracking(deltaTime)
                                     AgentRadius = 2, -- Reduced radius to easily fit in tight Floor 2 corridors
                                     AgentHeight = 4,
                                     AgentCanJump = true,
+                                    AgentCanClimb = true, -- Crucial for ladders and stairs!
                                     WaypointSpacing = 4,
                                     Costs = { Water = 20 }
                                 })
@@ -588,19 +589,18 @@ function Model.UpdateTracking(deltaTime)
                 Model.State.lastMazeDist = arrivalDistance
                 
                 if Model.State.stuckTimer > 0.5 then
-                    print("[AutoFarm Debug] Stuck in maze! Noclipping & Dashing...")
-                    for _, part in ipairs(character:GetDescendants()) do
-                        if part:IsA("BasePart") then
-                            part.CanCollide = false
-                        end
+                    print("[AutoFarm Debug] Stuck in maze! Recalculating path...")
+                    Model.State.mazePath = {}
+                    if character:FindFirstChild("Humanoid") then
+                        character.Humanoid.Jump = true
                     end
-                    Model.State.stuckTimer = -0.5
+                    Model.State.stuckTimer = -1.0
                 end
             else
                 Model.State.stuckTimer = 0
             end
             
-            if arrivalDistance <= 1.5 and #Model.State.mazePath > 0 and Model.State.mazeIndex <= #Model.State.mazePath then
+            if arrivalDistance <= 3.5 and #Model.State.mazePath > 0 and Model.State.mazeIndex <= #Model.State.mazePath then
                 Model.State.mazeIndex = Model.State.mazeIndex + 1
                 if Model.State.mazeIndex > #Model.State.mazePath then
                     print("[AutoFarm Debug] Reached Maze Destination!")
