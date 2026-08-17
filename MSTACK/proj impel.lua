@@ -9,7 +9,6 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local PathfindingService = game:GetService("PathfindingService")
-local DashTypes = require(ReplicatedStorage.Util.Movement.DashTypes)
 
 local LocalPlayer = Players.LocalPlayer
 
@@ -23,13 +22,70 @@ end
 -- ==========================================
 local Y_LEVEL_DETECTION_RADIUS = 15 -- Max height difference allowed before breaking the path
 
-local MAZE_TARGET_POSITION = Vector3.new(2605, 2075, -15410)
+local MACRO_WAYPOINTS = {
+    -- ==========================================
+    -- STAGE 1 (Maze Part)
+    -- ==========================================
+    { Pos = Vector3.new(2953, 2075, -14005), Action = "NAVIGATE" }, -- F1 Start
+    { Pos = Vector3.new(2664, 2075, -15490), Action = "WAIT_TELEPORT" }, -- F1 End (Teleports to F2)
+    
+    -- ==========================================
+    -- STAGE 2 (Waypoints)
+    -- ==========================================
+    { Pos = Vector3.new(3465, 2378, -20344), Action = "NAVIGATE" }, -- F2 Corridor
+    { Pos = Vector3.new(3449, 2378, -20377), Action = "NAVIGATE" }, -- F2 Corridor Midpoint
+    { Pos = Vector3.new(3462, 2378, -20618), Action = "NAVIGATE" }, -- F2 Corridor p2
+    { Pos = Vector3.new(3198, 2343, -20539), Action = "PULL_LEVER" }, -- Lever Room
+    { Pos = Vector3.new(3204, 2378, -20402), Action = "NAVIGATE" }, -- Reverse Path (Walk out of lever room)
+    { Pos = Vector3.new(3200, 2375, -20737), Action = "END_MAZE" }  -- Final Boss Room
+}
 
 
 local EVASION_DIRECTIONS = {
     Vector3.new(1, 0, 0),   -- Slide Right
     Vector3.new(0, 1, 0)    -- Climb Up
 }
+
+-- ==========================================
+-- DEBUG VISUALIZERS
+-- ==========================================
+local visualizerFolder = Workspace:FindFirstChild("AutofarmVisuals")
+if visualizerFolder then visualizerFolder:Destroy() end
+visualizerFolder = Instance.new("Folder")
+visualizerFolder.Name = "AutofarmVisuals"
+visualizerFolder.Parent = Workspace
+
+local function drawWaypoints(pathWaypoints)
+    visualizerFolder:ClearAllChildren()
+    for i, wp in ipairs(pathWaypoints) do
+        local p = Instance.new("Part")
+        p.Name = "WP_" .. tostring(i)
+        p.Anchored = true
+        p.CanCollide = false
+        p.Size = Vector3.new(1, 1, 1)
+        p.Material = Enum.Material.Neon
+        p.Shape = Enum.PartType.Ball
+        p.Color = Color3.new(0, 1, 0)
+        p.Position = wp.Position
+        p.Parent = visualizerFolder
+    end
+end
+
+local function drawTarget(pos)
+    local targetVisual = visualizerFolder:FindFirstChild("CurrentTarget")
+    if not targetVisual then
+        targetVisual = Instance.new("Part")
+        targetVisual.Name = "CurrentTarget"
+        targetVisual.Anchored = true
+        targetVisual.CanCollide = false
+        targetVisual.Size = Vector3.new(2, 2, 2)
+        targetVisual.Material = Enum.Material.Neon
+        targetVisual.Shape = Enum.PartType.Ball
+        targetVisual.Color = Color3.new(1, 0, 0)
+        targetVisual.Parent = visualizerFolder
+    end
+    targetVisual.Position = pos
+end
 
 local function blockcastSolid(cframe, extents, dir, params)
     local result = Workspace:Blockcast(cframe, extents, dir, params)
@@ -58,7 +114,9 @@ Model.State = {
     stuckTimer = 0,
     lastMazeDist = 0,
     botMode = "NAVIGATE_MAZE", -- "NAVIGATE_MAZE", "ROOM_ROUND_UP", "ROOM_COMBAT"
-    roundUpTimer = 0
+    roundUpTimer = 0,
+    macroIndex = 1,
+    isComputingPath = false
 }
 
 local flySpeed = 50
@@ -163,6 +221,11 @@ function Model.ResetPhysics()
         if bv then bv:Destroy() end
     end
     currentEnemy = nil
+    Model.State.mazePath = {}
+    Model.State.isComputingPath = false
+    Model.State.evadingTimer = 0
+    Model.State.stuckTimer = 0
+    visualizerFolder:ClearAllChildren()
 end
 
 function Model.ApplyNoclip()
@@ -187,6 +250,8 @@ function Model.UpdateTracking(deltaTime)
     else
         rootPart.Anchored = false
     end
+
+    -- Checkpoint logic removed to allow Floor 2 navigation
 
     local allEnemies = getAllEnemies()
 
@@ -214,49 +279,183 @@ function Model.UpdateTracking(deltaTime)
     if Model.State.botMode == "ROUND_UP" then Model.State.botMode = "ROOM_ROUND_UP" end
     if Model.State.botMode == "COMBAT" then Model.State.botMode = "ROOM_COMBAT" end
 
+    if Model.State._lastLoggedState ~= Model.State.botMode then
+        print("[AutoFarm Debug] State changed to: " .. tostring(Model.State.botMode))
+        Model.State._lastLoggedState = Model.State.botMode
+    end
+
     if Model.State.botMode == "NAVIGATE_MAZE" then
         currentEnemy = nil
         isPatrolling = true
         
-        -- Check if an enemy is blocking our path (within 5 studs)
-        local bestTarget = findBestTarget(allEnemies)
-        local targetHrp = bestTarget and bestTarget:FindFirstChild("HumanoidRootPart")
-        if targetHrp and (rootPart.Position - targetHrp.Position).Magnitude <= 5 then
-            print("[AutoFarm] Enemy blocking path! Punishing...")
-            Model.State.botMode = "MAZE_COMBAT"
-            currentEnemy = bestTarget
-            targetDest = targetHrp.Position
-            Model.State.mazePath = {} -- Clear path so it recalculates after killing
-        else
-            -- No enemies in the way, pathfind through the maze!
-            if #Model.State.mazePath == 0 or Model.State.mazeIndex > #Model.State.mazePath then
-                print("[AutoFarm] Calculating Maze Path...")
-                local path = PathfindingService:CreatePath({
-                    AgentRadius = 3,
-                    AgentHeight = 5,
-                    AgentCanJump = true,
-                    WaypointSpacing = 4,
-                    Costs = { Water = 20 }
-                })
-                local success, err = pcall(function()
-                    path:ComputeAsync(rootPart.Position, MAZE_TARGET_POSITION)
-                end)
-                if success and path.Status == Enum.PathStatus.Success then
-                    Model.State.mazePath = path:GetWaypoints()
-                    Model.State.mazeIndex = 2 -- Skip first waypoint (current pos)
-                else
-                    print("[AutoFarm] Pathfinding failed!")
+        -- 1. Check for ANY enemy within 15 studs to clear first (ignore line of sight, 15 studs is contact)
+        local contactEnemy = nil
+        local contactDist = 15
+        for _, npc in ipairs(allEnemies) do
+            if isValidTarget(npc) then
+                local hrp = npc:FindFirstChild("HumanoidRootPart")
+                if hrp then
+                    local dist = (rootPart.Position - hrp.Position).Magnitude
+                    if dist <= contactDist then
+                        contactDist = dist
+                        contactEnemy = npc
+                    end
                 end
             end
-            
-            if Model.State.mazePath and Model.State.mazeIndex <= #Model.State.mazePath then
-            targetDest = Model.State.mazePath[Model.State.mazeIndex].Position
-        else
-            print("[AutoFarm] Reached the end of the maze! Securing the room...")
-            Model.State.botMode = "ROOM_ROUND_UP"
-            Model.State.roundUpTimer = 5
-            targetDest = rootPart.Position
         end
+        
+        if contactEnemy then
+            print("[AutoFarm] Enemy in contact! Clearing it first...")
+            Model.State.botMode = "MAZE_COMBAT"
+            currentEnemy = contactEnemy
+            targetDest = contactEnemy:FindFirstChild("HumanoidRootPart").Position
+            -- Model.State.mazePath = {} -- Preserve path so it doesn't freeze recomputing after killing
+        else
+            -- Check if we are blocked by an enemy further out (with Line of Sight)
+            local bestTarget = findBestTarget(allEnemies)
+            local targetHrp = bestTarget and bestTarget:FindFirstChild("HumanoidRootPart")
+                if targetHrp and (rootPart.Position - targetHrp.Position).Magnitude <= ENEMY_DETECTION_RADIUS then
+                    print("[AutoFarm Debug] Enemy blocking path! Punishing...")
+                    Model.State.botMode = "MAZE_COMBAT"
+                    currentEnemy = bestTarget
+                    targetDest = targetHrp.Position
+                    -- Model.State.mazePath = {} -- Preserve path so it doesn't freeze recomputing after killing
+            else
+                -- No enemies in the way, pathfind through the maze!
+                local currentMacro = MACRO_WAYPOINTS[Model.State.macroIndex]
+                
+                local arrivalDist = (currentMacro and currentMacro.Action == "PULL_LEVER") and 5 or 15
+                -- Auto-advance if we reached it
+                if currentMacro and (rootPart.Position - currentMacro.Pos).Magnitude < arrivalDist then
+                    if currentMacro.Action == "WAIT_TELEPORT" then
+                        -- Don't advance! Just hover and wait for the game to teleport us.
+                        -- The auto-skip logic below will catch us when we land on F2.
+                    elseif currentMacro.Action == "END_MAZE" then
+                        print("[AutoFarm Debug] Reached the final destination! Securing the room...")
+                        Model.State.botMode = "ROOM_ROUND_UP"
+                        Model.State.roundUpTimer = 5
+                        targetDest = rootPart.Position
+                        currentMacro = nil
+                    else
+                        print("[AutoFarm] Reached Macro Waypoint " .. tostring(Model.State.macroIndex))
+                        if currentMacro.Action == "PULL_LEVER" then
+                            local islandsFolder = Workspace:FindFirstChild("Islands")
+                            if islandsFolder then
+                                local f2 = islandsFolder:FindFirstChild("Impel Base - Floor 2")
+                                local interactables = f2 and f2:FindFirstChild("Interactables")
+                                local lever = interactables and interactables:FindFirstChild("BossGateLever")
+                                if lever then
+                                    for _, desc in ipairs(lever:GetDescendants()) do
+                                        if desc:IsA("ProximityPrompt") then
+                                            print("[AutoFarm] Pulling Boss Gate Lever!")
+                                            local bv = rootPart:FindFirstChild("AntiGravity")
+                                            if bv then bv.Velocity = Vector3.new(0, 0, 0) end
+                                            fireproximityprompt(desc)
+                                            task.wait(1.5) -- wait for gate to animate
+                                            break
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                        Model.State.macroIndex = Model.State.macroIndex + 1
+                        currentMacro = MACRO_WAYPOINTS[Model.State.macroIndex]
+                        Model.State.mazePath = {} -- Force recalculation
+                        visualizerFolder:ClearAllChildren()
+                    end
+                end
+                
+                -- Auto-skip if we are closer to a future waypoint
+                local closestIdx = Model.State.macroIndex
+                local distToCurrent = currentMacro and (rootPart.Position - currentMacro.Pos).Magnitude or math.huge
+                
+                for i = Model.State.macroIndex + 1, #MACRO_WAYPOINTS do
+                    local distToFuture = (rootPart.Position - MACRO_WAYPOINTS[i].Pos).Magnitude
+                    -- Skip ahead if we are literally at the waypoint (< 50) 
+                    -- OR if we teleported and a future waypoint is drastically closer (e.g. F2 vs F1)
+                    if distToFuture < 50 or distToFuture < (distToCurrent - 1000) then
+                        closestIdx = i
+                        distToCurrent = distToFuture
+                    end
+                    
+                    -- If this waypoint is a mandatory action (like pulling a lever), 
+                    -- we CANNOT skip past it to future waypoints, otherwise we break the sequence!
+                    if MACRO_WAYPOINTS[i].Action == "PULL_LEVER" then
+                        break
+                    end
+                end
+                
+                if closestIdx > Model.State.macroIndex then
+                    print("[AutoFarm Debug] Detected we are much closer to Macro Waypoint " .. tostring(closestIdx) .. ". Skipping ahead!")
+                    Model.State.macroIndex = closestIdx
+                    currentMacro = MACRO_WAYPOINTS[Model.State.macroIndex]
+                    Model.State.mazePath = {}
+                    visualizerFolder:ClearAllChildren()
+                end
+                
+                if not currentMacro then
+                    print("[AutoFarm Debug] Reached the final destination! Securing the room...")
+                    Model.State.botMode = "ROOM_ROUND_UP"
+                    Model.State.roundUpTimer = 5
+                    targetDest = rootPart.Position
+                elseif currentMacro.Action == "WAIT_TELEPORT" and distToCurrent < 15 then
+                    targetDest = rootPart.Position -- We reached the pad, hover and wait for skip
+                else
+                    local currentGoal = currentMacro.Pos
+                    if #Model.State.mazePath == 0 or Model.State.mazeIndex > #Model.State.mazePath then
+                        if not Model.State.isComputingPath then
+                            Model.State.isComputingPath = true
+                            print("[AutoFarm] Calculating Maze Path to: " .. tostring(currentGoal))
+                            
+                            -- Spawn in a new thread to PREVENT Heartbeat lag spikes!
+                            task.spawn(function()
+                                local path = PathfindingService:CreatePath({
+                                    AgentRadius = 2, -- Reduced radius to easily fit in tight Floor 2 corridors
+                                    AgentHeight = 4,
+                                    AgentCanJump = true,
+                                    WaypointSpacing = 4,
+                                    Costs = { Water = 20 }
+                                })
+                                
+                                -- The bot hovers, which makes startPos float in mid-air. We MUST raycast down to the floor so PathfindingService can find the NavMesh!
+                                local startPos = rootPart.Position
+                                local rpParams = RaycastParams.new()
+                                rpParams.FilterDescendantsInstances = {character, Workspace:FindFirstChild("NPCs")}
+                                rpParams.FilterType = Enum.RaycastFilterType.Exclude
+                                
+                                local floorRay = Workspace:Raycast(rootPart.Position, Vector3.new(0, -100, 0), rpParams)
+                                if floorRay then
+                                    startPos = floorRay.Position + Vector3.new(0, 2, 0)
+                                end
+                                
+                                local success, err = pcall(function()
+                                    path:ComputeAsync(startPos, currentGoal)
+                                end)
+                                
+                                if success and path.Status == Enum.PathStatus.Success then
+                                    Model.State.mazePath = path:GetWaypoints()
+                                    Model.State.mazeIndex = 2 -- Skip first waypoint (current pos)
+                                    drawWaypoints(Model.State.mazePath)
+                                else
+                                    print("[AutoFarm Debug] Pathfinding failed! (Status: " .. tostring(path.Status) .. ") Retrying in 1 second...")
+                                    task.wait(1)
+                                end
+                                Model.State.isComputingPath = false
+                            end)
+                        end
+                    end
+                    
+                    if Model.State.isComputingPath then
+                        -- Hover in place safely while computing without lagging the game
+                        targetDest = rootPart.Position
+                    elseif Model.State.mazePath and Model.State.mazeIndex <= #Model.State.mazePath then
+                        local rawPos = Model.State.mazePath[Model.State.mazeIndex].Position
+                        targetDest = rawPos + Vector3.new(0, 3.5, 0)
+                    else
+                        targetDest = rootPart.Position
+                    end
+                end
+            end
         end
         
     elseif Model.State.botMode == "MAZE_COMBAT" then
@@ -344,28 +543,14 @@ function Model.UpdateTracking(deltaTime)
             if bv then bv.Velocity = Vector3.new(0, 0, 0) end
             rootPart.Velocity = Vector3.new(0, 0, 0)
         else
-            -- Stay in the center to fight them all!
-            local centerPos = Vector3.new(0, 0, 0)
-            for _, hrp in ipairs(validEnemies) do
-                centerPos = centerPos + hrp.Position
-            end
-            centerPos = centerPos / #validEnemies
-            targetDest = centerPos
-            currentEnemy = validEnemies[1].Parent
+            -- Sort enemies by distance so we lock onto the closest one!
+            table.sort(validEnemies, function(a, b)
+                return (rootPart.Position - a.Position).Magnitude < (rootPart.Position - b.Position).Magnitude
+            end)
             
-            -- Re-check clump, if they scattered too far, round up again
-            local allClumped = true
-            for _, hrp in ipairs(validEnemies) do
-                if (centerPos - hrp.Position).Magnitude > 25 then
-                    allClumped = false
-                    break
-                end
-            end
-            if not allClumped then
-                print("[AutoFarm] Enemies scattered! Re-rounding up...")
-                Model.State.botMode = "ROOM_ROUND_UP"
-                Model.State.roundUpTimer = 5
-            end
+            -- Dive bomb the closest enemy!
+            targetDest = validEnemies[1].Position
+            currentEnemy = validEnemies[1].Parent
         end
     end
     
@@ -391,34 +576,39 @@ function Model.UpdateTracking(deltaTime)
         local arrivalDistance = (targetDest - rootPart.Position).Magnitude
         
         if isPatrolling then
-            -- Stuck Detection: If we haven't moved closer by at least 0.1 studs
-            if Model.State.lastMazeDist - arrivalDistance < 0.1 then
-                Model.State.stuckTimer = Model.State.stuckTimer + deltaTime
+            if #Model.State.mazePath > 0 and not Model.State.isComputingPath then
+                if not Model.State.lastMazeDist then Model.State.lastMazeDist = arrivalDistance end
+                
+                local distDiff = math.abs(Model.State.lastMazeDist - arrivalDistance)
+                if distDiff < 0.05 then
+                    Model.State.stuckTimer = Model.State.stuckTimer + deltaTime
+                else
+                    Model.State.stuckTimer = 0
+                end
+                Model.State.lastMazeDist = arrivalDistance
+                
+                if Model.State.stuckTimer > 0.5 then
+                    print("[AutoFarm Debug] Stuck in maze! Noclipping & Dashing...")
+                    for _, part in ipairs(character:GetDescendants()) do
+                        if part:IsA("BasePart") then
+                            part.CanCollide = false
+                        end
+                    end
+                    Model.State.stuckTimer = -0.5
+                end
             else
                 Model.State.stuckTimer = 0
-                Model.State.lastMazeDist = arrivalDistance
             end
             
-            -- If stuck for more than 0.5 seconds, Noclip & Dash!
-            if Model.State.stuckTimer > 0.5 then
-                print("[AutoFarm] Stuck in maze! Noclipping & Dashing...")
-                for _, part in ipairs(character:GetDescendants()) do
-                    if part:IsA("BasePart") then
-                        part.CanCollide = false
-                    end
-                end
-                task.spawn(DashTypes.dash, DashTypes, false)
-                Model.State.stuckTimer = 0
-                task.wait(0.2)
-            end
-            
-            if arrivalDistance <= 0.5 then
+            if arrivalDistance <= 1.5 and #Model.State.mazePath > 0 and Model.State.mazeIndex <= #Model.State.mazePath then
                 Model.State.mazeIndex = Model.State.mazeIndex + 1
                 if Model.State.mazeIndex > #Model.State.mazePath then
-                    print("[AutoFarm] Reached Maze Destination!")
+                    print("[AutoFarm Debug] Reached Maze Destination!")
                     Model.State.mazePath = {} -- Re-compute or just hover
+                    visualizerFolder:ClearAllChildren()
                 else
-                    targetDest = Model.State.mazePath[Model.State.mazeIndex].Position
+                    local rawPos = Model.State.mazePath[Model.State.mazeIndex].Position
+                    targetDest = rawPos + Vector3.new(0, 3.5, 0)
                     flatTarget = Vector3.new(targetDest.X, 0, targetDest.Z)
                     horizontalDistance = (flatTarget - flatCurrent).Magnitude
                     arrivalDistance = (targetDest - rootPart.Position).Magnitude
@@ -452,8 +642,30 @@ function Model.UpdateTracking(deltaTime)
         else
             if isCloseToArrival then
                 desiredY = targetDest.Y + 8 -- Go 8 studs above target's height when close to enemy
+                
+                -- Orbit like a halo above the enemy
+                local orbitRadius = 6
+                local orbitSpeed = 4
+                local offsetX = math.cos(tick() * orbitSpeed) * orbitRadius
+                local offsetZ = math.sin(tick() * orbitSpeed) * orbitRadius
+                
+                local centerOrbit = Vector3.new(targetDest.X, desiredY, targetDest.Z)
+                local orbitOffset = Vector3.new(offsetX, 0, offsetZ)
+                
+                -- Prevent noclipping into walls during orbit!
+                local orbitRayParams = RaycastParams.new()
+                orbitRayParams.FilterDescendantsInstances = {character, currentEnemy}
+                orbitRayParams.FilterType = Enum.RaycastFilterType.Exclude
+                
+                local orbitRay = Workspace:Raycast(centerOrbit, orbitOffset, orbitRayParams)
+                if orbitRay then
+                    targetSpot = orbitRay.Position - (orbitOffset.Unit * 1.5)
+                else
+                    targetSpot = centerOrbit + orbitOffset
+                end
+            else
+                targetSpot = Vector3.new(targetDest.X, desiredY, targetDest.Z)
             end
-            targetSpot = Vector3.new(targetDest.X, desiredY, targetDest.Z)
         end
         
         local wallCheckCFrame = rootPart.CFrame + Vector3.new(0, 3, 0)
@@ -532,6 +744,8 @@ function Model.UpdateTracking(deltaTime)
         rootPart.Velocity = Vector3.new(0, 0, 0)
         rootPart.RotVelocity = Vector3.new(0, 0, 0)
         
+        drawTarget(actualTarget)
+
         -- Drain stamina silently while moving
         drainStamina(character)
     end
@@ -750,6 +964,93 @@ function View.Build(onToggleCallback)
             speedInput.Text = tostring(flySpeed)
         end
     end)
+    
+    local posBtn = Instance.new("TextButton")
+    posBtn.Size = UDim2.new(1, 0, 0, 30)
+    posBtn.Position = UDim2.new(0, 0, 1, 40)
+    posBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    posBtn.Text = "Pos: 0, 0, 0"
+    posBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+    posBtn.Font = Enum.Font.GothamBold
+    posBtn.TextSize = 10
+    posBtn.Parent = toggleBtn
+    Instance.new("UICorner", posBtn).CornerRadius = UDim.new(0, 5)
+    
+    if getgenv().posConn then getgenv().posConn:Disconnect() end
+    getgenv().posConn = RunService.RenderStepped:Connect(function()
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            local p = LocalPlayer.Character.HumanoidRootPart.Position
+            posBtn.Text = string.format("Copy Pos: %.0f, %.0f, %.0f", p.X, p.Y, p.Z)
+        end
+    end)
+    
+    posBtn.MouseButton1Click:Connect(function()
+        if setclipboard and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            local p = LocalPlayer.Character.HumanoidRootPart.Position
+            local str = string.format("Vector3.new(%.0f, %.0f, %.0f)", p.X, p.Y, p.Z)
+            setclipboard(str)
+            
+            local oldText = posBtn.Text
+            posBtn.Text = "Copied!"
+            posBtn.TextColor3 = Color3.fromRGB(85, 255, 85)
+            task.delay(1, function()
+                posBtn.Text = oldText
+                posBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+            end)
+        elseif not setclipboard then
+            posBtn.Text = "Executor missing setclipboard!"
+            posBtn.TextColor3 = Color3.fromRGB(255, 85, 85)
+            task.delay(1.5, function()
+                posBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+            end)
+        end
+    end)
+    
+    local autoKeyBtn = Instance.new("TextButton")
+    autoKeyBtn.Size = UDim2.new(1, 0, 0, 30)
+    autoKeyBtn.Position = UDim2.new(0, 0, 1, 75)
+    
+    -- Check if auto key is currently running to set initial color/text
+    local isAutoKeyRunning = getgenv().AutoKey or false
+    autoKeyBtn.BackgroundColor3 = isAutoKeyRunning and Color3.fromRGB(50, 150, 50) or Color3.fromRGB(40, 40, 40)
+    autoKeyBtn.Text = isAutoKeyRunning and "AUTO KEY: ON" or "AUTO KEY: OFF"
+    autoKeyBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+    autoKeyBtn.Font = Enum.Font.GothamBold
+    autoKeyBtn.TextSize = 10
+    autoKeyBtn.Parent = toggleBtn
+    Instance.new("UICorner", autoKeyBtn).CornerRadius = UDim.new(0, 5)
+    
+    autoKeyBtn.MouseButton1Click:Connect(function()
+        if getgenv().AutoKey then
+            -- Stop it
+            getgenv().AutoKey = false
+            autoKeyBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+            autoKeyBtn.Text = "AUTO KEY: OFF"
+        else
+            -- Start it! (Need to execute the external script logic)
+            -- We assume the auto_key logic can be loaded if we simply read the file or 
+            -- rely on the user having executed it once to put it in memory.
+            -- However, to make it self-contained, we can just flip the global flag
+            -- and let the external script handle it, or load it via loadstring if needed.
+            getgenv().AutoKey = true
+            getgenv().CurrentPhase = "1. Auto Key"
+            autoKeyBtn.BackgroundColor3 = Color3.fromRGB(50, 150, 50)
+            autoKeyBtn.Text = "AUTO KEY: ON"
+            
+            task.spawn(function()
+                print("[AutoFarm UI] Auto Key Enabled!")
+                -- If we have loadfile/readfile, we can auto-execute the auto_key script!
+                if readfile then
+                    local success, code = pcall(function() return readfile("auto_key.lua") end)
+                    if success and code then
+                        local func, err = loadstring(code)
+                        if func then func() end
+                    end
+                end
+            end)
+        end
+    end)
+
 
     local closeBtn = Instance.new("TextButton")
     closeBtn.Size = UDim2.new(0, 24, 0, 24)
@@ -781,6 +1082,11 @@ function View.Build(onToggleCallback)
         toggleBtn.BackgroundColor3 = isFarming and Color3.fromRGB(85, 255, 85) or Color3.fromRGB(255, 85, 85)
         
         onToggleCallback(isFarming)
+    end
+
+    getgenv().ToggleAutofarm = function()
+        allowAutoStart = false
+        setFarmingState(not isFarming)
     end
     
     toggleBtn.InputBegan:Connect(function(input)
@@ -841,25 +1147,44 @@ View.Build(function(isFarming)
     if not isFarming then
         Model.ResetPhysics()
     else
+        -- Smart Waypoint Initialization: Find the best macroIndex based on current location
+        local character = LocalPlayer.Character
+        local root = character and character:FindFirstChild("HumanoidRootPart")
+        if root and MACRO_WAYPOINTS and #MACRO_WAYPOINTS >= 3 then
+            if math.abs(root.Position.Y - MACRO_WAYPOINTS[1].Pos.Y) < 100 then
+                -- Floor 1: If we are far into the maze, target F1 End. If at spawn, target F1 Start.
+                local distToStart = (root.Position - MACRO_WAYPOINTS[1].Pos).Magnitude
+                if distToStart < 150 then
+                    Model.State.macroIndex = 1
+                else
+                    Model.State.macroIndex = 2
+                end
+            elseif math.abs(root.Position.Y - MACRO_WAYPOINTS[3].Pos.Y) < 100 then
+                -- Floor 2: Find the closest waypoint to resume from
+                local closestIdx = 3
+                local closestDist = math.huge
+                for i = 3, #MACRO_WAYPOINTS do
+                    local dist = (root.Position - MACRO_WAYPOINTS[i].Pos).Magnitude
+                    if dist < closestDist then
+                        closestDist = dist
+                        closestIdx = i
+                    end
+                end
+                if closestDist < 30 and closestIdx < #MACRO_WAYPOINTS then
+                    Model.State.macroIndex = closestIdx + 1
+                else
+                    Model.State.macroIndex = closestIdx
+                end
+            end
+        end
+
         task.spawn(function()
             while Model.State.isAutoFarming do
                 Model.DoMeleeCombo()
             end
         end)
         
-        -- Melee skills are currently disabled/unimplemented, but stats level up below
-
-        task.spawn(function()
-            local statsEvent = ReplicatedStorage:WaitForChild("Events", 9e9):WaitForChild("stats", 9e9)
-            local args = { "Strength", nil, 1 }
-            
-            while Model.State.isAutoFarming do
-                pcall(function()
-                    statsEvent:FireServer(unpack(args))
-                end)
-                task.wait(3) 
-            end
-        end)
+        -- Melee skills are currently disabled/unimplemented
     end
 end)
 
@@ -874,12 +1199,25 @@ local heartbeatConn = RunService.Heartbeat:Connect(function(deltaTime)
     Model.UpdateTracking(deltaTime)
 end)
 
+getgenv().hotkeyConn = UserInputService.InputBegan:Connect(function(input, gpe)
+    if gpe then return end
+    if input.KeyCode == Enum.KeyCode.F4 then
+        if getgenv().ToggleAutofarm then
+            print("[AutoFarm Debug] Toggling via F4")
+            getgenv().ToggleAutofarm()
+        end
+    end
+end)
+
 getgenv().StopAutofarm = function()
     Model.State.isAutoFarming = false
     Model.ResetPhysics()
     
     if steppedConn then steppedConn:Disconnect() end
     if heartbeatConn then heartbeatConn:Disconnect() end
+    if getgenv().hotkeyConn then getgenv().hotkeyConn:Disconnect() end
+    if getgenv().posConn then getgenv().posConn:Disconnect() end
+    if visualizerFolder then visualizerFolder:Destroy() end
     
     local coreGui = game:GetService("CoreGui"):FindFirstChild("AutoFarmGui")
     if coreGui then coreGui:Destroy() end
@@ -891,3 +1229,4 @@ getgenv().StopAutofarm = function()
     
     print("[Melee Autofarm] Autofarm forcefully stopped and UI destroyed.")
 end
+

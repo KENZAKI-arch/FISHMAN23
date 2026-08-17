@@ -16,9 +16,6 @@ local isRunning = false
 local currentRoutine = nil
 local lastStaminaTick = 0
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local DashTypes = require(ReplicatedStorage.Util.Movement.DashTypes)
-local currentRoutine = nil
-local lastStaminaTick = 0
 
 -- UI Setup
 if CoreGui:FindFirstChild("MazeFlyGui") then
@@ -151,9 +148,7 @@ local function flyToTarget(hrp, targetPos)
                 end
             end
             
-            -- 2. Force Dash without cooldown
-            local originalDash = DashTypes.dash
-            task.spawn(originalDash, DashTypes, false)
+            -- 2. Dash removed to prevent kick
             
             -- Reset stuck timer so we don't spam it every frame
             stuckTimer = 0
