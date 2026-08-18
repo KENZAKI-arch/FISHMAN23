@@ -108,6 +108,26 @@ Model.State = {
     isComputingPath = false
 }
 
+-- ==========================================
+-- AUTO-RESUME LOGIC (FOR RE-EXECUTING HALFWAY)
+-- ==========================================
+if MACRO_WAYPOINTS and #MACRO_WAYPOINTS > 0 then
+    local rootPart = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if rootPart then
+        local closestDist = math.huge
+        local bestIndex = 1
+        for i, wp in ipairs(MACRO_WAYPOINTS) do
+            local dist = (rootPart.Position - wp.Pos).Magnitude
+            if dist < closestDist then
+                closestDist = dist
+                bestIndex = i
+            end
+        end
+        Model.State.macroIndex = bestIndex
+        print("[AutoFarm] Auto-Resume detected! Starting from Macro Waypoint " .. bestIndex)
+    end
+end
+
 local flySpeed = 50
 local currentEnemy = nil
 local targetSwitchTimer = 2
