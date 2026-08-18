@@ -314,7 +314,15 @@ function Model.UpdateTracking(deltaTime)
                 -- No enemies in the way, pathfind through the maze!
                 local currentMacro = MACRO_WAYPOINTS[Model.State.macroIndex]
                 
-                local arrivalDist = (currentMacro and currentMacro.Action == "PULL_LEVER") and 5 or 15
+                local arrivalDist = 15
+                if currentMacro then
+                    if currentMacro.Action == "PULL_LEVER" then
+                        arrivalDist = 5
+                    elseif currentMacro.Action == "FLY_DIRECT" or currentMacro.Action == "NAVIGATE" then
+                        arrivalDist = 3
+                    end
+                end
+                
                 -- Auto-advance if we reached it
                 if currentMacro and (rootPart.Position - currentMacro.Pos).Magnitude < arrivalDist then
                     if currentMacro.Action == "WAIT_TELEPORT" then
