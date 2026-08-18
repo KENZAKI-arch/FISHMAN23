@@ -515,7 +515,7 @@ function Model.UpdateTracking(deltaTime)
         for _, npc in ipairs(allEnemies) do
             if isValidTarget(npc) then
                 local hrp = npc:FindFirstChild("HumanoidRootPart")
-                if hrp and (rootPart.Position - hrp.Position).Magnitude <= 200 then
+                if hrp and (rootPart.Position - hrp.Position).Magnitude <= 75 then
                     table.insert(validEnemies, hrp)
                 end
             end
@@ -569,7 +569,7 @@ function Model.UpdateTracking(deltaTime)
         for _, npc in ipairs(allEnemies) do
             if isValidTarget(npc) then
                 local hrp = npc:FindFirstChild("HumanoidRootPart")
-                if hrp and (rootPart.Position - hrp.Position).Magnitude <= 200 then
+                if hrp and (rootPart.Position - hrp.Position).Magnitude <= 75 then
                     table.insert(validEnemies, hrp)
                 end
             end
