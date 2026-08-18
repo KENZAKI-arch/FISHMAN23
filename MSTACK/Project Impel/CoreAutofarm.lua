@@ -1557,40 +1557,24 @@ View.Build(function(isFarming)
         local character = LocalPlayer.Character
         local root = character and character:FindFirstChild("HumanoidRootPart")
         if root and MACRO_WAYPOINTS then
-            if currentStage == 1 then
-                -- Floor 1: If we are far into the maze, target F1 End. If at spawn, target F1 Start.
-                local distToStart = (root.Position - MACRO_WAYPOINTS[1].Pos).Magnitude
-                if distToStart < 150 then
-                    Model.State.macroIndex = 1
-                else
-                    Model.State.macroIndex = 2
-                end
-            elseif currentStage == 2 then
-                print("[AutoFarm] 🚀 Floor 2 Detected! Initializing Lever & Boss Room sequence...")
-                -- Floor 2: Find the closest waypoint to resume from
-                local closestIdx = 1
-                local closestDist = math.huge
-                for i = 1, #MACRO_WAYPOINTS do
-                    local dist = (root.Position - MACRO_WAYPOINTS[i].Pos).Magnitude
-                    if dist < closestDist then
-                        closestDist = dist
-                        closestIdx = i
-                    end
-                    
-                    -- THE FIX: Do not scan past mandatory actions to prevent wall-skipping!
-                    if MACRO_WAYPOINTS[i].Action == "PULL_LEVER" then
-                        break
-                    end
-                end
-                
-                if closestDist < 30 and closestIdx < #MACRO_WAYPOINTS then
-                    Model.State.macroIndex = closestIdx + 1
-                else
-                    Model.State.macroIndex = closestIdx
-                end
-            else
-                Model.State.macroIndex = 1
-            end
+              local closestDist = math.huge
+              local bestIndex = 1
+              for i, wp in ipairs(MACRO_WAYPOINTS) do
+                  local dist = (root.Position - wp.Pos).Magnitude
+                  if dist < closestDist then
+                      closestDist = dist
+                      bestIndex = i
+                  end
+                  if wp.Action == "PULL_LEVER" then
+                      break
+                  end
+              end
+              if closestDist < 30 and bestIndex < #MACRO_WAYPOINTS then
+                  Model.State.macroIndex = bestIndex + 1
+              else
+                  Model.State.macroIndex = bestIndex
+              end
+              print("[AutoFarm] Universal Auto-Resume initialized! Starting from Macro Waypoint " .. Model.State.macroIndex)
         end
 
         task.spawn(function()
