@@ -16,6 +16,6 @@ else
 end
 
 -- Load the Core Engine after the stage configuration is set
-loadstring(game:HttpGet("https://raw.githubuserco/main/MSTACK/Project%20Impel/CoreAutontent.com/KENZAKI-arch/FISHMAN23farm.lua"))()
+loadstring(game:HttpGet("https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/MSTACK/Project%20Impel/CoreAutofarm.lua"))()
 
 print("[Impel Loader] Core Autofarm Engine successfully loaded!")
