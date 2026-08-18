@@ -18,15 +18,21 @@ pcall(function()
             local spawnPart = spawnFloor and spawnFloor:FindFirstChild("Part") or spawnFloor
             
             if spawnPart and spawnPart:IsA("BasePart") then
-                if (root.Position - spawnPart.Position).Magnitude < 300 then
+                if (root.Position - spawnPart.Position).Magnitude < 500 then
                     TARGET_STAGE = 2
                 end
             elseif spawnPart and spawnPart:IsA("Model") and spawnPart.PrimaryPart then
-                if (root.Position - spawnPart.PrimaryPart.Position).Magnitude < 300 then
+                if (root.Position - spawnPart.PrimaryPart.Position).Magnitude < 500 then
                     TARGET_STAGE = 2
                 end
             end
         end
+    end
+    
+    -- Fallback: If we are high up in the air (Floor 2 altitude), force Stage 2
+    -- This prevents the Loader from accidentally loading Stage 1 if you execute it mid-way through Floor 2!
+    if root.Position.Y > 2200 then
+        TARGET_STAGE = 2
     end
 end)
 
