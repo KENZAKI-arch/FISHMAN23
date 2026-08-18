@@ -42,6 +42,8 @@ if TARGET_STAGE == 1 then
     loadstring(game:HttpGet("https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/MSTACK/Project%20Impel/Stage1.lua"))()
 elseif TARGET_STAGE == 2 then
     loadstring(game:HttpGet("https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/MSTACK/Project%20Impel/Stage2.lua"))()
+elseif TARGET_STAGE == 3 then
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/MSTACK/Project%20Impel/Stage3.lua"))()
 else
     warn("Invalid Stage Selected!")
     return
