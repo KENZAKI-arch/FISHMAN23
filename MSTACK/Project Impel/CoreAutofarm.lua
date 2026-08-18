@@ -451,6 +451,8 @@ function Model.UpdateTracking(deltaTime)
                     if Model.State.isComputingPath then
                         -- Hover in place safely while computing without lagging the game
                         targetDest = rootPart.Position
+                    elseif currentMacro.Action == "FLY_DIRECT" then
+                        targetDest = currentMacro.Pos
                     elseif Model.State.mazePath and Model.State.mazeIndex <= #Model.State.mazePath then
                         local rawPos = Model.State.mazePath[Model.State.mazeIndex].Position
                         targetDest = rawPos + Vector3.new(0, 3.5, 0)
