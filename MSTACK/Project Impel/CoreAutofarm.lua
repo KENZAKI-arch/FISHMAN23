@@ -320,6 +320,9 @@ function Model.UpdateTracking(deltaTime)
                     if currentMacro.Action == "WAIT_TELEPORT" then
                         -- Don't advance! Just hover and wait for the game to teleport us.
                         -- The auto-skip logic below will catch us when we land on F2.
+                        if rootPart.Position.Y > 2300 then
+                            print("[AutoFarm] 🚀 Successfully teleported to Floor 2! Please run the Stage 2 Loader!")
+                        end
                     elseif currentMacro.Action == "END_MAZE" then
                         print("[AutoFarm Debug] Reached the final destination! Securing the room...")
                         Model.State.botMode = "ROOM_ROUND_UP"
@@ -1483,6 +1486,7 @@ View.Build(function(isFarming)
                     Model.State.macroIndex = 2
                 end
             elseif currentStage == 2 then
+                print("[AutoFarm] 🚀 Floor 2 Detected! Initializing Lever & Boss Room sequence...")
                 -- Floor 2: Find the closest waypoint to resume from
                 local closestIdx = 1
                 local closestDist = math.huge
