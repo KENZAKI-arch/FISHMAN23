@@ -8,6 +8,7 @@ getgenv().MACRO_WAYPOINTS = {
     
     -- Intermediate checkpoint to help the pathfinder connect the bridge/room
     { Pos = Vector3.new(3194, 2380, -20286), Action = "NAVIGATE" }, 
+    { Pos = Vector3.new(3199, 2378, -20401), Action = "NAVIGATE" },
     
     { Pos = Vector3.new(3465, 2378, -20344), Action = "NAVIGATE" }, -- F2 Corridor
     { Pos = Vector3.new(3449, 2378, -20377), Action = "NAVIGATE" }, -- F2 Corridor Midpoint
