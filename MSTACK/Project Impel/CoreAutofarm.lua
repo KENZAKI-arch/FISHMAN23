@@ -345,6 +345,11 @@ function Model.UpdateTracking(deltaTime)
                             -- Reboot CoreAutofarm Engine
                             loadstring(game:HttpGet("https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/MSTACK/Project%20Impel/CoreAutofarm.lua"))()
                         end
+                    elseif currentMacro.Action == "ROOM_ROUNDUP" then
+                        print("[AutoFarm Debug] Reached the room! Securing the area...")
+                        Model.State.botMode = "ROOM_ROUND_UP"
+                        Model.State.roundUpTimer = 5
+                        targetDest = rootPart.Position
                     elseif currentMacro.Action == "END_MAZE" then
                         print("[AutoFarm Debug] Reached the final destination! Securing the room...")
                         Model.State.botMode = "ROOM_ROUND_UP"
@@ -517,11 +522,20 @@ function Model.UpdateTracking(deltaTime)
         end
         
         if #validEnemies == 0 then
-            -- No enemies left in room!
-            targetDest = rootPart.Position
-            local bv = rootPart:FindFirstChild("AntiGravity")
-            if bv then bv.Velocity = Vector3.new(0, 0, 0) end
-            rootPart.Velocity = Vector3.new(0, 0, 0)
+            if currentMacro and currentMacro.Action == "ROOM_ROUNDUP" then
+                print("[AutoFarm] Room cleared! Resuming navigation...")
+                Model.State.botMode = "NAVIGATE_MAZE"
+                Model.State.macroIndex = Model.State.macroIndex + 1
+                currentMacro = MACRO_WAYPOINTS[Model.State.macroIndex]
+                Model.State.mazePath = {}
+                Model.State.isComputingPath = false
+            else
+                -- No enemies left in room!
+                targetDest = rootPart.Position
+                local bv = rootPart:FindFirstChild("AntiGravity")
+                if bv then bv.Velocity = Vector3.new(0, 0, 0) end
+                rootPart.Velocity = Vector3.new(0, 0, 0)
+            end
         else
             -- Calculate Center Position
             local centerPos = Vector3.new(0, 0, 0)
