@@ -581,7 +581,7 @@ function Model.UpdateTracking(deltaTime)
         local arrivalDistance = (targetDest - rootPart.Position).Magnitude
         
         if isPatrolling then
-            if #Model.State.mazePath > 0 and not Model.State.isComputingPath then
+            if not Model.State.isComputingPath then
                 if not Model.State.lastMazeDist then Model.State.lastMazeDist = arrivalDistance end
                 
                 local distDiff = math.abs(Model.State.lastMazeDist - arrivalDistance)
