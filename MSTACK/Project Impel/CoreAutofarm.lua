@@ -294,7 +294,7 @@ function Model.UpdateTracking(deltaTime)
         end
         
         -- Combat is currently disabled/unimplemented. If enemies block the path, the stuck/noclip logic will bypass them.
-        if false and contactEnemy then
+        if contactEnemy then
             print("[AutoFarm] Enemy in contact! Clearing it first...")
             Model.State.botMode = "MAZE_COMBAT"
             currentEnemy = contactEnemy
@@ -302,9 +302,9 @@ function Model.UpdateTracking(deltaTime)
             -- Model.State.mazePath = {} -- Preserve path so it doesn't freeze recomputing after killing
         else
             -- Check if we are blocked by an enemy further out (with Line of Sight)
-            local bestTarget = false and findBestTarget(allEnemies)
+            local bestTarget = findBestTarget(allEnemies)
             local targetHrp = bestTarget and bestTarget:FindFirstChild("HumanoidRootPart")
-                if false and targetHrp and (rootPart.Position - targetHrp.Position).Magnitude <= ENEMY_DETECTION_RADIUS then
+                if targetHrp and (rootPart.Position - targetHrp.Position).Magnitude <= ENEMY_DETECTION_RADIUS then
                     print("[AutoFarm Debug] Enemy blocking path! Punishing...")
                     Model.State.botMode = "MAZE_COMBAT"
                     currentEnemy = bestTarget
