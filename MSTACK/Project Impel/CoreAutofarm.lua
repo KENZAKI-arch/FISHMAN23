@@ -152,14 +152,25 @@ local function getAllEnemies()
     return allEnemies
 end
 
-local function isValidTarget(npc)
-    if not npc:FindFirstChild("HumanoidRootPart") then return false end
-    
-    local humanoid = npc:FindFirstChild("Humanoid")
-    if humanoid and humanoid.Health > 0 then return true end
-    
-    return false
-end
+  local function isValidTarget(npc)
+      if not npc:FindFirstChild("HumanoidRootPart") then return false end
+      
+      local humanoid = npc:FindFirstChild("Humanoid")
+      if humanoid and humanoid.Health > 0 then
+          local isVisible = false
+          for _, part in ipairs(npc:GetDescendants()) do
+              if part:IsA("BasePart") and part.Transparency < 1 then
+                  isVisible = true
+                  break
+              end
+          end
+          if not isVisible then return false end
+          
+          return true 
+      end
+      
+      return false
+  end
 
 -- Find the highest priority target, prioritizing the closest one that is in line of sight
 local function findBestTarget(allEnemies)
