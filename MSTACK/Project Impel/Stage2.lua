@@ -16,8 +16,9 @@ getgenv().MACRO_WAYPOINTS = {
     { Pos = Vector3.new(3383, 2343, -20565), Action = "NAVIGATE" }, -- Pre-Lever Room
     { Pos = Vector3.new(3199, 2343, -20559), Action = "NAVIGATE" }, -- Pre-Lever Room 2
     { Pos = Vector3.new(3198, 2343, -20539), Action = "PULL_LEVER" }, -- Lever Room
-    { Pos = Vector3.new(3383, 2343, -20559), Action = "NAVIGATE" }, -- Walk back out of lever room
-    { Pos = Vector3.new(3204, 2378, -20402), Action = "NAVIGATE" }, -- Reverse Path
+    { Pos = Vector3.new(3199, 2343, -20559), Action = "NAVIGATE" }, -- Exit Lever Room (Right outside door)
+    { Pos = Vector3.new(3383, 2343, -20565), Action = "NAVIGATE" }, -- Pre-Lever Room Return
+    { Pos = Vector3.new(3462, 2378, -20618), Action = "NAVIGATE" }, -- Back to F2 Corridor
     { Pos = Vector3.new(3200, 2375, -20737), Action = "END_MAZE" }  -- Final Boss Room
 }
 
