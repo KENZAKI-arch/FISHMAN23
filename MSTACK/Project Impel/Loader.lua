@@ -35,10 +35,13 @@ pcall(function()
         TARGET_STAGE = 3
     end
     
-    -- Fallback: If we are high up in the air (Floor 2 altitude), force Stage 2
-    -- This prevents the Loader from accidentally loading Stage 1 if you execute it mid-way through Floor 2!
-    if root.Position.Y > 2200 then
-        TARGET_STAGE = 2
+    -- Fallback: If we execute mid-way through a stage, use coordinates to detect!
+    if TARGET_STAGE == 1 and root.Position.Y > 2200 then
+        if root.Position.X > 4000 then
+            TARGET_STAGE = 3 -- Stage 3 is far along the X axis
+        else
+            TARGET_STAGE = 2 -- Stage 2 is around X=3000
+        end
     end
 end)
 
