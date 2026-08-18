@@ -6,6 +6,9 @@ getgenv().MACRO_WAYPOINTS = {
     -- USE FLY_DIRECT to cross the void without triggering Pathfinding!
     { Pos = Vector3.new(3200, 2405, -20181), Action = "FLY_DIRECT" }, 
     
+    -- Intermediate checkpoint to help the pathfinder connect the bridge/room
+    { Pos = Vector3.new(3194, 2380, -20286), Action = "NAVIGATE" }, 
+    
     { Pos = Vector3.new(3465, 2378, -20344), Action = "NAVIGATE" }, -- F2 Corridor
     { Pos = Vector3.new(3449, 2378, -20377), Action = "NAVIGATE" }, -- F2 Corridor Midpoint
     { Pos = Vector3.new(3462, 2378, -20618), Action = "NAVIGATE" }, -- F2 Corridor p2
