@@ -19,6 +19,7 @@ getgenv().MACRO_WAYPOINTS = {
     { Pos = Vector3.new(5696, 2444, -20799), Action = "NAVIGATE" }, -- stairway checkpoint
     { Pos = Vector3.new(5603, 2500, -20964), Action = "NAVIGATE" }, -- stairway room clear
     { Pos = Vector3.new(5683, 2482, -20533), Action = "NAVIGATE" }, -- boss fight (Final Boss Room)
+    { Pos = Vector3.new(5666, 2489, -20268), Action = "WAIT_TELEPORT" }
     -- WAIT_TELEPORT will be added here once we have the Stage 4 teleporter coordinates!
 }
 
