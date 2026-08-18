@@ -8,9 +8,25 @@ pcall(function()
     local character = player.Character or player.CharacterAdded:Wait()
     local root = character:WaitForChild("HumanoidRootPart")
     
-    -- Floor 2 is located much higher in the world
-    if root.Position.Y > 2300 then
-        TARGET_STAGE = 2
+    -- Robust Detection: Check if the character is physically near the Floor 2 Spawn area
+    local islands = workspace:FindFirstChild("Islands")
+    if islands then
+        local f2 = islands:FindFirstChild("Impel Base - Floor 2")
+        if f2 then
+            local base = f2:FindFirstChild("Base")
+            local spawnFloor = base and base:FindFirstChild("SpawnFloor")
+            local spawnPart = spawnFloor and spawnFloor:FindFirstChild("Part") or spawnFloor
+            
+            if spawnPart and spawnPart:IsA("BasePart") then
+                if (root.Position - spawnPart.Position).Magnitude < 300 then
+                    TARGET_STAGE = 2
+                end
+            elseif spawnPart and spawnPart:IsA("Model") and spawnPart.PrimaryPart then
+                if (root.Position - spawnPart.PrimaryPart.Position).Magnitude < 300 then
+                    TARGET_STAGE = 2
+                end
+            end
+        end
     end
 end)
 
