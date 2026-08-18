@@ -14,4 +14,4 @@ getgenv().MACRO_WAYPOINTS = {
     { Pos = Vector3.new(3200, 2375, -20737), Action = "END_MAZE" }  -- Final Boss Room
 }
 
-print("[Impel] Stage 2 Loaded. Execute CoreAutofarm to start.")
+print("[Impel] ⚙️ Stage 2 Configuration Loaded!")
