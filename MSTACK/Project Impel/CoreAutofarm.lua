@@ -358,7 +358,6 @@ function Model.UpdateTracking(deltaTime)
                                             local bv = rootPart:FindFirstChild("AntiGravity")
                                             if bv then bv.Velocity = Vector3.new(0, 0, 0) end
                                             fireproximityprompt(desc)
-                                            task.wait(1.5) -- wait for gate to animate
                                             break
                                         end
                                     end
