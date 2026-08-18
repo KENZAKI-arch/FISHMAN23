@@ -7,9 +7,9 @@ local TARGET_STAGE = 1
 print("[Impel Loader] Starting Stage " .. TARGET_STAGE .. "...")
 
 if TARGET_STAGE == 1 then
-    loadstring(game:HttpGet("https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/main/MSTACK/Project%20Impel/Stage1.lua"))()
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/MSTACK/Project%20Impel/Stage1.lua"))()
 elseif TARGET_STAGE == 2 then
-    loadstring(game:HttpGet("https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/main/MSTACK/Project%20Impel/Stage2.lua"))()
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/MSTACK/Project%20Impel/Stage2.lua"))()
 else
     warn("Invalid Stage Selected!")
     return
