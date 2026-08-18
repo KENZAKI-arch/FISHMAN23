@@ -362,10 +362,10 @@ function Model.UpdateTracking(deltaTime)
                         Model.State.roundUpTimer = 5
                         targetDest = rootPart.Position
                     elseif currentMacro.Action == "END_MAZE" then
-                        print("[AutoFarm Debug] Reached the final destination! Securing the room...")
-                        Model.State.botMode = "ROOM_ROUND_UP"
-                        Model.State.roundUpTimer = 5
-                        targetDest = rootPart.Position
+                          targetDest = rootPart.Position
+                          local bv = rootPart:FindFirstChild("AntiGravity")
+                          if bv then bv.Velocity = Vector3.new(0, 0, 0) end
+                          rootPart.Velocity = Vector3.new(0, 0, 0)
                         currentMacro = nil
                     else
                         print("[AutoFarm] Reached Macro Waypoint " .. tostring(Model.State.macroIndex))
@@ -424,10 +424,10 @@ function Model.UpdateTracking(deltaTime)
                 end
                 
                 if not currentMacro then
-                    print("[AutoFarm Debug] Reached the final destination! Securing the room...")
-                    Model.State.botMode = "ROOM_ROUND_UP"
-                    Model.State.roundUpTimer = 5
-                    targetDest = rootPart.Position
+                      targetDest = rootPart.Position
+                      local bv = rootPart:FindFirstChild("AntiGravity")
+                      if bv then bv.Velocity = Vector3.new(0, 0, 0) end
+                      rootPart.Velocity = Vector3.new(0, 0, 0)
                 elseif currentMacro.Action == "WAIT_TELEPORT" and distToCurrent < 15 then
                     targetDest = rootPart.Position -- We reached the pad, hover and wait for skip
                 else
