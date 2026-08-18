@@ -20,7 +20,7 @@ getgenv().MACRO_WAYPOINTS = {
     { Pos = Vector3.new(3383, 2343, -20565), Action = "NAVIGATE" }, -- Pre-Lever Room Return
     { Pos = Vector3.new(3462, 2378, -20618), Action = "NAVIGATE" }, -- Back to F2 Corridor
     { Pos = Vector3.new(3200, 2375, -20737), Action = "NAVIGATE" }, -- Final Boss Room (Kills Impel Down High Elite Guard)
-    { Pos = Vector3.new(3196, 2379, -21066), Action = "WAIT_TELEPORT" } -- Teleporter to Stage 3
+    { Pos = Vector3.new(3197, 2379, -21085), Action = "WAIT_TELEPORT" } -- Teleporter to Stage 3
 }
 
 print("[Impel] ⚙️ Stage 2 Configuration Loaded!")
