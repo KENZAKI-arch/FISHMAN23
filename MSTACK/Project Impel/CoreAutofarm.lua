@@ -336,6 +336,14 @@ function Model.UpdateTracking(deltaTime)
                             
                             -- Reboot CoreAutofarm Engine (This will automatically kill Stage 1 and start Stage 2)
                             loadstring(game:HttpGet("https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/MSTACK/Project%20Impel/CoreAutofarm.lua"))()
+                        elseif currentStage == 2 and (rootPart.Position - Vector3.new(4960, 2308, -20604)).Magnitude < 500 then
+                            print("[AutoFarm] 🚀 Successfully teleported to Floor 3! Automatically transitioning to Stage 3...")
+                            
+                            -- Load Stage 3 Config
+                            loadstring(game:HttpGet("https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/MSTACK/Project%20Impel/Stage3.lua"))()
+                            
+                            -- Reboot CoreAutofarm Engine
+                            loadstring(game:HttpGet("https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/MSTACK/Project%20Impel/CoreAutofarm.lua"))()
                         end
                     elseif currentMacro.Action == "END_MAZE" then
                         print("[AutoFarm Debug] Reached the final destination! Securing the room...")
