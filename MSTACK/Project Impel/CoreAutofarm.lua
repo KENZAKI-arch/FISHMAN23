@@ -321,7 +321,13 @@ function Model.UpdateTracking(deltaTime)
                         -- Don't advance! Just hover and wait for the game to teleport us.
                         -- The auto-skip logic below will catch us when we land on F2.
                         if rootPart.Position.Y > 2300 then
-                            print("[AutoFarm] 🚀 Successfully teleported to Floor 2! Please run the Stage 2 Loader!")
+                            print("[AutoFarm] 🚀 Successfully teleported to Floor 2! Automatically transitioning to Stage 2...")
+                            
+                            -- Load Stage 2 Config
+                            loadstring(game:HttpGet("https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/MSTACK/Project%20Impel/Stage2.lua"))()
+                            
+                            -- Reboot CoreAutofarm Engine (This will automatically kill Stage 1 and start Stage 2)
+                            loadstring(game:HttpGet("https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/MSTACK/Project%20Impel/CoreAutofarm.lua"))()
                         end
                     elseif currentMacro.Action == "END_MAZE" then
                         print("[AutoFarm Debug] Reached the final destination! Securing the room...")
