@@ -328,7 +328,7 @@ function Model.UpdateTracking(deltaTime)
                     if currentMacro.Action == "WAIT_TELEPORT" then
                         -- Don't advance! Just hover and wait for the game to teleport us.
                         -- The auto-skip logic below will catch us when we land on F2.
-                        if rootPart.Position.Y > 2300 then
+                        if currentStage == 1 and rootPart.Position.Y > 2300 then
                             print("[AutoFarm] 🚀 Successfully teleported to Floor 2! Automatically transitioning to Stage 2...")
                             
                             -- Load Stage 2 Config
