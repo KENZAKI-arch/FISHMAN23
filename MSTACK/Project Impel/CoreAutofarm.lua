@@ -515,9 +515,15 @@ function Model.UpdateTracking(deltaTime)
         for _, npc in ipairs(allEnemies) do
             if isValidTarget(npc) then
                 local hrp = npc:FindFirstChild("HumanoidRootPart")
-                if hrp and (rootPart.Position - hrp.Position).Magnitude <= 75 and math.abs(rootPart.Position.Y - hrp.Position.Y) <= 30 then
-                    table.insert(validEnemies, hrp)
-                end
+                  if hrp and (rootPart.Position - hrp.Position).Magnitude <= 75 and math.abs(rootPart.Position.Y - hrp.Position.Y) <= 30 then
+                      local rayParams = RaycastParams.new()
+                      rayParams.FilterDescendantsInstances = {LocalPlayer.Character, Workspace:FindFirstChild("NPCs")}
+                      rayParams.FilterType = Enum.RaycastFilterType.Exclude
+                      local dir = (hrp.Position - rootPart.Position)
+                      if not Workspace:Raycast(rootPart.Position, dir.Unit * dir.Magnitude, rayParams) then
+                          table.insert(validEnemies, hrp)
+                      end
+                  end
             end
         end
         
@@ -569,9 +575,15 @@ function Model.UpdateTracking(deltaTime)
         for _, npc in ipairs(allEnemies) do
             if isValidTarget(npc) then
                 local hrp = npc:FindFirstChild("HumanoidRootPart")
-                if hrp and (rootPart.Position - hrp.Position).Magnitude <= 75 and math.abs(rootPart.Position.Y - hrp.Position.Y) <= 30 then
-                    table.insert(validEnemies, hrp)
-                end
+                  if hrp and (rootPart.Position - hrp.Position).Magnitude <= 75 and math.abs(rootPart.Position.Y - hrp.Position.Y) <= 30 then
+                      local rayParams = RaycastParams.new()
+                      rayParams.FilterDescendantsInstances = {LocalPlayer.Character, Workspace:FindFirstChild("NPCs")}
+                      rayParams.FilterType = Enum.RaycastFilterType.Exclude
+                      local dir = (hrp.Position - rootPart.Position)
+                      if not Workspace:Raycast(rootPart.Position, dir.Unit * dir.Magnitude, rayParams) then
+                          table.insert(validEnemies, hrp)
+                      end
+                  end
             end
         end
         
