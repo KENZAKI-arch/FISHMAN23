@@ -515,7 +515,7 @@ function Model.UpdateTracking(deltaTime)
         for _, npc in ipairs(allEnemies) do
             if isValidTarget(npc) then
                 local hrp = npc:FindFirstChild("HumanoidRootPart")
-                if hrp and (rootPart.Position - hrp.Position).Magnitude <= 75 then
+                if hrp and (rootPart.Position - hrp.Position).Magnitude <= 75 and math.abs(rootPart.Position.Y - hrp.Position.Y) <= 30 then
                     table.insert(validEnemies, hrp)
                 end
             end
@@ -569,7 +569,7 @@ function Model.UpdateTracking(deltaTime)
         for _, npc in ipairs(allEnemies) do
             if isValidTarget(npc) then
                 local hrp = npc:FindFirstChild("HumanoidRootPart")
-                if hrp and (rootPart.Position - hrp.Position).Magnitude <= 75 then
+                if hrp and (rootPart.Position - hrp.Position).Magnitude <= 75 and math.abs(rootPart.Position.Y - hrp.Position.Y) <= 30 then
                     table.insert(validEnemies, hrp)
                 end
             end
@@ -696,7 +696,7 @@ function Model.UpdateTracking(deltaTime)
             targetSpot = Vector3.new(targetDest.X, desiredY, targetDest.Z)
         else
             if isCloseToArrival then
-                desiredY = targetDest.Y + 8 -- Go 8 studs above target's height when close to enemy
+                desiredY = (currentEnemy and targetDest.Y + 8) or targetDest.Y
                 
                 -- Orbit like a halo above the enemy
                 local orbitRadius = 6
