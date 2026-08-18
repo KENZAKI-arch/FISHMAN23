@@ -420,7 +420,7 @@ function Model.UpdateTracking(deltaTime)
                             -- Spawn in a new thread to PREVENT Heartbeat lag spikes!
                             task.spawn(function()
                                 local path = PathfindingService:CreatePath({
-                                    AgentRadius = 4, -- Increased to 4 to prevent corner-cutting and wall-clipping
+                                    AgentRadius = 2.0,
                                     AgentHeight = 4,
                                     AgentCanJump = true,
                                     AgentCanClimb = true, -- Crucial for ladders and stairs!
