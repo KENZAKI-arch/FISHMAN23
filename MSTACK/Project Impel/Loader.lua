@@ -29,6 +29,12 @@ pcall(function()
         end
     end
     
+    -- Stage 3 Detection: Check proximity to Stage 3 Spawn
+    local stage3Spawn = Vector3.new(4960, 2308, -20604)
+    if (root.Position - stage3Spawn).Magnitude < 500 then
+        TARGET_STAGE = 3
+    end
+    
     -- Fallback: If we are high up in the air (Floor 2 altitude), force Stage 2
     -- This prevents the Loader from accidentally loading Stage 1 if you execute it mid-way through Floor 2!
     if root.Position.Y > 2200 then
