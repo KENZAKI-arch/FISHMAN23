@@ -1565,9 +1565,6 @@ View.Build(function(isFarming)
                       closestDist = dist
                       bestIndex = i
                   end
-                  if wp.Action == "PULL_LEVER" then
-                      break
-                  end
               end
               if closestDist < 30 and bestIndex < #MACRO_WAYPOINTS then
                   Model.State.macroIndex = bestIndex + 1
