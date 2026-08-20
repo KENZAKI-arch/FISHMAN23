@@ -113,6 +113,13 @@ local function SaveConfig()
 end
 
 -- ======================================================================
+-- 🚀 TELEPORT MEMORY INJECTION
+-- ======================================================================
+local myScriptURL = "https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/MSTACK/joinersystem.lua"
+local qot = queue_on_teleport or (syn and syn.queue_on_teleport) or (fluxus and fluxus.queue_on_teleport)
+local UpdateTeleportMemory -- Forward declaration
+
+-- ======================================================================
 -- 🔄 AUTO RECONNECT ENGINE
 -- ======================================================================
 addConn(GuiService.ErrorMessageChanged:Connect(function()
@@ -126,6 +133,7 @@ addConn(GuiService.ErrorMessageChanged:Connect(function()
             
             while _running and task.wait(5) do
                 pcall(function()
+                    if UpdateTeleportMemory then UpdateTeleportMemory(true) end
                     TeleportService:Teleport(targetPlaceId, LocalPlayer)
                 end)
             end
@@ -133,13 +141,7 @@ addConn(GuiService.ErrorMessageChanged:Connect(function()
     end
 end))
 
--- ======================================================================
--- 🚀 TELEPORT MEMORY INJECTION
--- ======================================================================
-local myScriptURL = "https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/MSTACK/joinersystem.lua"
-local qot = queue_on_teleport or (syn and syn.queue_on_teleport) or (fluxus and fluxus.queue_on_teleport)
-
-local function UpdateTeleportMemory(willAutoTeleport)
+function UpdateTeleportMemory(willAutoTeleport)
     GlobalMem.FishmanAutoTeleport = willAutoTeleport
     SaveConfig()
     
@@ -2473,6 +2475,7 @@ Tabs = {
     })
 
     local function ExecuteTeleport(destination, psCode)
+        if UpdateTeleportMemory then UpdateTeleportMemory(GlobalMem.FishmanAutoTeleport) end
         if isLobby then
             if destination == "Lobby" then
                 Fluent:Notify({ Title = "Lobby", Content = "You are already in the Lobby!", Duration = 3 })
