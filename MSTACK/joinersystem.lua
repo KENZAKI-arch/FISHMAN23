@@ -2407,6 +2407,8 @@ Tabs = {
                     Fluent.Options.D_PSCodeHistory:SetValues(GlobalMem.FishmanPSCodeHistory)
                 end
             end
+            GlobalMem.FishmanAutoRouteLobby = false
+            if Fluent.Options.T_AutoRouteLobby then Fluent.Options.T_AutoRouteLobby:SetValue(false) end
             SaveConfig()
         end
     })
@@ -2420,6 +2422,8 @@ Tabs = {
         Callback = function(Value)
             if Value and Value ~= "" then
                 GlobalMem.FishmanPSCode = Value
+                GlobalMem.FishmanAutoRouteLobby = false
+                if Fluent.Options.T_AutoRouteLobby then Fluent.Options.T_AutoRouteLobby:SetValue(false) end
                 SaveConfig()
                 if Fluent.Options.Input and Fluent.Options.Input.Value ~= Value then
                     Fluent.Options.Input:SetValue(Value)
@@ -2435,6 +2439,8 @@ Tabs = {
         Default = (table.find({"fishHub", "tradeHub", "First Sea", "Second Sea", "Lobby"}, GlobalMem.FishmanDestination) or 2),
         Callback = function(Value)
             GlobalMem.FishmanDestination = Value
+            GlobalMem.FishmanAutoRouteLobby = false
+            if Fluent.Options.T_AutoRouteLobby then Fluent.Options.T_AutoRouteLobby:SetValue(false) end
             SaveConfig()
         end
     })
@@ -2597,7 +2603,11 @@ Tabs = {
         if shouldTeleport then
             task.spawn(function()
                 task.wait(3)
-                ExecuteTeleport(destPlace, destCode)
+                if GlobalMem.FishmanAutoTeleport or GlobalMem.FishmanAutoRouteLobby then
+                    ExecuteTeleport(GlobalMem.FishmanDestination, GlobalMem.FishmanPSCode)
+                else
+                    Fluent:Notify({ Title = "Auto-Route Cancelled", Content = "Manual interaction detected. Auto-Route aborted.", Duration = 3 })
+                end
             end)
         end
     end
