@@ -31,8 +31,9 @@ local DefaultPSCode = "qj1ttW4JG1"          -- Used if the account is not in Acc
 local playerName = LocalPlayer.Name
 local chosenCode = AccountConfigs[playerName] or DefaultPSCode
 
-getgenv().FishmanBasePSCode = chosenCode
--- The loader provides the 'Base' PS config, but joinersystem manages the active destination and active PS
+getgenv().FishmanDefaultPSCode = chosenCode
+getgenv().FishmanDefaultDestination = "Second Sea"
+-- The loader provides the 'Default' config to act as a starting location.
 
 print("[Fishman Loader] Account detected: " .. playerName)
 print("[Fishman Loader] Assigned PS Code: " .. chosenCode)

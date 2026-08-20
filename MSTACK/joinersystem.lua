@@ -74,14 +74,14 @@ pcall(function()
     end
 end)
 
-GlobalMem.FishmanPSCode = GlobalMem.FishmanPSCode or GlobalMem.FishmanBasePSCode or "qj1ttW4JG1"
+GlobalMem.FishmanPSCode = GlobalMem.FishmanPSCode or GlobalMem.FishmanDefaultPSCode or "qj1ttW4JG1"
 if type(GlobalMem.FishmanPSCodeHistory) ~= "table" or #GlobalMem.FishmanPSCodeHistory == 0 then
     GlobalMem.FishmanPSCodeHistory = {GlobalMem.FishmanPSCode}
 end
 if not table.find(GlobalMem.FishmanPSCodeHistory, GlobalMem.FishmanPSCode) and GlobalMem.FishmanPSCode ~= "" then
     table.insert(GlobalMem.FishmanPSCodeHistory, 1, GlobalMem.FishmanPSCode)
 end
-GlobalMem.FishmanDestination = GlobalMem.FishmanDestination or "tradeHub" 
+GlobalMem.FishmanDestination = GlobalMem.FishmanDestination or GlobalMem.FishmanDefaultDestination or "tradeHub" 
 GlobalMem.FishmanAutoTeleport = GlobalMem.FishmanAutoTeleport or false 
 GlobalMem.FishmanAutoJoin = GlobalMem.FishmanAutoJoin or false
 if GlobalMem.FishmanAutoReconnect == nil then GlobalMem.FishmanAutoReconnect = true end
@@ -111,8 +111,7 @@ end
 addConn(GuiService.ErrorMessageChanged:Connect(function()
     if GlobalMem.FishmanAutoReconnect then
         task.spawn(function()
-            -- Reroute to configured base PS on disconnect
-            if GlobalMem.FishmanBasePSCode then GlobalMem.FishmanPSCode = GlobalMem.FishmanBasePSCode end
+            -- Do not interfere with their current Destination/PS Code on reconnect!
             GlobalMem.FishmanAutoTeleport = true
             SaveConfig()
             
@@ -141,7 +140,8 @@ local function UpdateTeleportMemory(willAutoTeleport)
         pcall(function()
             getgenv().FishmanPSCode = "]] .. GlobalMem.FishmanPSCode .. [["
             getgenv().FishmanDestination = "]] .. GlobalMem.FishmanDestination .. [["
-            getgenv().FishmanBasePSCode = "]] .. tostring(GlobalMem.FishmanBasePSCode or "qj1ttW4JG1") .. [["
+            getgenv().FishmanDefaultPSCode = "]] .. tostring(GlobalMem.FishmanDefaultPSCode or "") .. [["
+            getgenv().FishmanDefaultDestination = "]] .. tostring(GlobalMem.FishmanDefaultDestination or "") .. [["
             getgenv().FishmanAutoTeleport = ]] .. tostring(willAutoTeleport) .. [[
             
             task.spawn(function()
@@ -2534,23 +2534,25 @@ Tabs = {
     })
 
     Tabs.Teleport:AddButton({
-        Title = "🏠 Return to Configured Base / Destination",
-        Description = "Instantly teleports you to the PS Code set in your loader.",
+        Title = "🏠 Return to Default Config",
+        Description = "Instantly teleports you to your loader's starting PS Code and Destination.",
         Callback = function()
-            local basePS = GlobalMem.FishmanBasePSCode or "qj1ttW4JG1"
-            local currentDest = GlobalMem.FishmanDestination
+            local defaultPS = GlobalMem.FishmanDefaultPSCode or "qj1ttW4JG1"
+            local defaultDest = GlobalMem.FishmanDefaultDestination or "Second Sea"
             
-            GlobalMem.FishmanPSCode = basePS
+            GlobalMem.FishmanPSCode = defaultPS
+            GlobalMem.FishmanDestination = defaultDest
             GlobalMem.FishmanAutoTeleport = true
             GlobalMem.FishmanAutoRouteLobby = false
             if Fluent.Options.T_AutoRouteLobby then Fluent.Options.T_AutoRouteLobby:SetValue(false) end
             SaveConfig()
             
-            if Fluent.Options.Input then Fluent.Options.Input:SetValue(basePS) end
+            if Fluent.Options.Input then Fluent.Options.Input:SetValue(defaultPS) end
+            if Fluent.Options.Dropdown then Fluent.Options.Dropdown:SetValue(defaultDest) end
             
-            Fluent:Notify({ Title = "Routing to Base", Content = "Initiating warp to " .. tostring(currentDest) .. "...", Duration = 3 })
+            Fluent:Notify({ Title = "Routing to Default", Content = "Initiating warp to " .. tostring(defaultDest) .. "...", Duration = 3 })
             
-            ExecuteTeleport(currentDest, basePS)
+            ExecuteTeleport(defaultDest, defaultPS)
         end
     })
 
