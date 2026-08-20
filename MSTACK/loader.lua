@@ -21,7 +21,10 @@ local AccountConfigs = {
     ["ReneAckerman0"] = "CnHpO5Kwa9",
     ["ReneButterbones"] = "qj1ttW4JG1",
     ["JackButterbones"] = "PRriWnrVWW",
-    ["NinelieJohnmark"] = "UO4gc2IyTY"
+    ["NinelieJohnmark"] = "UO4gc2IyTY",
+    ["KingOfAOC"] = "D7YApdhRP1",
+    ["ChristianExpress"] = "HiBe6mk1H7",
+    ["ButterbonesClan"] = "KY4ilrrIXX"
 }
 
 -- ⚙️ GLOBAL SETTINGS
