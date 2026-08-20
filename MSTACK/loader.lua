@@ -26,15 +26,13 @@ local AccountConfigs = {
 
 -- ⚙️ GLOBAL SETTINGS
 local DefaultPSCode = "qj1ttW4JG1"          -- Used if the account is not in AccountConfigs
-local DefaultDestination = "Second Sea"       -- Options: "fishHub", "tradeHub", "First Sea", "Second Sea", "Lobby"
 
 -- Apply Configuration
 local playerName = LocalPlayer.Name
 local chosenCode = AccountConfigs[playerName] or DefaultPSCode
 
 getgenv().FishmanBasePSCode = chosenCode
-getgenv().FishmanBaseDestination = DefaultDestination
--- The loader provides the 'Base' config, but joinersystem manages the active one
+-- The loader provides the 'Base' PS config, but joinersystem manages the active destination and active PS
 
 print("[Fishman Loader] Account detected: " .. playerName)
 print("[Fishman Loader] Assigned PS Code: " .. chosenCode)

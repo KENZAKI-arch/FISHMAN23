@@ -81,7 +81,7 @@ end
 if not table.find(GlobalMem.FishmanPSCodeHistory, GlobalMem.FishmanPSCode) and GlobalMem.FishmanPSCode ~= "" then
     table.insert(GlobalMem.FishmanPSCodeHistory, 1, GlobalMem.FishmanPSCode)
 end
-GlobalMem.FishmanDestination = GlobalMem.FishmanDestination or GlobalMem.FishmanBaseDestination or "tradeHub" 
+GlobalMem.FishmanDestination = GlobalMem.FishmanDestination or "tradeHub" 
 GlobalMem.FishmanAutoTeleport = GlobalMem.FishmanAutoTeleport or false 
 GlobalMem.FishmanAutoJoin = GlobalMem.FishmanAutoJoin or false
 if GlobalMem.FishmanAutoReconnect == nil then GlobalMem.FishmanAutoReconnect = true end
@@ -113,7 +113,6 @@ addConn(GuiService.ErrorMessageChanged:Connect(function()
         task.spawn(function()
             -- Reroute to configured base PS on disconnect
             if GlobalMem.FishmanBasePSCode then GlobalMem.FishmanPSCode = GlobalMem.FishmanBasePSCode end
-            if GlobalMem.FishmanBaseDestination then GlobalMem.FishmanDestination = GlobalMem.FishmanBaseDestination end
             GlobalMem.FishmanAutoTeleport = true
             SaveConfig()
             
@@ -143,7 +142,6 @@ local function UpdateTeleportMemory(willAutoTeleport)
             getgenv().FishmanPSCode = "]] .. GlobalMem.FishmanPSCode .. [["
             getgenv().FishmanDestination = "]] .. GlobalMem.FishmanDestination .. [["
             getgenv().FishmanBasePSCode = "]] .. tostring(GlobalMem.FishmanBasePSCode or "qj1ttW4JG1") .. [["
-            getgenv().FishmanBaseDestination = "]] .. tostring(GlobalMem.FishmanBaseDestination or "Second Sea") .. [["
             getgenv().FishmanAutoTeleport = ]] .. tostring(willAutoTeleport) .. [[
             
             task.spawn(function()
@@ -2531,24 +2529,22 @@ Tabs = {
 
     Tabs.Teleport:AddButton({
         Title = "🏠 Return to Configured Base / Destination",
-        Description = "Instantly teleports you to the Base Destination and PS Code set in your loader.",
+        Description = "Instantly teleports you to the PS Code set in your loader.",
         Callback = function()
             local basePS = GlobalMem.FishmanBasePSCode or "qj1ttW4JG1"
-            local baseDest = GlobalMem.FishmanBaseDestination or "Second Sea"
+            local currentDest = GlobalMem.FishmanDestination
             
             GlobalMem.FishmanPSCode = basePS
-            GlobalMem.FishmanDestination = baseDest
             GlobalMem.FishmanAutoTeleport = true
             GlobalMem.FishmanAutoRouteLobby = false
             if Fluent.Options.T_AutoRouteLobby then Fluent.Options.T_AutoRouteLobby:SetValue(false) end
             SaveConfig()
             
             if Fluent.Options.Input then Fluent.Options.Input:SetValue(basePS) end
-            if Fluent.Options.Dropdown then Fluent.Options.Dropdown:SetValue(baseDest) end
             
-            Fluent:Notify({ Title = "Routing to Base", Content = "Initiating warp to " .. tostring(baseDest) .. "...", Duration = 3 })
+            Fluent:Notify({ Title = "Routing to Base", Content = "Initiating warp to " .. tostring(currentDest) .. "...", Duration = 3 })
             
-            ExecuteTeleport(baseDest, basePS)
+            ExecuteTeleport(currentDest, basePS)
         end
     })
 
