@@ -49,7 +49,7 @@ while not LocalPlayer do
 end
 
 local targetPlaceId = 1730877806
-local isLobby = (game.PlaceId == targetPlaceId and game.PrivateServerId == "")
+local isLobby = (game.PlaceId == targetPlaceId)
 local GlobalMem = env
 
 -- ======================================================================
@@ -57,7 +57,19 @@ local GlobalMem = env
 -- ======================================================================
 local configFileName = "FishmanConfig_" .. tostring(LocalPlayer.UserId) .. ".json"
 
-local isFreshStart = (getgenv().FishmanQOT_Active == nil)
+local isFreshStart = true
+pcall(function()
+    if isfile and readfile and isfile(configFileName) then
+        local data = HttpService:JSONDecode(readfile(configFileName))
+        if data and data.LastTeleportTime then
+            if os.time() - data.LastTeleportTime < 180 then -- 3 minutes
+                isFreshStart = false
+            end
+        end
+    end
+end)
+if getgenv().FishmanQOT_Active then isFreshStart = false end
+
 if isFreshStart then
     if getgenv().FishmanDefaultPSCode then GlobalMem.FishmanPSCode = getgenv().FishmanDefaultPSCode end
     if getgenv().FishmanDefaultDestination then GlobalMem.FishmanDestination = getgenv().FishmanDefaultDestination end
@@ -143,6 +155,7 @@ end))
 
 function UpdateTeleportMemory(willAutoTeleport)
     GlobalMem.FishmanAutoTeleport = willAutoTeleport
+    GlobalMem.LastTeleportTime = os.time()
     SaveConfig()
     
     if not qot then return end
@@ -2481,7 +2494,7 @@ Tabs = {
                 Fluent:Notify({ Title = "Lobby", Content = "You are already in the Lobby!", Duration = 3 })
                 return
             end
-            if psCode and psCode ~= "" then
+            if psCode and psCode ~= "" and game.PrivateServerId == "" then
                 task.spawn(function()
                     local events = ReplicatedStorage:WaitForChild("Events", 9e9)
                     local reserved = events:WaitForChild("reserved", 9e9)
@@ -2604,11 +2617,13 @@ Tabs = {
         local destPlace = GlobalMem.FishmanDestination
         local shouldTeleport = false
         
+        local isContinuingTeleport = GlobalMem.FishmanAutoTeleport
         if GlobalMem.FishmanAutoTeleport then
             GlobalMem.FishmanAutoTeleport = false
             SaveConfig()
             if destPlace == "Lobby" then
                 Fluent:Notify({ Title = "Arrived at Lobby", Content = "You have arrived at the Lobby.", Duration = 3 })
+                isContinuingTeleport = false
             else
                 Fluent:Notify({ Title = "Auto-Teleporting", Content = "Routing to chosen destination in 3s...", Duration = 3 })
                 shouldTeleport = true
@@ -2627,7 +2642,7 @@ Tabs = {
         if shouldTeleport then
             task.spawn(function()
                 task.wait(3)
-                if GlobalMem.FishmanAutoTeleport or GlobalMem.FishmanAutoRouteLobby then
+                if isContinuingTeleport or GlobalMem.FishmanAutoTeleport or GlobalMem.FishmanAutoRouteLobby then
                     ExecuteTeleport(GlobalMem.FishmanDestination, GlobalMem.FishmanPSCode)
                 else
                     Fluent:Notify({ Title = "Auto-Route Cancelled", Content = "Manual interaction detected. Auto-Route aborted.", Duration = 3 })
