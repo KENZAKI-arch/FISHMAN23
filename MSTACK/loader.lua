@@ -1,0 +1,52 @@
+-- ==========================================
+-- Fishman Hub Multi-Account Loader
+-- ==========================================
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+while not LocalPlayer do
+    task.wait(1)
+    LocalPlayer = Players.LocalPlayer
+end
+
+-- ⚙️ ACCOUNT CONFIGURATION
+-- Add your accounts and their corresponding private server codes here.
+local AccountConfigs = {
+    ["MKRBarbershop"] = "vcvq1Xp6GC",
+    ["KevinSanjaya230"] = "dmNfaqsjjj",
+    ["KimchiHwarang"] = "MCVwx2gvJv",
+    ["KimGuk4ap"] = "tirAZ2rx2s",
+    ["EUNHAMARKET"] = "dTuByY1k0O",
+    ["VoicesOfTheChord0"] = "IxM1NarToN",
+    ["ReneAckerman0"] = "CnHpO5Kwa9",
+    ["ReneButterbones"] = "qj1ttW4JG1",
+    ["JackButterbones"] = "PRriWnrVWW",
+    ["NinelieJohnmark"] = "UO4gc2IyTY"
+}
+
+-- ⚙️ GLOBAL SETTINGS
+local DefaultPSCode = "qj1ttW4JG1"          -- Used if the account is not in AccountConfigs
+local DefaultDestination = "Second Sea"       -- Options: "fishHub", "tradeHub", "First Sea", "Second Sea", "Lobby"
+
+-- Apply Configuration
+local playerName = LocalPlayer.Name
+local chosenCode = AccountConfigs[playerName] or DefaultPSCode
+
+getgenv().FishmanBasePSCode = chosenCode
+getgenv().FishmanBaseDestination = DefaultDestination
+-- The loader provides the 'Base' config, but joinersystem manages the active one
+
+print("[Fishman Loader] Account detected: " .. playerName)
+print("[Fishman Loader] Assigned PS Code: " .. chosenCode)
+
+-- Execute Main Script
+local scriptURL = "https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/main/MSTACK/joinersystem.lua?t=" .. tostring(tick())
+
+print("[Fishman Loader] Loading joinersystem...")
+local success, err = pcall(function()
+    loadstring(game:HttpGet(scriptURL))()
+end)
+
+if not success then
+    warn("[Fishman Loader] Failed to load joinersystem: " .. tostring(err))
+end
