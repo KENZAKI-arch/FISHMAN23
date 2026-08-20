@@ -2400,6 +2400,7 @@ Tabs = {
 -- ======================================================================
 -- 🗺️ TELEPORT TAB UI
 -- ======================================================================
+    local UI_Loaded = false
     Tabs.Teleport:AddInput("Input", {
         Title = "Private Server Code",
         Default = GlobalMem.FishmanPSCode,
@@ -2417,8 +2418,10 @@ Tabs = {
                     Fluent.Options.D_PSCodeHistory:SetValues(GlobalMem.FishmanPSCodeHistory)
                 end
             end
-            GlobalMem.FishmanAutoRouteLobby = false
-            if Fluent.Options.T_AutoRouteLobby then Fluent.Options.T_AutoRouteLobby:SetValue(false) end
+            if UI_Loaded then
+                GlobalMem.FishmanAutoRouteLobby = false
+                if Fluent.Options.T_AutoRouteLobby then Fluent.Options.T_AutoRouteLobby:SetValue(false) end
+            end
             SaveConfig()
         end
     })
@@ -2432,8 +2435,10 @@ Tabs = {
         Callback = function(Value)
             if Value and Value ~= "" then
                 GlobalMem.FishmanPSCode = Value
-                GlobalMem.FishmanAutoRouteLobby = false
-                if Fluent.Options.T_AutoRouteLobby then Fluent.Options.T_AutoRouteLobby:SetValue(false) end
+                if UI_Loaded then
+                    GlobalMem.FishmanAutoRouteLobby = false
+                    if Fluent.Options.T_AutoRouteLobby then Fluent.Options.T_AutoRouteLobby:SetValue(false) end
+                end
                 SaveConfig()
                 if Fluent.Options.Input and Fluent.Options.Input.Value ~= Value then
                     Fluent.Options.Input:SetValue(Value)
@@ -2449,8 +2454,10 @@ Tabs = {
         Default = (table.find({"fishHub", "tradeHub", "First Sea", "Second Sea", "Lobby"}, GlobalMem.FishmanDestination) or 2),
         Callback = function(Value)
             GlobalMem.FishmanDestination = Value
-            GlobalMem.FishmanAutoRouteLobby = false
-            if Fluent.Options.T_AutoRouteLobby then Fluent.Options.T_AutoRouteLobby:SetValue(false) end
+            if UI_Loaded then
+                GlobalMem.FishmanAutoRouteLobby = false
+                if Fluent.Options.T_AutoRouteLobby then Fluent.Options.T_AutoRouteLobby:SetValue(false) end
+            end
             SaveConfig()
         end
     })
@@ -2585,6 +2592,8 @@ Tabs = {
             ExecuteTeleport("tradeHub", "qj1ttW4JG1")
         end
     })
+
+    UI_Loaded = true
 
     -- Check if we should automatically route
     if isLobby then
