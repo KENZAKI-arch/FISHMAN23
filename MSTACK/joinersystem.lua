@@ -61,6 +61,7 @@ local isFreshStart = (getgenv().FishmanQOT_Active == nil)
 if isFreshStart then
     if getgenv().FishmanDefaultPSCode then GlobalMem.FishmanPSCode = getgenv().FishmanDefaultPSCode end
     if getgenv().FishmanDefaultDestination then GlobalMem.FishmanDestination = getgenv().FishmanDefaultDestination end
+    GlobalMem.FishmanAutoRouteLobby = true
 end
 
 pcall(function()
