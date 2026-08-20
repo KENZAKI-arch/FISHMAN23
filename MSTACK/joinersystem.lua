@@ -57,6 +57,12 @@ local GlobalMem = env
 -- ======================================================================
 local configFileName = "FishmanConfig_" .. tostring(LocalPlayer.UserId) .. ".json"
 
+local isFreshStart = (getgenv().FishmanQOT_Active == nil)
+if isFreshStart then
+    if getgenv().FishmanDefaultPSCode then GlobalMem.FishmanPSCode = getgenv().FishmanDefaultPSCode end
+    if getgenv().FishmanDefaultDestination then GlobalMem.FishmanDestination = getgenv().FishmanDefaultDestination end
+end
+
 pcall(function()
     if isfile and readfile and isfile(configFileName) then
         local data = HttpService:JSONDecode(readfile(configFileName))
@@ -111,7 +117,9 @@ end
 addConn(GuiService.ErrorMessageChanged:Connect(function()
     if GlobalMem.FishmanAutoReconnect then
         task.spawn(function()
-            -- Do not interfere with their current Destination/PS Code on reconnect!
+            -- It's a disconnect! Reroute to configured Default PS and Destination!
+            if GlobalMem.FishmanDefaultPSCode then GlobalMem.FishmanPSCode = GlobalMem.FishmanDefaultPSCode end
+            if GlobalMem.FishmanDefaultDestination then GlobalMem.FishmanDestination = GlobalMem.FishmanDefaultDestination end
             GlobalMem.FishmanAutoTeleport = true
             SaveConfig()
             
@@ -142,6 +150,7 @@ local function UpdateTeleportMemory(willAutoTeleport)
             getgenv().FishmanDestination = "]] .. GlobalMem.FishmanDestination .. [["
             getgenv().FishmanDefaultPSCode = "]] .. tostring(GlobalMem.FishmanDefaultPSCode or "") .. [["
             getgenv().FishmanDefaultDestination = "]] .. tostring(GlobalMem.FishmanDefaultDestination or "") .. [["
+            getgenv().FishmanQOT_Active = true
             getgenv().FishmanAutoTeleport = ]] .. tostring(willAutoTeleport) .. [[
             
             task.spawn(function()
