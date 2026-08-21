@@ -2717,7 +2717,7 @@ end
 Tabs.Teleport:AddToggle("T_AutoSpawnShip", {
     Title = "🛳️ Auto Spawn Ship",
     Description = "Flies to spawn, spawns hoverboard, and sets flight height.",
-    Default = (GlobalMem.FishmanAutoSpawnShip == true) and (game.PlaceId == 4442272183) or false,
+    Default = (GlobalMem.FishmanAutoSpawnShip == true),
     Callback = function(Value)
         GlobalMem.FishmanAutoSpawnShip = Value
         SaveConfig()
