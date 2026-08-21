@@ -67,8 +67,14 @@ pcall(function()
     local main = settings and settings:WaitForChild("Main", 5)
     local codeLabel = main and main:WaitForChild("Code", 5)
 
-    if codeLabel and codeLabel.Text:find(chosenCode, 1, true) then
-        isInCorrectPS = true
+    if codeLabel then
+        for i = 1, 10 do
+            if codeLabel.Text:find(chosenCode, 1, true) then
+                isInCorrectPS = true
+                break
+            end
+            task.wait(1)
+        end
     end
 end)
 
