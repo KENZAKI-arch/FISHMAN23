@@ -61,7 +61,7 @@ local isFreshStart = true
 pcall(function()
     if isfile and readfile and isfile(configFileName) then
         local data = HttpService:JSONDecode(readfile(configFileName))
-        if data and data.IntentionalTeleport and data.LastTeleportTime then
+        if data and data.LastTeleportTime then
             if os.time() - data.LastTeleportTime < 180 then -- 3 minutes
                 isFreshStart = false
             end
@@ -90,11 +90,6 @@ pcall(function()
             if GlobalMem.FishmanAutoRouteLobby == nil then GlobalMem.FishmanAutoRouteLobby = data.FishmanAutoRouteLobby end
             if GlobalMem.FishmanAutoSpawnShip == nil then GlobalMem.FishmanAutoSpawnShip = data.FishmanAutoSpawnShip end
             print("[Fishman] Loaded Config from file.")
-            
-            if data.IntentionalTeleport then
-                GlobalMem.IntentionalTeleport = false
-                SaveConfig()
-            end
         end
     end
 end)
@@ -123,9 +118,7 @@ local function SaveConfig()
                 FishmanAutoJoin = GlobalMem.FishmanAutoJoin,
                 FishmanAutoReconnect = GlobalMem.FishmanAutoReconnect,
                 FishmanAutoRouteLobby = GlobalMem.FishmanAutoRouteLobby,
-                FishmanAutoSpawnShip = GlobalMem.FishmanAutoSpawnShip,
-                LastTeleportTime = GlobalMem.LastTeleportTime,
-                IntentionalTeleport = GlobalMem.IntentionalTeleport
+                FishmanAutoSpawnShip = GlobalMem.FishmanAutoSpawnShip
             }
             writefile(configFileName, HttpService:JSONEncode(data))
         end
@@ -164,7 +157,6 @@ end))
 function UpdateTeleportMemory(willAutoTeleport)
     GlobalMem.FishmanAutoTeleport = willAutoTeleport
     GlobalMem.LastTeleportTime = os.time()
-    GlobalMem.IntentionalTeleport = true
     SaveConfig()
     
     if not qot then return end
@@ -2734,12 +2726,7 @@ Tabs.Teleport:AddToggle("T_AutoSpawnShip", {
             EnsureHoverboardLoaded()
             if getgenv().HoverboardController and getgenv().HoverboardController.AutoSpawn then
                 print("[Hub] Calling HoverboardController.AutoSpawn()...")
-                getgenv().HoverboardController.AutoSpawn(function()
-                    if Fluent and Fluent.Options and Fluent.Options.T_MegStack then
-                        print("[Hub] Automatically enabling Megalodon Stack after final move...")
-                        Fluent.Options.T_MegStack:SetValue(true)
-                    end
-                end)
+                getgenv().HoverboardController.AutoSpawn()
             else
                 print("[Hub] ERROR: HoverboardController.AutoSpawn not found!")
             end
