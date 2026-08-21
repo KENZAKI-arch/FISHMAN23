@@ -50,19 +50,12 @@ local NoAutoSpawnAccounts = {
     ["ButterbonesClan"] = true
 }
 
-local isSecondSea = (game.PlaceId == 4442272183)
-local isPrivateServer = (game.PrivateServerId ~= "")
+local islands = workspace:WaitForChild("Islands", 5)
+local isWholeCake = islands and islands:FindFirstChild("Whole Cake Island") ~= nil
 
-if isSecondSea and isPrivateServer then
-    local islands = workspace:WaitForChild("Islands", 5)
-    local isWholeCake = islands and islands:FindFirstChild("Whole Cake Island") ~= nil
-
-    if isWholeCake and not NoAutoSpawnAccounts[playerName] then
-        getgenv().FishmanAutoSpawnShip = true
-        print("[Fishman Loader] Whole Cake Island detected in PS! Auto Spawn Ship enabled.")
-    else
-        getgenv().FishmanAutoSpawnShip = false
-    end
+if isWholeCake and not NoAutoSpawnAccounts[playerName] then
+    getgenv().FishmanAutoSpawnShip = true
+    print("[Fishman Loader] Whole Cake Island detected! Auto Spawn Ship enabled.")
 else
     getgenv().FishmanAutoSpawnShip = false
     if game.PlaceId == 7369873099 then
@@ -70,7 +63,7 @@ else
     elseif game.PlaceId == 1730877806 or game.PlaceId == 2753915549 then
         print("[Fishman Loader] In Lobby. Auto Spawn Ship disabled.")
     else
-        print("[Fishman Loader] Not in Second Sea PS. Auto Spawn Ship disabled.")
+        print("[Fishman Loader] Not at Whole Cake Island. Auto Spawn Ship disabled.")
     end
 end
 
