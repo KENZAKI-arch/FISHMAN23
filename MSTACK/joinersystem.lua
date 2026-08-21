@@ -2731,6 +2731,13 @@ Tabs.Teleport:AddToggle("T_AutoSpawnShip", {
         SaveConfig()
         print("[Hub] 'Auto Spawn Ship' toggled " .. tostring(Value))
         if Value then
+            if isLobby then
+                print("[Hub] Cannot Auto Spawn Ship in Lobby!")
+                if Fluent and Fluent.Options and Fluent.Options.T_AutoSpawnShip then
+                    Fluent.Options.T_AutoSpawnShip:SetValue(false)
+                end
+                return
+            end
             EnsureHoverboardLoaded()
             if getgenv().HoverboardController and getgenv().HoverboardController.AutoSpawn then
                 print("[Hub] Calling HoverboardController.AutoSpawn()...")
