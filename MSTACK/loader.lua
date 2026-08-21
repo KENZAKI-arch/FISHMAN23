@@ -2,6 +2,11 @@
 -- Fishman Hub Multi-Account Loader
 -- ==========================================
 local Players = game:GetService("Players")
+
+if not game:IsLoaded() then
+    game.Loaded:Wait()
+end
+
 local LocalPlayer = Players.LocalPlayer
 
 while not LocalPlayer do
