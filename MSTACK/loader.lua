@@ -51,7 +51,16 @@ local NoAutoSpawnAccounts = {
 }
 
 local islands = workspace:WaitForChild("Islands", 5)
-local isWholeCake = islands and islands:FindFirstChild("Whole Cake Island") ~= nil
+local isWholeCake = false
+if islands then
+    local wci = islands:FindFirstChild("Whole Cake Island")
+    if wci then
+        local wciInner = wci:FindFirstChild("WholeCakeIsland")
+        if wciInner and wciInner:FindFirstChild("Terrain") then
+            isWholeCake = true
+        end
+    end
+end
 
 if isWholeCake and not NoAutoSpawnAccounts[playerName] then
     getgenv().FishmanAutoSpawnShip = true
