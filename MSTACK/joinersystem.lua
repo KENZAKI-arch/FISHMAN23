@@ -2731,21 +2731,17 @@ Tabs.Teleport:AddToggle("T_AutoSpawnShip", {
         SaveConfig()
         print("[Hub] 'Auto Spawn Ship' toggled " .. tostring(Value))
         if Value then
-            if game.PlaceId == 4442272183 then
-                EnsureHoverboardLoaded()
-                if getgenv().HoverboardController and getgenv().HoverboardController.AutoSpawn then
-                    print("[Hub] Calling HoverboardController.AutoSpawn()...")
-                    getgenv().HoverboardController.AutoSpawn(function()
-                        if Fluent and Fluent.Options and Fluent.Options.T_MegStack then
-                            print("[Hub] Automatically enabling Megalodon Stack after final move...")
-                            Fluent.Options.T_MegStack:SetValue(true)
-                        end
-                    end)
-                else
-                    print("[Hub] ERROR: HoverboardController.AutoSpawn not found!")
-                end
+            EnsureHoverboardLoaded()
+            if getgenv().HoverboardController and getgenv().HoverboardController.AutoSpawn then
+                print("[Hub] Calling HoverboardController.AutoSpawn()...")
+                getgenv().HoverboardController.AutoSpawn(function()
+                    if Fluent and Fluent.Options and Fluent.Options.T_MegStack then
+                        print("[Hub] Automatically enabling Megalodon Stack after final move...")
+                        Fluent.Options.T_MegStack:SetValue(true)
+                    end
+                end)
             else
-                print("[Hub] Auto Spawn Ship is ON, but standing by (Not in Second Sea).")
+                print("[Hub] ERROR: HoverboardController.AutoSpawn not found!")
             end
         else
             if getgenv().HoverboardController then
