@@ -55,7 +55,20 @@ if islands then
     if wci then
         local wciInner = wci:FindFirstChild("WholeCakeIsland")
         if wciInner and wciInner:FindFirstChild("Terrain") then
-            isWholeCake = true
+            local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+            local referencePart = wciInner:FindFirstChildWhichIsA("BasePart", true) or wci:FindFirstChildWhichIsA("BasePart", true)
+            
+            if hrp and referencePart then
+                local dist = (hrp.Position - referencePart.Position).Magnitude
+                if dist <= 1000 then
+                    isWholeCake = true
+                else
+                    print("[Fishman Loader] Whole Cake Island detected, but you are " .. math.floor(dist) .. " studs away. (Needs to be < 1000)")
+                end
+            elseif hrp and not referencePart then
+                -- Fallback if no specific parts are loaded yet but terrain exists
+                isWholeCake = true
+            end
         end
     end
 end
