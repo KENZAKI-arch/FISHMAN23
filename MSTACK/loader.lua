@@ -1,21 +1,12 @@
 -- ==========================================
 -- Fishman Hub Multi-Account Loader
 -- ==========================================
-
-if not game:IsLoaded() then
-    game.Loaded:Wait()
-end
-
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 
-if not LocalPlayer then
-    Players:GetPropertyChangedSignal("LocalPlayer"):Wait()
+while not LocalPlayer do
+    task.wait(1)
     LocalPlayer = Players.LocalPlayer
-end
-
-if not LocalPlayer.Character then
-    LocalPlayer.CharacterAdded:Wait()
 end
 
 -- ⚙️ ACCOUNT CONFIGURATION
@@ -53,23 +44,8 @@ local NoAutoSpawnAccounts = {
     ["ChristianExpress"] = true,
     ["ButterbonesClan"] = true
 }
-
-local isLobby = (game.PlaceId == 1730877806 or game.PlaceId == 2753915549)
-
-if isLobby then
-    getgenv().FishmanAutoSpawnShip = false
-else
-    local islands = workspace:WaitForChild("Islands", 5)
-    local isWholeCake = islands and islands:FindFirstChild("Whole Cake Island") ~= nil
-
-    if isWholeCake then
-        getgenv().FishmanAutoSpawnShip = true
-        print("[Fishman Loader] Whole Cake Island detected! Auto Spawn Ship enabled.")
-    elseif not NoAutoSpawnAccounts[playerName] then
-        getgenv().FishmanAutoSpawnShip = true
-    else
-        getgenv().FishmanAutoSpawnShip = false
-    end
+if not NoAutoSpawnAccounts[playerName] then
+    getgenv().FishmanAutoSpawnShip = true
 end
 
 print("[Fishman Loader] Account detected: " .. playerName)

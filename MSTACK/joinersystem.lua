@@ -1,4 +1,4 @@
--- Version 4.0
+-- Version 3.9
 -- ======================================================================
 -- 🛑 GLOBAL SETUP & DUPLICATE PREVENTION
 -- ======================================================================
@@ -69,10 +69,6 @@ pcall(function()
     end
 end)
 if getgenv().FishmanQOT_Active then isFreshStart = false end
-
-if game.PlaceId == 2753915549 then
-    isFreshStart = true -- Being in the lobby is ALWAYS a fresh boot
-end
 
 if isFreshStart then
     if getgenv().FishmanDefaultPSCode then GlobalMem.FishmanPSCode = getgenv().FishmanDefaultPSCode end
@@ -2389,7 +2385,7 @@ end
 
 local Window = Fluent:CreateWindow({
     Title = "🐟 Fishman Hub",
-    SubTitle = "Unified Auto-Fisher 1.0.3 v4.0",
+    SubTitle = "Unified Auto-Fisher 1.0.3 v3.9",
     MinimizeKey = Enum.KeyCode.RightShift
 })
 
@@ -2499,11 +2495,7 @@ Tabs = {
                 Fluent:Notify({ Title = "Lobby", Content = "You are already in the Lobby!", Duration = 3 })
                 return
             end
-            
-            local psId = ""
-            pcall(function() psId = game.PrivateServerId end)
-            
-            if psCode and psCode ~= "" and psId == "" then
+            if psCode and psCode ~= "" and game.PrivateServerId == "" then
                 task.spawn(function()
                     local events = ReplicatedStorage:WaitForChild("Events", 9e9)
                     local reserved = events:WaitForChild("reserved", 9e9)
@@ -2731,13 +2723,6 @@ Tabs.Teleport:AddToggle("T_AutoSpawnShip", {
         SaveConfig()
         print("[Hub] 'Auto Spawn Ship' toggled " .. tostring(Value))
         if Value then
-            if isLobby then
-                print("[Hub] Cannot Auto Spawn Ship in Lobby!")
-                if Fluent and Fluent.Options and Fluent.Options.T_AutoSpawnShip then
-                    Fluent.Options.T_AutoSpawnShip:SetValue(false)
-                end
-                return
-            end
             EnsureHoverboardLoaded()
             if getgenv().HoverboardController and getgenv().HoverboardController.AutoSpawn then
                 print("[Hub] Calling HoverboardController.AutoSpawn()...")
