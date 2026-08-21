@@ -70,6 +70,10 @@ pcall(function()
 end)
 if getgenv().FishmanQOT_Active then isFreshStart = false end
 
+if game.PlaceId == 2753915549 then
+    isFreshStart = true -- Being in the lobby is ALWAYS a fresh boot
+end
+
 if isFreshStart then
     if getgenv().FishmanDefaultPSCode then GlobalMem.FishmanPSCode = getgenv().FishmanDefaultPSCode end
     if getgenv().FishmanDefaultDestination then GlobalMem.FishmanDestination = getgenv().FishmanDefaultDestination end
@@ -2495,7 +2499,11 @@ Tabs = {
                 Fluent:Notify({ Title = "Lobby", Content = "You are already in the Lobby!", Duration = 3 })
                 return
             end
-            if psCode and psCode ~= "" and game.PrivateServerId == "" then
+            
+            local psId = ""
+            pcall(function() psId = game.PrivateServerId end)
+            
+            if psCode and psCode ~= "" and psId == "" then
                 task.spawn(function()
                     local events = ReplicatedStorage:WaitForChild("Events", 9e9)
                     local reserved = events:WaitForChild("reserved", 9e9)
