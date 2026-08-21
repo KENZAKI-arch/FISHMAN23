@@ -73,6 +73,7 @@ if getgenv().FishmanQOT_Active then isFreshStart = false end
 if isFreshStart then
     if getgenv().FishmanDefaultPSCode then GlobalMem.FishmanPSCode = getgenv().FishmanDefaultPSCode end
     if getgenv().FishmanDefaultDestination then GlobalMem.FishmanDestination = getgenv().FishmanDefaultDestination end
+    if getgenv().FishmanAutoSpawnShip ~= nil then GlobalMem.FishmanAutoSpawnShip = getgenv().FishmanAutoSpawnShip end
     GlobalMem.FishmanAutoRouteLobby = true
 end
 
@@ -2716,7 +2717,7 @@ end
 Tabs.Teleport:AddToggle("T_AutoSpawnShip", {
     Title = "🛳️ Auto Spawn Ship",
     Description = "Flies to spawn, spawns hoverboard, and sets flight height.",
-    Default = (GlobalMem.FishmanAutoSpawnShip == true) and isAtWholeCakeIsland() or false,
+    Default = (GlobalMem.FishmanAutoSpawnShip == true) and (game.PlaceId == 4442272183) or false,
     Callback = function(Value)
         GlobalMem.FishmanAutoSpawnShip = Value
         SaveConfig()
