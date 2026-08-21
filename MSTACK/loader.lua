@@ -1,18 +1,20 @@
 -- ==========================================
 -- Fishman Hub Multi-Account Loader
 -- ==========================================
+repeat task.wait() until game:IsLoaded()
+
 local Players = game:GetService("Players")
-
-if not game:IsLoaded() then
-    game.Loaded:Wait()
-end
-
 local LocalPlayer = Players.LocalPlayer
 
 while not LocalPlayer do
     task.wait(1)
     LocalPlayer = Players.LocalPlayer
 end
+
+if not LocalPlayer.Character then
+    LocalPlayer.CharacterAdded:Wait()
+end
+task.wait(3)
 
 -- ⚙️ ACCOUNT CONFIGURATION
 -- Add your accounts and their corresponding private server codes here.
