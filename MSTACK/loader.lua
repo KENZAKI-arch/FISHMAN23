@@ -67,15 +67,29 @@ if islands then
     end
 end
 
-if isWholeCake and not NoAutoSpawnAccounts[playerName] then
+local isInCorrectPS = false
+pcall(function()
+    local gui = LocalPlayer:WaitForChild("PlayerGui", 5)
+    local settings = gui and gui:WaitForChild("Settings", 5)
+    local main = settings and settings:WaitForChild("Main", 5)
+    local codeLabel = main and main:WaitForChild("Code", 5)
+
+    if codeLabel and codeLabel.Text:find(chosenCode, 1, true) then
+        isInCorrectPS = true
+    end
+end)
+
+if isWholeCake and isInCorrectPS and not NoAutoSpawnAccounts[playerName] then
     getgenv().FishmanAutoSpawnShip = true
-    print("[Fishman Loader] Whole Cake Island detected! Auto Spawn Ship enabled.")
+    print("[Fishman Loader] Whole Cake Island & Correct PS detected! Auto Spawn Ship enabled.")
 else
     getgenv().FishmanAutoSpawnShip = false
     if game.PlaceId == 7369873099 then
         print("[Fishman Loader] In Trade Hub. Auto Spawn Ship disabled.")
     elseif game.PlaceId == 1730877806 or game.PlaceId == 2753915549 then
         print("[Fishman Loader] In Lobby. Auto Spawn Ship disabled.")
+    elseif not isInCorrectPS then
+        print("[Fishman Loader] Not in assigned PS (" .. chosenCode .. "). Auto Spawn Ship disabled.")
     else
         print("[Fishman Loader] Not at Whole Cake Island. Auto Spawn Ship disabled.")
     end
