@@ -49,7 +49,14 @@ local NoAutoSpawnAccounts = {
     ["ChristianExpress"] = true,
     ["ButterbonesClan"] = true
 }
-if not NoAutoSpawnAccounts[playerName] then
+
+local islands = workspace:WaitForChild("Islands", 5)
+local isWholeCake = islands and islands:FindFirstChild("Whole Cake Island") ~= nil
+
+if isWholeCake then
+    getgenv().FishmanAutoSpawnShip = true
+    print("[Fishman Loader] Whole Cake Island detected! Auto Spawn Ship enabled.")
+elseif not NoAutoSpawnAccounts[playerName] then
     getgenv().FishmanAutoSpawnShip = true
 end
 
