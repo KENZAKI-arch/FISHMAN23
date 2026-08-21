@@ -65,7 +65,13 @@ if isSecondSea and isPrivateServer then
     end
 else
     getgenv().FishmanAutoSpawnShip = false
-    print("[Fishman Loader] Not in Second Sea PS. Auto Spawn Ship disabled.")
+    if game.PlaceId == 7369873099 then
+        print("[Fishman Loader] In Trade Hub. Auto Spawn Ship disabled.")
+    elseif game.PlaceId == 1730877806 or game.PlaceId == 2753915549 then
+        print("[Fishman Loader] In Lobby. Auto Spawn Ship disabled.")
+    else
+        print("[Fishman Loader] Not in Second Sea PS. Auto Spawn Ship disabled.")
+    end
 end
 
 print("[Fishman Loader] Account detected: " .. playerName)
