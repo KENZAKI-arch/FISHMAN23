@@ -59,11 +59,16 @@ print("[Fishman Loader] Assigned PS Code: " .. chosenCode)
 -- Execute Main Script
 local scriptURL = "https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/main/MSTACK/joinersystem.lua?t=" .. tostring(tick())
 
-print("[Fishman Loader] Loading joinersystem...")
-local success, err = pcall(function()
-    loadstring(game:HttpGet(scriptURL))()
-end)
+task.spawn(function()
+    print("[Fishman Loader] Waiting 15 seconds before loading joinersystem...")
+    task.wait(15)
+    
+    print("[Fishman Loader] Loading joinersystem...")
+    local success, err = pcall(function()
+        loadstring(game:HttpGet(scriptURL))()
+    end)
 
-if not success then
-    warn("[Fishman Loader] Failed to load joinersystem: " .. tostring(err))
-end
+    if not success then
+        warn("[Fishman Loader] Failed to load joinersystem: " .. tostring(err))
+    end
+end)
