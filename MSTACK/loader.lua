@@ -27,7 +27,7 @@ local AccountConfigs = {
     ["ReneButterbones"] = "qj1ttW4JG1",
     ["JackButterbones"] = "PRriWnrVWW",
     ["NinelieJohnmark"] = "UO4gc2IyTY",
-    ["KingOfAOC"] = "D7YApdhRP1",
+    ["KingOfAOC"] = "Ay5J7LqxL4",
     ["ChristianExpress"] = "HiBe6mk1H7",
     ["ButterbonesClan"] = "KY4ilrrIXX"
 }
@@ -42,13 +42,6 @@ local chosenCode = AccountConfigs[playerName] or DefaultPSCode
 getgenv().FishmanDefaultPSCode = chosenCode
 getgenv().FishmanDefaultDestination = "Second Sea"
 -- The loader provides the 'Default' config to act as a starting location.
-
-local NoAutoSpawnAccounts = {
-    ["NinelieJohnmark"] = true,
-    ["KingOfAOC"] = true,
-    ["ChristianExpress"] = true,
-    ["ButterbonesClan"] = true
-}
 
 if not LocalPlayer.Character then
     LocalPlayer.CharacterAdded:Wait()
@@ -79,7 +72,7 @@ pcall(function()
     end
 end)
 
-if isWholeCake and isInCorrectPS and not NoAutoSpawnAccounts[playerName] then
+if isWholeCake and isInCorrectPS then
     getgenv().FishmanAutoSpawnShip = true
     print("[Fishman Loader] Whole Cake Island & Correct PS detected! Auto Spawn Ship enabled.")
 else
