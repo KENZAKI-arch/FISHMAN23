@@ -38,12 +38,13 @@ getgenv().FishmanDefaultPSCode = chosenCode
 getgenv().FishmanDefaultDestination = "Second Sea"
 -- The loader provides the 'Default' config to act as a starting location.
 
-local AutoSpawnAccounts = {
+local NoAutoSpawnAccounts = {
+    ["NinelieJohnmark"] = true,
     ["KingOfAOC"] = true,
     ["ChristianExpress"] = true,
     ["ButterbonesClan"] = true
 }
-if AutoSpawnAccounts[playerName] then
+if not NoAutoSpawnAccounts[playerName] then
     getgenv().FishmanAutoSpawnShip = true
 end
 
