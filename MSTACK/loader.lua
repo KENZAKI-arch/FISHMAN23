@@ -50,6 +50,11 @@ local NoAutoSpawnAccounts = {
     ["ButterbonesClan"] = true
 }
 
+if not LocalPlayer.Character then
+    LocalPlayer.CharacterAdded:Wait()
+end
+task.wait(3)
+
 local islands = workspace:WaitForChild("Islands", 5)
 local isWholeCake = false
 if islands then
