@@ -13,6 +13,35 @@ while not LocalPlayer do
     task.wait(1)
     LocalPlayer = Players.LocalPlayer
 end
+-- ==========================================
+-- ANTI-AFK SYSTEM
+-- ==========================================
+local StarterGui = game:GetService("StarterGui")
+task.spawn(function()
+    task.wait(2)
+    pcall(function()
+        StarterGui:SetCore("SendNotification", {
+            Title = "Anti-AFK",
+            Text = "Script successfully loaded and is running!",
+            Duration = 5,
+        })
+    end)
+end)
+
+local VIM = cloneref and cloneref(game:GetService("VirtualInputManager")) or game:GetService("VirtualInputManager")
+LocalPlayer.Idled:Connect(function()
+    pcall(function()
+        StarterGui:SetCore("SendNotification", {
+            Title = "Anti-AFK Triggered",
+            Text = "Simulated movement to prevent disconnect.",
+            Duration = 3,
+        })
+    end)
+    VIM:SendKeyEvent(true, Enum.KeyCode.LeftShift, false, game)
+    task.wait(0.1)
+    VIM:SendKeyEvent(false, Enum.KeyCode.LeftShift, false, game)
+end)
+-- ==========================================
 
 -- ⚙️ ACCOUNT CONFIGURATION
 -- Add your accounts and their corresponding private server codes here.
