@@ -60,10 +60,10 @@ if islands then
             
             if hrp and referencePart then
                 local dist = (hrp.Position - referencePart.Position).Magnitude
-                if dist <= 1000 then
+                if dist <= 2000 then
                     isWholeCake = true
                 else
-                    print("[Fishman Loader] Whole Cake Island detected, but you are " .. math.floor(dist) .. " studs away. (Needs to be < 1000)")
+                    print("[Fishman Loader] Whole Cake Island detected, but you are " .. math.floor(dist) .. " studs away. (Needs to be < 2000)")
                 end
             elseif hrp and not referencePart then
                 -- Fallback if no specific parts are loaded yet but terrain exists
