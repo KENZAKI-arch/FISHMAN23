@@ -16,8 +16,7 @@ env.FishmanScriptServer = game.JobId
 
 getgenv().FishmanState._running = true
 getgenv().FishmanState._connections = {}
-getgenv().FishmanState.Tabs
-getgenv().FishmanState.Fluent
+
 
 getgenv().FishmanState.addConn = function(conn)
     table.insert(getgenv().FishmanState._connections, conn)

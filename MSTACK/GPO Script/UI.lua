@@ -28,7 +28,7 @@ local SaveConfig = getgenv().FishmanState.SaveConfig
 -- ======================================================================
 getgenv().FishmanState.Fluent = { Options = {} }
 
-function getgenv().FishmanState.Fluent:Notify(options)
+function Fluent:Notify(options)
     task.spawn(function()
         local sg = Instance.new("ScreenGui")
         sg.Name = "FishmanNotify"
@@ -60,7 +60,7 @@ function getgenv().FishmanState.Fluent:Notify(options)
     end)
 end
 
-function getgenv().FishmanState.Fluent:CreateWindow(options)
+function Fluent:CreateWindow(options)
     local FakeWindow = {}
     
     local sg = Instance.new("ScreenGui")
