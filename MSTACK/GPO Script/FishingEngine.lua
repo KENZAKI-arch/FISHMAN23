@@ -22,18 +22,20 @@ local addConn = getgenv().FishmanState.addConn
 local disconnectAll = getgenv().FishmanState.disconnectAll
 local TriggerSafeguardShutdown = getgenv().FishmanState.TriggerSafeguardShutdown
 local SaveConfig = getgenv().FishmanState.SaveConfig
+local isLobby = getgenv().FishmanState.isLobby
+
 
 -- ======================================================================
 -- 🎣 FISHING ENGINE CORE (Only initialized if NOT in lobby)
 -- ======================================================================
-local Model = { State = {} }
+getgenv().FishmanState.Model = { State = {} }
 local shopEvent, buyableItems, sellEvent, questEvent, craftingRemote, Remote
 local statsFolder, inventoryObj, peliObject
 local cachedBaitItems = nil
     local loadedAnimations = {}
     getgenv().FishmanState.addConn(LocalPlayer.CharacterAdded:Connect(function() table.clear(loadedAnimations) end))
-    local isAFKModeActive = false
-    local secondsSinceLastInput = 0
+    getgenv().FishmanState.isAFKModeActive = false
+    getgenv().FishmanState.secondsSinceLastInput = 0
 local craftHeartbeatConn = nil
 local craftFlyTarget = nil
 
@@ -42,7 +44,7 @@ local craftFlyTarget = nil
         Vector3.new(0, 1, 0)    -- 2. Climb Up (Only if cornered/trapped)
     }
 
-    Model.State = {
+    getgenv().FishmanState.Model.State = {
         isFishing             = false,
         autoBuy               = not isLobby,
         autoSell              = false,
@@ -115,7 +117,7 @@ if not isLobby then
     -- ======================================================================
     -- 🚀 FLIGHT & MOVEMENT SUBSYSTEM
     -- ======================================================================
-    function Model.EnableFlight()
+    function getgenv().FishmanState.Model.EnableFlight()
         local character = LocalPlayer.Character
         if not character then return end
         local rootPart = character:FindFirstChild("HumanoidRootPart")
@@ -136,7 +138,7 @@ if not isLobby then
         end
     end
 
-    function Model.DisableFlight()
+    function getgenv().FishmanState.Model.DisableFlight()
         local character = LocalPlayer.Character
         if not character then return end
         local rootPart = character:FindFirstChild("HumanoidRootPart")
@@ -156,16 +158,16 @@ if not isLobby then
         if humanoid then humanoid.PlatformStand = false end
     end
     
-    function Model.NavigateTo(object, targetPosition, speed, arrivalDistance)
+    function getgenv().FishmanState.Model.NavigateTo(object, targetPosition, speed, arrivalDistance)
         speed = speed or 100
         arrivalDistance = arrivalDistance or 20
         
-        local primaryPart = object:IsA("Model") and object.PrimaryPart or (object:IsA("BasePart") and object or nil)
+        local primaryPart = object:IsA("getgenv().FishmanState.Model") and object.PrimaryPart or (object:IsA("BasePart") and object or nil)
         if not primaryPart then return nil end
 
         local startPosition = primaryPart.Position
         local size = primaryPart.Size
-        if object:IsA("Model") then
+        if object:IsA("getgenv().FishmanState.Model") then
             local _, modelSize = object:GetBoundingBox()
             size = modelSize
         end
@@ -478,15 +480,15 @@ if not isLobby then
     local cachedTravelParams = RaycastParams.new()
     cachedTravelParams.FilterType = Enum.RaycastFilterType.Exclude
 
-    function Model.HandleMovement(deltaTime)
+    function getgenv().FishmanState.Model.HandleMovement(deltaTime)
         local rootPart = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
         if not rootPart then return end
         local cur = rootPart.Position
         
         local tgt
-        if Model.State.travelStage == 1 then tgt = Model.State.waypoint1
-        elseif Model.State.travelStage == 2 then tgt = Model.State.waypoint2
-        else tgt = Model.State.finalTarget end
+        if getgenv().FishmanState.Model.State.travelStage == 1 then tgt = getgenv().FishmanState.Model.State.waypoint1
+        elseif getgenv().FishmanState.Model.State.travelStage == 2 then tgt = getgenv().FishmanState.Model.State.waypoint2
+        else tgt = getgenv().FishmanState.Model.State.finalTarget end
         
         local tgtY = tgt.Y
         local nextPoint
@@ -497,19 +499,19 @@ if not isLobby then
         elseif math.abs(cur.Z - tgt.Z) > 1 then nextPoint = Vector3.new(tgt.X, cur.Y, tgt.Z)
         elseif not goingUp and math.abs(cur.Y - tgtY) > 1 then nextPoint = Vector3.new(tgt.X, tgtY, tgt.Z)
         else
-            if Model.State.travelStage == 1 then
-                Model.State.travelStage = 2
+            if getgenv().FishmanState.Model.State.travelStage == 1 then
+                getgenv().FishmanState.Model.State.travelStage = 2
                 local humanoid = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
                 if humanoid then humanoid.PlatformStand = false end
                 return
-            elseif Model.State.travelStage == 2 then
-                Model.State.travelStage = 3
+            elseif getgenv().FishmanState.Model.State.travelStage == 2 then
+                getgenv().FishmanState.Model.State.travelStage = 3
                 return
             end
             
-            Model.State.isAutoTraveling = false
-            Model.DisableFlight()
-            Model.State.travelMessage = "Arrived at Bait"
+            getgenv().FishmanState.Model.State.isAutoTraveling = false
+            getgenv().FishmanState.Model.DisableFlight()
+            getgenv().FishmanState.Model.State.travelMessage = "Arrived at Bait"
             return
         end
 
@@ -524,7 +526,7 @@ if not isLobby then
         end
 
         local newY = cur.Y
-        if Model.State.travelStage > 1 and not goingUp then
+        if getgenv().FishmanState.Model.State.travelStage > 1 and not goingUp then
             cachedTravelParams.FilterDescendantsInstances = {LocalPlayer.Character}
 
             local floorY = tgtY
@@ -566,23 +568,23 @@ if not isLobby then
         rootPart.AssemblyAngularVelocity = Vector3.zero
     end
     
-    function Model.StartTraveling()
+    function getgenv().FishmanState.Model.StartTraveling()
         local char = LocalPlayer.Character
         local hrp = char and char:FindFirstChild("HumanoidRootPart")
         if not hrp then return end
         
         local pos = hrp.Position
-        local d1 = (pos - Model.State.waypoint1).Magnitude
-        local d2 = (pos - Model.State.waypoint2).Magnitude
-        local d3 = (pos - Model.State.finalTarget).Magnitude
+        local d1 = (pos - getgenv().FishmanState.Model.State.waypoint1).Magnitude
+        local d2 = (pos - getgenv().FishmanState.Model.State.waypoint2).Magnitude
+        local d3 = (pos - getgenv().FishmanState.Model.State.finalTarget).Magnitude
 
-        if d3 < d2 and d3 < d1 then Model.State.travelStage = 3
-        elseif d2 < d1 then Model.State.travelStage = 2
-        else Model.State.travelStage = 1 end
+        if d3 < d2 and d3 < d1 then getgenv().FishmanState.Model.State.travelStage = 3
+        elseif d2 < d1 then getgenv().FishmanState.Model.State.travelStage = 2
+        else getgenv().FishmanState.Model.State.travelStage = 1 end
 
-        Model.State.travelMessage = "Traveling..."
-        Model.State.isAutoTraveling = true
-        Model.EnableFlight()
+        getgenv().FishmanState.Model.State.travelMessage = "Traveling..."
+        getgenv().FishmanState.Model.State.isAutoTraveling = true
+        getgenv().FishmanState.Model.EnableFlight()
     end
     
     -- ======================================================================
@@ -625,12 +627,12 @@ if not isLobby then
         local rootPart = character and character:FindFirstChild("HumanoidRootPart")
         if not rootPart then return end
         
-        Model.State.isCraftFlying = true
-        local speed = Model.State.shipSpeed or 175 
+        getgenv().FishmanState.Model.State.isCraftFlying = true
+        local speed = getgenv().FishmanState.Model.State.shipSpeed or 175 
         
         local function TweenTo(point, customSpeed)
             local currentSpeed = customSpeed or speed
-            if not Model.State.isCraftFlying then return end
+            if not getgenv().FishmanState.Model.State.isCraftFlying then return end
             local dist = (rootPart.Position - point).Magnitude
             if dist < 1 then return end
             
@@ -639,9 +641,9 @@ if not isLobby then
             tween:Play()
             
             while tween.PlaybackState == Enum.PlaybackState.Playing do
-                if not Model.State.autoCraft and not Model.State.isRefillingMegBait and not Model.State.isManualTraveling then 
+                if not getgenv().FishmanState.Model.State.autoCraft and not getgenv().FishmanState.Model.State.isRefillingMegBait and not getgenv().FishmanState.Model.State.isManualTraveling then 
                     tween:Cancel()
-                    Model.State.isCraftFlying = false
+                    getgenv().FishmanState.Model.State.isCraftFlying = false
                     break 
                 end
                 PlayGeppoEffect(character, rootPart)
@@ -657,26 +659,26 @@ if not isLobby then
         TweenTo(overPoint)
         TweenTo(targetVector)
         
-        Model.State.isCraftFlying = false
+        getgenv().FishmanState.Model.State.isCraftFlying = false
     end
 
-    function Model.CraftFlyPath(pathTable)
+    function getgenv().FishmanState.Model.CraftFlyPath(pathTable)
         for _, targetPos in ipairs(pathTable) do 
-            if not Model.State.autoCraft and not Model.State.isRefillingMegBait and not Model.State.isManualTraveling then break end
+            if not getgenv().FishmanState.Model.State.autoCraft and not getgenv().FishmanState.Model.State.isRefillingMegBait and not getgenv().FishmanState.Model.State.isManualTraveling then break end
             CraftFlyToAndWait(targetPos) 
         end
     end
     
-    function Model.ReturnToShip()
-        local hoverboard = Model.FindHoverboard()
+    function getgenv().FishmanState.Model.ReturnToShip()
+        local hoverboard = getgenv().FishmanState.Model.FindHoverboard()
         local targetVector = nil
         
         if hoverboard then
-            local hbCFrame = hoverboard:IsA("Model") and hoverboard:GetPivot() or hoverboard.CFrame
+            local hbCFrame = hoverboard:IsA("getgenv().FishmanState.Model") and hoverboard:GetPivot() or hoverboard.CFrame
             targetVector = (hbCFrame * CFrame.new(0, 3, 4)).Position
-            Model.SaveHoverboardPos(targetVector)
-        elseif Model.LoadHoverboardPos() then
-            targetVector = Model.LoadHoverboardPos()
+            getgenv().FishmanState.Model.SaveHoverboardPos(targetVector)
+        elseif getgenv().FishmanState.Model.LoadHoverboardPos() then
+            targetVector = getgenv().FishmanState.Model.LoadHoverboardPos()
         else
             return false
         end
@@ -685,15 +687,15 @@ if not isLobby then
         local rootPart = character and character:FindFirstChild("HumanoidRootPart")
         if not rootPart then return false end
         
-        Model.State.isCraftFlying = true
-        Model.DisableFlight()
+        getgenv().FishmanState.Model.State.isCraftFlying = true
+        getgenv().FishmanState.Model.DisableFlight()
         task.wait(0.1)
-        Model.EnableFlight()
-        local speed = Model.State.shipSpeed or 300 
+        getgenv().FishmanState.Model.EnableFlight()
+        local speed = getgenv().FishmanState.Model.State.shipSpeed or 300 
         
         local function TweenTo(point, customSpeed)
             local currentSpeed = customSpeed or speed
-            if not Model.State.isCraftFlying then return end
+            if not getgenv().FishmanState.Model.State.isCraftFlying then return end
             local dist = (rootPart.Position - point).Magnitude
             if dist < 1 then return end
             
@@ -702,7 +704,7 @@ if not isLobby then
             tween:Play()
             
             while tween.PlaybackState == Enum.PlaybackState.Playing do
-                if not Model.State.isCraftFlying then 
+                if not getgenv().FishmanState.Model.State.isCraftFlying then 
                     tween:Cancel()
                     break 
                 end
@@ -719,8 +721,8 @@ if not isLobby then
         TweenTo(overPoint)
         TweenTo(targetVector)
         
-        Model.DisableFlight()
-        Model.State.isCraftFlying = false
+        getgenv().FishmanState.Model.DisableFlight()
+        getgenv().FishmanState.Model.State.isCraftFlying = false
         return true
     end
     
@@ -728,34 +730,34 @@ if not isLobby then
         pcall(function() questEvent:InvokeServer({ [1] = "npcChat", [2] = chatState }) end)
     end
     
-    function Model.ExecuteLegendaryCraft(craftQueue)
+    function getgenv().FishmanState.Model.ExecuteLegendaryCraft(craftQueue)
         local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
         if not hrp then return end
         local originalPos = hrp.Position
         
-        Model.State.isFishing = false
-        -- Model.State.autoBuy = false
-        Model.State.autoSell = false
-        Model.State.isAutoTraveling = false
-        Model.State.travelMessage = "Crafting..."
+        getgenv().FishmanState.Model.State.isFishing = false
+        -- getgenv().FishmanState.Model.State.autoBuy = false
+        getgenv().FishmanState.Model.State.autoSell = false
+        getgenv().FishmanState.Model.State.isAutoTraveling = false
+        getgenv().FishmanState.Model.State.travelMessage = "Crafting..."
         
-        Model.DisableFlight()
-        Model.UnequipRod()
+        getgenv().FishmanState.Model.DisableFlight()
+        getgenv().FishmanState.Model.UnequipRod()
         task.wait(3)
-        if not Model.State.autoCraft then return end
+        if not getgenv().FishmanState.Model.State.autoCraft then return end
 
-        Model.EnableFlight()
-        Model.CraftFlyPath({ Vector3.new(162.85, originalPos.Y, -55.34) })
-        if not Model.State.autoCraft then Model.DisableFlight(); return end
+        getgenv().FishmanState.Model.EnableFlight()
+        getgenv().FishmanState.Model.CraftFlyPath({ Vector3.new(162.85, originalPos.Y, -55.34) })
+        if not getgenv().FishmanState.Model.State.autoCraft then getgenv().FishmanState.Model.DisableFlight(); return end
         
         task.wait(0.5)
         SafeInvokeQuest(true)
         task.wait(0.5)
         
         for _, craftItem in ipairs(craftQueue) do
-            if not Model.State.autoCraft then break end
+            if not getgenv().FishmanState.Model.State.autoCraft then break end
             for i = 1, craftItem.Batches do
-                if not Model.State.autoCraft then break end
+                if not getgenv().FishmanState.Model.State.autoCraft then break end
                 pcall(function()
                     craftingRemote:InvokeServer({ Count = 40, ExtraData = { ["Legendary Fish"] = craftItem.Name }, Method = "Craft", BlueprintItem = "Legendary Fish Bait" })
                 end)
@@ -765,17 +767,17 @@ if not isLobby then
         SafeInvokeQuest(false)
         task.wait(0.3)
         
-        if not Model.State.autoCraft then Model.DisableFlight(); return end
-        Model.CraftFlyPath({ originalPos })
-        Model.DisableFlight()
+        if not getgenv().FishmanState.Model.State.autoCraft then getgenv().FishmanState.Model.DisableFlight(); return end
+        getgenv().FishmanState.Model.CraftFlyPath({ originalPos })
+        getgenv().FishmanState.Model.DisableFlight()
         
-        Model.EquipRod()
-        Model.StartTraveling()
-        Model.State.autoSell = true
-        Model.State.waitingForArrivalToFish = true 
+        getgenv().FishmanState.Model.EquipRod()
+        getgenv().FishmanState.Model.StartTraveling()
+        getgenv().FishmanState.Model.State.autoSell = true
+        getgenv().FishmanState.Model.State.waitingForArrivalToFish = true 
     end
 
-    function Model.GetInventoryData()
+    function getgenv().FishmanState.Model.GetInventoryData()
         if inventoryObj then
             local ok, data = pcall(function() return HttpService:JSONDecode(inventoryObj.Value) end)
             if ok and type(data) == "table" then return data end
@@ -783,10 +785,10 @@ if not isLobby then
         return nil
     end
 
-    function Model.ForceCraftAll()
-        if Model.State.isCurrentlyCrafting then return end
+    function getgenv().FishmanState.Model.ForceCraftAll()
+        if getgenv().FishmanState.Model.State.isCurrentlyCrafting then return end
         
-        local inventoryData = Model.GetInventoryData()
+        local inventoryData = getgenv().FishmanState.Model.GetInventoryData()
         if not inventoryData then return end
         
         local craftQueue = {}
@@ -802,24 +804,24 @@ if not isLobby then
             return
         end
         
-        Model.State.isCurrentlyCrafting = true
+        getgenv().FishmanState.Model.State.isCurrentlyCrafting = true
         local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-        if not hrp then Model.State.isCurrentlyCrafting = false; return end
+        if not hrp then getgenv().FishmanState.Model.State.isCurrentlyCrafting = false; return end
         local originalPos = hrp.Position
         
-        Model.State.travelMessage = "Force Crafting..."
+        getgenv().FishmanState.Model.State.travelMessage = "Force Crafting..."
         
-        Model.DisableFlight()
-        Model.UnequipRod()
+        getgenv().FishmanState.Model.DisableFlight()
+        getgenv().FishmanState.Model.UnequipRod()
         task.wait(1)
         
-        Model.EnableFlight()
+        getgenv().FishmanState.Model.EnableFlight()
         
         -- Temporarily hook `craftFlyTarget` check bypass for ForceCraftAll since we don't rely on `autoCraft` variable
-        local wasAutoCraft = Model.State.autoCraft
-        Model.State.autoCraft = true 
+        local wasAutoCraft = getgenv().FishmanState.Model.State.autoCraft
+        getgenv().FishmanState.Model.State.autoCraft = true 
         
-        Model.CraftFlyPath({ Vector3.new(162.85, originalPos.Y, -55.34) })
+        getgenv().FishmanState.Model.CraftFlyPath({ Vector3.new(162.85, originalPos.Y, -55.34) })
         task.wait(0.5)
         SafeInvokeQuest(true)
         task.wait(0.5)
@@ -838,21 +840,21 @@ if not isLobby then
         
         SafeInvokeQuest(false)
         task.wait(0.3)
-        Model.CraftFlyPath({ originalPos })
+        getgenv().FishmanState.Model.CraftFlyPath({ originalPos })
         
-        Model.State.autoCraft = wasAutoCraft
+        getgenv().FishmanState.Model.State.autoCraft = wasAutoCraft
         
-        Model.DisableFlight()
-        Model.EquipRod()
-        Model.State.isCurrentlyCrafting = false
-        Model.State.travelMessage = ""
+        getgenv().FishmanState.Model.DisableFlight()
+        getgenv().FishmanState.Model.EquipRod()
+        getgenv().FishmanState.Model.State.isCurrentlyCrafting = false
+        getgenv().FishmanState.Model.State.travelMessage = ""
         getgenv().FishmanState.Fluent:Notify({ Title = "Craft All", Content = "Finished crafting all legendary fishes!", Duration = 3 })
     end
     
     -- ======================================================================
     -- 🎣 FISHING & INVENTORY MANAGEMENT
     -- ======================================================================
-    function Model.EquipRod()
+    function getgenv().FishmanState.Model.EquipRod()
         local character = LocalPlayer.Character
         local humanoid  = character and character:FindFirstChildOfClass("Humanoid")
         if not humanoid then return end
@@ -871,7 +873,7 @@ if not isLobby then
         end
     end
 
-    function Model.UnequipRod()
+    function getgenv().FishmanState.Model.UnequipRod()
         local character = LocalPlayer.Character
         if not character then return end
         local humanoid  = character and character:FindFirstChildOfClass("Humanoid")
@@ -885,9 +887,9 @@ if not isLobby then
         end
     end
     
-    function Model.BuyNearestBait()
-        if Model.State.isBuying then return end
-        Model.State.isBuying = true
+    function getgenv().FishmanState.Model.BuyNearestBait()
+        if getgenv().FishmanState.Model.State.isBuying then return end
+        getgenv().FishmanState.Model.State.isBuying = true
         local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
         local rootPart  = character:WaitForChild("HumanoidRootPart")
         local nearest, nearestDist = nil, BAIT_SEARCH_RADIUS
@@ -907,7 +909,7 @@ if not isLobby then
         end
 
         for _, item in ipairs(cachedBaitItems) do
-            local pos = (item:IsA("Model") and item.PrimaryPart and item.PrimaryPart.Position) or (item:IsA("BasePart") and item.Position)
+            local pos = (item:IsA("getgenv().FishmanState.Model") and item.PrimaryPart and item.PrimaryPart.Position) or (item:IsA("BasePart") and item.Position)
             if pos then
                 local d = (rootPart.Position - pos).Magnitude
                 if d < nearestDist then nearestDist = d; nearest = item end
@@ -921,12 +923,12 @@ if not isLobby then
             end)
         end
         task.wait(0.5)
-        Model.State.isBuying = false
+        getgenv().FishmanState.Model.State.isBuying = false
     end
 
     local hoverboardSaveFile = "FISHMAN23_HoverboardPos_" .. LocalPlayer.Name .. ".json"
     
-    function Model.SaveHoverboardPos(pos)
+    function getgenv().FishmanState.Model.SaveHoverboardPos(pos)
         getgenv().CachedHoverboardTailPos = pos
         if writefile and HttpService then
             local data = { X = pos.X, Y = pos.Y, Z = pos.Z }
@@ -936,7 +938,7 @@ if not isLobby then
         end
     end
     
-    function Model.LoadHoverboardPos()
+    function getgenv().FishmanState.Model.LoadHoverboardPos()
         if getgenv().CachedHoverboardTailPos then
             return getgenv().CachedHoverboardTailPos
         end
@@ -953,7 +955,7 @@ if not isLobby then
         return nil
     end
 
-    function Model.FindHoverboard()
+    function getgenv().FishmanState.Model.FindHoverboard()
         if getgenv().CachedHoverboard and getgenv().CachedHoverboard.Parent then
             return getgenv().CachedHoverboard
         end
@@ -996,66 +998,66 @@ if not isLobby then
         return nil
     end
 
-    function Model.RefillMegBait()
-        if Model.State.isRefillingMegBait then return end
-        Model.State.isRefillingMegBait = true
+    function getgenv().FishmanState.Model.RefillMegBait()
+        if getgenv().FishmanState.Model.State.isRefillingMegBait then return end
+        getgenv().FishmanState.Model.State.isRefillingMegBait = true
         
         local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-        if not hrp then Model.State.isRefillingMegBait = false; return end
+        if not hrp then getgenv().FishmanState.Model.State.isRefillingMegBait = false; return end
         local originalPos = hrp.Position
         
-        Model.State.isAutoTraveling = false
-        Model.DisableFlight()
-        Model.UnequipRod()
+        getgenv().FishmanState.Model.State.isAutoTraveling = false
+        getgenv().FishmanState.Model.DisableFlight()
+        getgenv().FishmanState.Model.UnequipRod()
         task.wait(1)
         
-        Model.EnableFlight()
+        getgenv().FishmanState.Model.EnableFlight()
         
-        local wasAutoCraft = Model.State.autoCraft
-        Model.State.autoCraft = true 
+        local wasAutoCraft = getgenv().FishmanState.Model.State.autoCraft
+        getgenv().FishmanState.Model.State.autoCraft = true 
         
         print("🚀 [MegStackLoc] 0 Common Fish Bait detected! Flying to island (-6760, 27, 9191)...")
-        Model.CraftFlyPath({ Vector3.new(-6760, 27, 9191) })
+        getgenv().FishmanState.Model.CraftFlyPath({ Vector3.new(-6760, 27, 9191) })
         
         print("⏳ [MegStackLoc] Arrived! Waiting 5 seconds for your macro to buy baits...")
         task.wait(5)
         
         print("🚀 [MegStackLoc] Flying back to fishing spot...")
-        local hoverboard = Model.FindHoverboard()
+        local hoverboard = getgenv().FishmanState.Model.FindHoverboard()
         if hoverboard then
-            local hbCFrame = hoverboard:IsA("Model") and hoverboard:GetPivot() or hoverboard.CFrame
+            local hbCFrame = hoverboard:IsA("getgenv().FishmanState.Model") and hoverboard:GetPivot() or hoverboard.CFrame
             local tailPos = (hbCFrame * CFrame.new(0, 3, 4)).Position
-            Model.SaveHoverboardPos(tailPos)
-            Model.CraftFlyPath({ tailPos })
-        elseif Model.LoadHoverboardPos() then
-            Model.CraftFlyPath({ Model.LoadHoverboardPos() })
+            getgenv().FishmanState.Model.SaveHoverboardPos(tailPos)
+            getgenv().FishmanState.Model.CraftFlyPath({ tailPos })
+        elseif getgenv().FishmanState.Model.LoadHoverboardPos() then
+            getgenv().FishmanState.Model.CraftFlyPath({ getgenv().FishmanState.Model.LoadHoverboardPos() })
         else
-            Model.CraftFlyPath({ originalPos })
+            getgenv().FishmanState.Model.CraftFlyPath({ originalPos })
         end
         
-        Model.State.autoCraft = wasAutoCraft
-        Model.DisableFlight()
-        Model.EquipRod()
+        getgenv().FishmanState.Model.State.autoCraft = wasAutoCraft
+        getgenv().FishmanState.Model.DisableFlight()
+        getgenv().FishmanState.Model.EquipRod()
         
         print("✅ [MegStackLoc] Returned to fishing spot. Resuming operations.")
-        Model.State.isRefillingMegBait = false
+        getgenv().FishmanState.Model.State.isRefillingMegBait = false
     end
 
-    function Model.CheckInventory()
-        local inventoryData = Model.GetInventoryData()
+    function getgenv().FishmanState.Model.CheckInventory()
+        local inventoryData = getgenv().FishmanState.Model.GetInventoryData()
         if not inventoryData then return end
         
-        if Model.State.isMegStackLoc and not Model.State.isRefillingMegBait then
+        if getgenv().FishmanState.Model.State.isMegStackLoc and not getgenv().FishmanState.Model.State.isRefillingMegBait then
             if (inventoryData["Common Fish Bait"] or 0) <= 0 then
-                task.spawn(Model.RefillMegBait)
+                task.spawn(getgenv().FishmanState.Model.RefillMegBait)
             end
         end
 
-        if Model.State.autoBuy and not Model.State.isBuying then
-            if (inventoryData[BAIT_NAME] or 0) < MIN_BAIT then Model.BuyNearestBait() end
+        if getgenv().FishmanState.Model.State.autoBuy and not getgenv().FishmanState.Model.State.isBuying then
+            if (inventoryData[BAIT_NAME] or 0) < MIN_BAIT then getgenv().FishmanState.Model.BuyNearestBait() end
         end
 
-        if Model.State.autoSell then
+        if getgenv().FishmanState.Model.State.autoSell then
             local currentPeli = peliObject and peliObject.Value or 0
             if currentPeli < MAX_PELI then
                 for _, fishName in ipairs(fishToSell) do
@@ -1066,7 +1068,7 @@ if not isLobby then
             end
         end
     end
-    function Model.countMegalodons()
+    function getgenv().FishmanState.Model.countMegalodons()
         local count = 0
         local folders = {workspace:FindFirstChild("NPCs"), workspace:FindFirstChild("Env")}
         for _, folder in ipairs(folders) do
@@ -1081,7 +1083,7 @@ if not isLobby then
         return count
     end
     
-    function Model.DoFishingCycle()
+    function getgenv().FishmanState.Model.DoFishingCycle()
         local currentPeli = peliObject and peliObject.Value or 0
         local hookName = LocalPlayer.Name .. "'s hook"
         if workspace.Effects:FindFirstChild(hookName) then 
@@ -1092,7 +1094,7 @@ if not isLobby then
         local character = LocalPlayer.Character
         if not character then return end
 
-        Model.EquipRod()
+        getgenv().FishmanState.Model.EquipRod()
         task.wait()
         local rootPart = character:FindFirstChild("HumanoidRootPart")
         if not rootPart then return end
@@ -1107,9 +1109,9 @@ if not isLobby then
         if hook then
             local maxWait, waited = 15, 0
             while waited < maxWait do
-                if not (Model.State.isFishing or Model.State.isDeepSeaCatcher) then return end
+                if not (getgenv().FishmanState.Model.State.isFishing or getgenv().FishmanState.Model.State.isDeepSeaCatcher) then return end
                 if hook:GetAttribute("Caught") == true or hook:FindFirstChild("ReelLoop") then
-                    if Model.State.isDeepSeaCatcher then
+                    if getgenv().FishmanState.Model.State.isDeepSeaCatcher then
                         local beastDetected = false
                         local bWaited = 0
                         local initialSoundTime = nil
@@ -1212,7 +1214,7 @@ if not isLobby then
                         print("Fish caught! MoveMultiplier:", diffMult)
                         currentPeli = peliObject and peliObject.Value or 0
                         local skipFish
-                        if Model.State.strictReel then
+                        if getgenv().FishmanState.Model.State.strictReel then
                             skipFish = (diffMult <= 1.0)
                         else
                             skipFish = (currentPeli >= MAX_PELI) and (diffMult < 1.2) or (diffMult < 0.9)
@@ -1243,9 +1245,9 @@ if not isLobby then
     -- ======================================================================
     task.spawn(function()
         while getgenv().FishmanState._running and task.wait(1) do
-            if isAFKModeActive then
-                secondsSinceLastInput += 1
-                if secondsSinceLastInput == 10 then
+            if getgenv().FishmanState.isAFKModeActive then
+                getgenv().FishmanState.secondsSinceLastInput += 1
+                if getgenv().FishmanState.secondsSinceLastInput == 10 then
                     if getgenv().FishmanState.Fluent and getgenv().FishmanState.Fluent.Options then
                         if getgenv().FishmanState.Fluent.Options.T_Buy then getgenv().FishmanState.Fluent.Options.T_Buy:SetValue(true) end
                         if getgenv().FishmanState.Fluent.Options.T_Sell then getgenv().FishmanState.Fluent.Options.T_Sell:SetValue(true) end
@@ -1255,14 +1257,14 @@ if not isLobby then
                         -- Anti-Lag
                         if getgenv().FishmanState.Fluent.Options.T_AntiLag then getgenv().FishmanState.Fluent.Options.T_AntiLag:SetValue(true) else RunService:Set3dRenderingEnabled(false) end
                     else
-                        Model.State.autoBuy = true
-                        Model.State.autoSell = true
-                        Model.State.autoCraft = true
-                        Model.StartTraveling()
+                        getgenv().FishmanState.Model.State.autoBuy = true
+                        getgenv().FishmanState.Model.State.autoSell = true
+                        getgenv().FishmanState.Model.State.autoCraft = true
+                        getgenv().FishmanState.Model.StartTraveling()
                         RunService:Set3dRenderingEnabled(false)
                     end
                     ActivatePotatoGraphics()
-                    Model.State.waitingForArrivalToFish = true
+                    getgenv().FishmanState.Model.State.waitingForArrivalToFish = true
                 end
             end
         end
@@ -1270,8 +1272,8 @@ if not isLobby then
 
     task.spawn(function()
         while getgenv().FishmanState._running and task.wait(3) do
-            if not Model.State.autoCraft or Model.State.isCurrentlyCrafting then continue end
-            local inventoryData = Model.GetInventoryData()
+            if not getgenv().FishmanState.Model.State.autoCraft or getgenv().FishmanState.Model.State.isCurrentlyCrafting then continue end
+            local inventoryData = getgenv().FishmanState.Model.GetInventoryData()
             if not inventoryData then continue end
             local craftQueue = {}
             local totalBatches = 0
@@ -1284,22 +1286,22 @@ if not isLobby then
                 end
             end
             if totalBatches > 0 then
-                Model.State.isCurrentlyCrafting = true
-                Model.ExecuteLegendaryCraft(craftQueue)
-                Model.State.isCurrentlyCrafting = false
+                getgenv().FishmanState.Model.State.isCurrentlyCrafting = true
+                getgenv().FishmanState.Model.ExecuteLegendaryCraft(craftQueue)
+                getgenv().FishmanState.Model.State.isCurrentlyCrafting = false
             end
         end
     end)
 
-    task.spawn(function() while getgenv().FishmanState._running and task.wait(2) do if Model.State.autoBuy or Model.State.isMegStackLoc or Model.State.autoSell then Model.CheckInventory() end end end)
-    task.spawn(function() while getgenv().FishmanState._running and task.wait() do if (Model.State.isFishing or Model.State.isDeepSeaCatcher) and not Model.State.isBuying and not Model.State.isAutoTraveling and not Model.State.isRefillingMegBait and not Model.State.isManualTraveling then Model.DoFishingCycle() end end end)
+    task.spawn(function() while getgenv().FishmanState._running and task.wait(2) do if getgenv().FishmanState.Model.State.autoBuy or getgenv().FishmanState.Model.State.isMegStackLoc or getgenv().FishmanState.Model.State.autoSell then getgenv().FishmanState.Model.CheckInventory() end end end)
+    task.spawn(function() while getgenv().FishmanState._running and task.wait() do if (getgenv().FishmanState.Model.State.isFishing or getgenv().FishmanState.Model.State.isDeepSeaCatcher) and not getgenv().FishmanState.Model.State.isBuying and not getgenv().FishmanState.Model.State.isAutoTraveling and not getgenv().FishmanState.Model.State.isRefillingMegBait and not getgenv().FishmanState.Model.State.isManualTraveling then getgenv().FishmanState.Model.DoFishingCycle() end end end)
 
     -- Auto-track hoverboard position to memory every 3 seconds to prevent StreamingEnabled drop-off
     task.spawn(function()
         while getgenv().FishmanState._running and task.wait(3) do
-            local hb = Model.FindHoverboard and Model.FindHoverboard()
+            local hb = getgenv().FishmanState.Model.FindHoverboard and getgenv().FishmanState.Model.FindHoverboard()
             if hb then
-                local hbCFrame = hb:IsA("Model") and hb:GetPivot() or hb.CFrame
+                local hbCFrame = hb:IsA("getgenv().FishmanState.Model") and hb:GetPivot() or hb.CFrame
                 getgenv().CachedHoverboardTailPos = (hbCFrame * CFrame.new(0, 3, 4)).Position
             end
         end
@@ -1308,24 +1310,24 @@ if not isLobby then
     -- Auto-return background loop
     task.spawn(function()
         while getgenv().FishmanState._running and task.wait(1) do
-            if Model.State.autoReturn and not Model.State.isCraftFlying and not Model.State.isAutoTraveling and not Model.State.isRefillingMegBait and not Model.State.isManualTraveling and not Model.State.isCurrentlyCrafting then
+            if getgenv().FishmanState.Model.State.autoReturn and not getgenv().FishmanState.Model.State.isCraftFlying and not getgenv().FishmanState.Model.State.isAutoTraveling and not getgenv().FishmanState.Model.State.isRefillingMegBait and not getgenv().FishmanState.Model.State.isManualTraveling and not getgenv().FishmanState.Model.State.isCurrentlyCrafting then
                 local character = LocalPlayer.Character
                 local hum = character and character:FindFirstChild("Humanoid")
                 local hrp = character and character:FindFirstChild("HumanoidRootPart")
                 if hum and hum.SeatPart == nil and hrp then
                     local targetVector = nil
-                    local hb = Model.FindHoverboard and Model.FindHoverboard()
+                    local hb = getgenv().FishmanState.Model.FindHoverboard and getgenv().FishmanState.Model.FindHoverboard()
                     if hb then
-                        local hbCFrame = hb:IsA("Model") and hb:GetPivot() or hb.CFrame
+                        local hbCFrame = hb:IsA("getgenv().FishmanState.Model") and hb:GetPivot() or hb.CFrame
                         targetVector = (hbCFrame * CFrame.new(0, 3, 4)).Position
-                    elseif Model.LoadHoverboardPos then
-                        targetVector = Model.LoadHoverboardPos()
+                    elseif getgenv().FishmanState.Model.LoadHoverboardPos then
+                        targetVector = getgenv().FishmanState.Model.LoadHoverboardPos()
                     end
                     
                     if targetVector and (hrp.Position - targetVector).Magnitude > 20 then
                         print("🚀 [Auto Return] Distance > 20 studs! Flying back to the hoverboard now...")
                         -- Trigger return!
-                        local success = Model.ReturnToShip()
+                        local success = getgenv().FishmanState.Model.ReturnToShip()
                         
                         if success then 
                             print("✅ [Auto Return] Safely landed on the hoverboard platform!")
@@ -1338,7 +1340,7 @@ if not isLobby then
     end)
 
     getgenv().FishmanState.addConn(RunService.Heartbeat:Connect(function(dt)
-        if getgenv().FishmanState._running and Model.State.isAutoTraveling then Model.HandleMovement(dt) end
+        if getgenv().FishmanState._running and getgenv().FishmanState.Model.State.isAutoTraveling then getgenv().FishmanState.Model.HandleMovement(dt) end
     end))
     
     local noclipCache = {}
@@ -1347,7 +1349,7 @@ if not isLobby then
 
     getgenv().FishmanState.addConn(RunService.Stepped:Connect(function()
         if not getgenv().FishmanState._running then return end
-        if Model.State.isAutoTraveling and Model.State.travelStage == 1 then 
+        if getgenv().FishmanState.Model.State.isAutoTraveling and getgenv().FishmanState.Model.State.travelStage == 1 then 
             local character = LocalPlayer.Character
             if character then
                 if character ~= lastCharacter then
@@ -1372,7 +1374,7 @@ if not isLobby then
     end))
     
     if inventoryObj then
-        getgenv().FishmanState.addConn(inventoryObj:GetPropertyChangedSignal("Value"):Connect(function() Model.CheckInventory() end))
+        getgenv().FishmanState.addConn(inventoryObj:GetPropertyChangedSignal("Value"):Connect(function() getgenv().FishmanState.Model.CheckInventory() end))
     end
 end
 
@@ -1380,7 +1382,7 @@ local function ShutdownEverything()
     getgenv().FishmanState._running = false
     getgenv().FishmanState.disconnectAll()
     if not isLobby then
-        Model.DisableFlight()
+        getgenv().FishmanState.Model.DisableFlight()
     end
     if getgenv().DSC_SoundCache then getgenv().DSC_SoundCache = nil end
     if getgenv().StopAutofarm then
@@ -1499,21 +1501,21 @@ local function storeFruits(fruitList)
 
     -- PAUSE FISHING/KILLING
     local tempSavedState = {}
-    if Model and Model.State then
+    if getgenv().FishmanState.Model and getgenv().FishmanState.Model.State then
         tempSavedState = {
-            isFishing = Model.State.isFishing,
-            autoBuy = Model.State.autoBuy,
-            autoSell = Model.State.autoSell,
-            isAutoTraveling = Model.State.isAutoTraveling,
-            autoCraft = Model.State.autoCraft
+            isFishing = getgenv().FishmanState.Model.State.isFishing,
+            autoBuy = getgenv().FishmanState.Model.State.autoBuy,
+            autoSell = getgenv().FishmanState.Model.State.autoSell,
+            isAutoTraveling = getgenv().FishmanState.Model.State.isAutoTraveling,
+            autoCraft = getgenv().FishmanState.Model.State.autoCraft
         }
         
         -- Force stop them
-        Model.State.isFishing = false
-        -- Model.State.autoBuy = false
-        Model.State.autoSell = false
-        Model.State.isAutoTraveling = false
-        Model.State.autoCraft = false
+        getgenv().FishmanState.Model.State.isFishing = false
+        -- getgenv().FishmanState.Model.State.autoBuy = false
+        getgenv().FishmanState.Model.State.autoSell = false
+        getgenv().FishmanState.Model.State.isAutoTraveling = false
+        getgenv().FishmanState.Model.State.autoCraft = false
         
         -- Update toggles visually
         if getgenv().FishmanState.Fluent and getgenv().FishmanState.Fluent.Options then
@@ -1582,24 +1584,24 @@ local function storeFruits(fruitList)
     end
 
     -- RESUME FISHING/KILLING
-    if Model and Model.State then
-        Model.State.isFishing = tempSavedState.isFishing or false
-        Model.State.autoBuy = tempSavedState.autoBuy or false
-        Model.State.autoSell = tempSavedState.autoSell or false
-        Model.State.isAutoTraveling = tempSavedState.isAutoTraveling or false
-        Model.State.autoCraft = tempSavedState.autoCraft or false
+    if getgenv().FishmanState.Model and getgenv().FishmanState.Model.State then
+        getgenv().FishmanState.Model.State.isFishing = tempSavedState.isFishing or false
+        getgenv().FishmanState.Model.State.autoBuy = tempSavedState.autoBuy or false
+        getgenv().FishmanState.Model.State.autoSell = tempSavedState.autoSell or false
+        getgenv().FishmanState.Model.State.isAutoTraveling = tempSavedState.isAutoTraveling or false
+        getgenv().FishmanState.Model.State.autoCraft = tempSavedState.autoCraft or false
         
         -- Update UI toggles visually to match restored state
         if getgenv().FishmanState.Fluent and getgenv().FishmanState.Fluent.Options then
-            if getgenv().FishmanState.Fluent.Options.T_Fish then getgenv().FishmanState.Fluent.Options.T_Fish:SetValue(Model.State.isFishing) end
-            if getgenv().FishmanState.Fluent.Options.T_Buy then getgenv().FishmanState.Fluent.Options.T_Buy:SetValue(Model.State.autoBuy) end
-            if getgenv().FishmanState.Fluent.Options.T_Sell then getgenv().FishmanState.Fluent.Options.T_Sell:SetValue(Model.State.autoSell) end
-            if getgenv().FishmanState.Fluent.Options.T_Travel then getgenv().FishmanState.Fluent.Options.T_Travel:SetValue(Model.State.isAutoTraveling) end
-            if getgenv().FishmanState.Fluent.Options.T_Craft then getgenv().FishmanState.Fluent.Options.T_Craft:SetValue(Model.State.autoCraft) end
+            if getgenv().FishmanState.Fluent.Options.T_Fish then getgenv().FishmanState.Fluent.Options.T_Fish:SetValue(getgenv().FishmanState.Model.State.isFishing) end
+            if getgenv().FishmanState.Fluent.Options.T_Buy then getgenv().FishmanState.Fluent.Options.T_Buy:SetValue(getgenv().FishmanState.Model.State.autoBuy) end
+            if getgenv().FishmanState.Fluent.Options.T_Sell then getgenv().FishmanState.Fluent.Options.T_Sell:SetValue(getgenv().FishmanState.Model.State.autoSell) end
+            if getgenv().FishmanState.Fluent.Options.T_Travel then getgenv().FishmanState.Fluent.Options.T_Travel:SetValue(getgenv().FishmanState.Model.State.isAutoTraveling) end
+            if getgenv().FishmanState.Fluent.Options.T_Craft then getgenv().FishmanState.Fluent.Options.T_Craft:SetValue(getgenv().FishmanState.Model.State.autoCraft) end
         end
 
-        if Model.State.isAutoTraveling and Model.StartTraveling then
-            Model.StartTraveling()
+        if getgenv().FishmanState.Model.State.isAutoTraveling and getgenv().FishmanState.Model.StartTraveling then
+            getgenv().FishmanState.Model.StartTraveling()
         end
     end
 end
@@ -1639,21 +1641,21 @@ local function dropFruits(fruitList)
 
     -- PAUSE FISHING/KILLING
     local tempSavedState = {}
-    if Model and Model.State then
+    if getgenv().FishmanState.Model and getgenv().FishmanState.Model.State then
         tempSavedState = {
-            isFishing = Model.State.isFishing,
-            autoBuy = Model.State.autoBuy,
-            autoSell = Model.State.autoSell,
-            isAutoTraveling = Model.State.isAutoTraveling,
-            autoCraft = Model.State.autoCraft
+            isFishing = getgenv().FishmanState.Model.State.isFishing,
+            autoBuy = getgenv().FishmanState.Model.State.autoBuy,
+            autoSell = getgenv().FishmanState.Model.State.autoSell,
+            isAutoTraveling = getgenv().FishmanState.Model.State.isAutoTraveling,
+            autoCraft = getgenv().FishmanState.Model.State.autoCraft
         }
         
         -- Force stop them
-        Model.State.isFishing = false
-        -- Model.State.autoBuy = false
-        Model.State.autoSell = false
-        Model.State.isAutoTraveling = false
-        Model.State.autoCraft = false
+        getgenv().FishmanState.Model.State.isFishing = false
+        -- getgenv().FishmanState.Model.State.autoBuy = false
+        getgenv().FishmanState.Model.State.autoSell = false
+        getgenv().FishmanState.Model.State.isAutoTraveling = false
+        getgenv().FishmanState.Model.State.autoCraft = false
         
         -- Update toggles visually
         if getgenv().FishmanState.Fluent and getgenv().FishmanState.Fluent.Options then
@@ -1708,24 +1710,24 @@ local function dropFruits(fruitList)
     end
 
     -- RESUME FISHING/KILLING
-    if Model and Model.State then
-        Model.State.isFishing = tempSavedState.isFishing or false
-        Model.State.autoBuy = tempSavedState.autoBuy or false
-        Model.State.autoSell = tempSavedState.autoSell or false
-        Model.State.isAutoTraveling = tempSavedState.isAutoTraveling or false
-        Model.State.autoCraft = tempSavedState.autoCraft or false
+    if getgenv().FishmanState.Model and getgenv().FishmanState.Model.State then
+        getgenv().FishmanState.Model.State.isFishing = tempSavedState.isFishing or false
+        getgenv().FishmanState.Model.State.autoBuy = tempSavedState.autoBuy or false
+        getgenv().FishmanState.Model.State.autoSell = tempSavedState.autoSell or false
+        getgenv().FishmanState.Model.State.isAutoTraveling = tempSavedState.isAutoTraveling or false
+        getgenv().FishmanState.Model.State.autoCraft = tempSavedState.autoCraft or false
         
         -- Update UI toggles visually to match restored state
         if getgenv().FishmanState.Fluent and getgenv().FishmanState.Fluent.Options then
-            if getgenv().FishmanState.Fluent.Options.T_Fish then getgenv().FishmanState.Fluent.Options.T_Fish:SetValue(Model.State.isFishing) end
-            if getgenv().FishmanState.Fluent.Options.T_Buy then getgenv().FishmanState.Fluent.Options.T_Buy:SetValue(Model.State.autoBuy) end
-            if getgenv().FishmanState.Fluent.Options.T_Sell then getgenv().FishmanState.Fluent.Options.T_Sell:SetValue(Model.State.autoSell) end
-            if getgenv().FishmanState.Fluent.Options.T_Travel then getgenv().FishmanState.Fluent.Options.T_Travel:SetValue(Model.State.isAutoTraveling) end
-            if getgenv().FishmanState.Fluent.Options.T_Craft then getgenv().FishmanState.Fluent.Options.T_Craft:SetValue(Model.State.autoCraft) end
+            if getgenv().FishmanState.Fluent.Options.T_Fish then getgenv().FishmanState.Fluent.Options.T_Fish:SetValue(getgenv().FishmanState.Model.State.isFishing) end
+            if getgenv().FishmanState.Fluent.Options.T_Buy then getgenv().FishmanState.Fluent.Options.T_Buy:SetValue(getgenv().FishmanState.Model.State.autoBuy) end
+            if getgenv().FishmanState.Fluent.Options.T_Sell then getgenv().FishmanState.Fluent.Options.T_Sell:SetValue(getgenv().FishmanState.Model.State.autoSell) end
+            if getgenv().FishmanState.Fluent.Options.T_Travel then getgenv().FishmanState.Fluent.Options.T_Travel:SetValue(getgenv().FishmanState.Model.State.isAutoTraveling) end
+            if getgenv().FishmanState.Fluent.Options.T_Craft then getgenv().FishmanState.Fluent.Options.T_Craft:SetValue(getgenv().FishmanState.Model.State.autoCraft) end
         end
 
-        if Model.State.isAutoTraveling and Model.StartTraveling then
-            Model.StartTraveling()
+        if getgenv().FishmanState.Model.State.isAutoTraveling and getgenv().FishmanState.Model.StartTraveling then
+            getgenv().FishmanState.Model.StartTraveling()
         end
     end
 end

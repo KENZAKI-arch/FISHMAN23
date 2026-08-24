@@ -22,6 +22,8 @@ local addConn = getgenv().FishmanState.addConn
 local disconnectAll = getgenv().FishmanState.disconnectAll
 local TriggerSafeguardShutdown = getgenv().FishmanState.TriggerSafeguardShutdown
 local SaveConfig = getgenv().FishmanState.SaveConfig
+local isLobby = getgenv().FishmanState.isLobby
+
 
 -- ======================================================================
 -- 🚀 TELEPORT MEMORY INJECTION
@@ -45,7 +47,7 @@ getgenv().FishmanState.addConn(GuiService.ErrorMessageChanged:Connect(function()
             while getgenv().FishmanState._running and task.wait(5) do
                 pcall(function()
                     if UpdateTeleportMemory then UpdateTeleportMemory(true) end
-                    TeleportService:Teleport(targetPlaceId, LocalPlayer)
+                    TeleportService:Teleport(getgenv().FishmanState.targetPlaceId, LocalPlayer)
                 end)
             end
         end)
@@ -79,7 +81,7 @@ function UpdateTeleportMemory(willAutoTeleport)
     pcall(function() qot(command) end)
 end
 
-local function GetCurrentPSCode()
+getgenv().FishmanState.GetCurrentPSCode = function()
     local LocalPlayer = game:GetService("Players").LocalPlayer
     local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
     if playerGui then
@@ -97,7 +99,7 @@ local function GetCurrentPSCode()
     return ""
 end
 
-local function ActivatePotatoGraphics()
+getgenv().FishmanState.ActivatePotatoGraphics = function()
     if _G.PotatoGraphicsActive then return end
     _G.PotatoGraphicsActive = true
     

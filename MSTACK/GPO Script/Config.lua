@@ -96,16 +96,16 @@ task.spawn(function()
     end
 end)
 
-local targetPlaceId = 1730877806
-local isLobby = (game.PlaceId == targetPlaceId)
+getgenv().FishmanState.targetPlaceId = 1730877806
+getgenv().FishmanState.isLobby = (game.PlaceId == targetPlaceId)
 local GlobalMem = env
 
 -- ======================================================================
 -- ⚙️ CONFIGURATION SYSTEM
 -- ======================================================================
-local configFileName = "FishmanConfig_" .. tostring(LocalPlayer.UserId) .. ".json"
+getgenv().FishmanState.configFileName = "FishmanConfig_" .. tostring(LocalPlayer.UserId) .. ".json"
 
-local isFreshStart = true
+getgenv().FishmanState.isFreshStart = true
 pcall(function()
     if isfile and readfile and isfile(configFileName) then
         local data = HttpService:JSONDecode(readfile(configFileName))

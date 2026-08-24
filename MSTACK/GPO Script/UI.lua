@@ -22,6 +22,8 @@ local addConn = getgenv().FishmanState.addConn
 local disconnectAll = getgenv().FishmanState.disconnectAll
 local TriggerSafeguardShutdown = getgenv().FishmanState.TriggerSafeguardShutdown
 local SaveConfig = getgenv().FishmanState.SaveConfig
+local isLobby = getgenv().FishmanState.isLobby
+
 
 -- ======================================================================
 -- 🎨 CUSTOM LIGHTWEIGHT UI INTEGRATION
@@ -764,7 +766,7 @@ local function isAtWholeCakeIsland()
         local hrp = char and char:FindFirstChild("HumanoidRootPart")
         local wci = workspace:FindFirstChild("Islands") and workspace.Islands:FindFirstChild("Whole Cake Island")
         if hrp and wci then
-            local part = wci:IsA("Model") and wci.PrimaryPart or wci:FindFirstChildWhichIsA("BasePart", true)
+            local part = wci:IsA("getgenv().FishmanState.Model") and wci.PrimaryPart or wci:FindFirstChildWhichIsA("BasePart", true)
             if part and (hrp.Position - part.Position).Magnitude < 4000 then
                 result = true
             end
@@ -798,8 +800,8 @@ getgenv().FishmanState.Tabs.Teleport:AddToggle("T_AutoSpawnShip", {
             if getgenv().HoverboardController then
                 getgenv().HoverboardController.CancelAutoSpawn = true
             end
-            if Model and Model.DisableFlight then
-                pcall(Model.DisableFlight)
+            if getgenv().FishmanState.Model and getgenv().FishmanState.Model.DisableFlight then
+                pcall(getgenv().FishmanState.Model.DisableFlight)
             end
             if getgenv().HoverboardController and getgenv().HoverboardController.Reset then
                 print("[Hub] Calling HoverboardController.Reset() to drop...")
@@ -876,7 +878,7 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
             local character = LocalPlayer.Character
             if not character or not character.PrimaryPart then return end
             
-            if Model.State.activeNavigation and Model.State.activeNavigation._isNavigating then
+            if getgenv().FishmanState.Model.State.activeNavigation and getgenv().FishmanState.Model.State.activeNavigation._isNavigating then
                 getgenv().FishmanState.Fluent:Notify({ Title = "Already Flying", Content = "Cancel or Pause current flight first.", Duration = 3 })
                 return
             end
@@ -886,11 +888,11 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
                 return
             end
             
-            Model.State.activeNavigation = Model.NavigateTo(character, selectedIslandPos, 90, 20)
+            getgenv().FishmanState.Model.State.activeNavigation = getgenv().FishmanState.Model.NavigateTo(character, selectedIslandPos, 90, 20)
             
             task.spawn(function()
-                while getgenv().FishmanState._running and Model.State.activeNavigation and Model.State.activeNavigation._isNavigating do
-                    local nav = Model.State.activeNavigation
+                while getgenv().FishmanState._running and getgenv().FishmanState.Model.State.activeNavigation and getgenv().FishmanState.Model.State.activeNavigation._isNavigating do
+                    local nav = getgenv().FishmanState.Model.State.activeNavigation
                     if nav._isPaused then
                         flightStatus:SetDesc("Paused (" .. tostring(nav.Distance) .. " studs)")
                     elseif nav._roboTarget then
@@ -909,8 +911,8 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
         Title = "⏸️ Pause / Resume Flight",
         Description = "Toggles the current flight state.",
         Callback = function()
-            if Model.State.activeNavigation and Model.State.activeNavigation._isNavigating then
-                local isPaused = Model.State.activeNavigation:TogglePause()
+            if getgenv().FishmanState.Model.State.activeNavigation and getgenv().FishmanState.Model.State.activeNavigation._isNavigating then
+                local isPaused = getgenv().FishmanState.Model.State.activeNavigation:TogglePause()
                 if isPaused then
                     getgenv().FishmanState.Fluent:Notify({ Title = "Paused", Content = "Flight paused.", Duration = 3 })
                 else
@@ -924,9 +926,9 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
         Title = "🛑 Cancel Flight",
         Description = "Immediately stops the current flight.",
         Callback = function()
-            if Model.State.activeNavigation and Model.State.activeNavigation._isNavigating then
-                Model.State.activeNavigation:Cancel()
-                Model.State.activeNavigation = nil
+            if getgenv().FishmanState.Model.State.activeNavigation and getgenv().FishmanState.Model.State.activeNavigation._isNavigating then
+                getgenv().FishmanState.Model.State.activeNavigation:Cancel()
+                getgenv().FishmanState.Model.State.activeNavigation = nil
                 flightStatus:SetDesc("Idle")
                 getgenv().FishmanState.Fluent:Notify({ Title = "Cancelled", Content = "Flight cancelled.", Duration = 3 })
             end
@@ -934,15 +936,15 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
     })
 
     getgenv().FishmanState.Tabs.Navigation:AddToggle("T_IslandESP", { Title = "Islands ESP", Default = false, Callback = function(Value) 
-        Model.State.isIslandESP = Value
+        getgenv().FishmanState.Model.State.isIslandESP = Value
         if Value then
             task.spawn(function()
-                while getgenv().FishmanState._running and Model.State.isIslandESP do
+                while getgenv().FishmanState._running and getgenv().FishmanState.Model.State.isIslandESP do
                     local islandsFolder = workspace:FindFirstChild("Islands")
                     if islandsFolder then
                         for _, island in ipairs(islandsFolder:GetChildren()) do
-                            if island:IsA("Model") or island:IsA("BasePart") then
-                                local rootPart = island:IsA("Model") and (island.PrimaryPart or island:FindFirstChildWhichIsA("BasePart")) or island
+                            if island:IsA("getgenv().FishmanState.Model") or island:IsA("BasePart") then
+                                local rootPart = island:IsA("getgenv().FishmanState.Model") and (island.PrimaryPart or island:FindFirstChildWhichIsA("BasePart")) or island
                                 if rootPart then
                                     local espName = "IslandESP_" .. island.Name
                                     if not rootPart:FindFirstChild(espName) then
@@ -982,7 +984,7 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
                 local islandsFolder = workspace:FindFirstChild("Islands")
                 if islandsFolder then
                     for _, island in ipairs(islandsFolder:GetChildren()) do
-                        local rootPart = island:IsA("Model") and (island.PrimaryPart or island:FindFirstChildWhichIsA("BasePart")) or island
+                        local rootPart = island:IsA("getgenv().FishmanState.Model") and (island.PrimaryPart or island:FindFirstChildWhichIsA("BasePart")) or island
                         if rootPart then
                             local bgui = rootPart:FindFirstChild("IslandESP_" .. island.Name)
                             if bgui then bgui:Destroy() end
@@ -996,7 +998,7 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
             local islandsFolder = workspace:FindFirstChild("Islands")
             if islandsFolder then
                 for _, island in ipairs(islandsFolder:GetChildren()) do
-                    local rootPart = island:IsA("Model") and (island.PrimaryPart or island:FindFirstChildWhichIsA("BasePart")) or island
+                    local rootPart = island:IsA("getgenv().FishmanState.Model") and (island.PrimaryPart or island:FindFirstChildWhichIsA("BasePart")) or island
                     if rootPart then
                         local bgui = rootPart:FindFirstChild("IslandESP_" .. island.Name)
                         if bgui then bgui:Destroy() end
@@ -1009,7 +1011,7 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
     end })
 
     getgenv().FishmanState.Tabs.Navigation:AddToggle("T_FruitESP", { Title = "Fruit ESP", Default = false, Callback = function(Value) 
-        Model.State.isFruitESP = Value
+        getgenv().FishmanState.Model.State.isFruitESP = Value
         local targetFruits = {
             "Dragon", "Venom", "Mochi", "Soul", "Pika", "Buddha", "Magu", "Goro", "Goru",
             "Hie", "Kage", "Mera", "Tori", "Pteranodon", "Smoke", "Yami", "Suna", "Yuki", "Ope", "Zushi", "Ito", "Paw"
@@ -1027,10 +1029,10 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
 
         if Value then
             task.spawn(function()
-                while getgenv().FishmanState._running and Model.State.isFruitESP do
+                while getgenv().FishmanState._running and getgenv().FishmanState.Model.State.isFruitESP do
                     for _, obj in ipairs(workspace:GetChildren()) do
-                        if (obj:IsA("Tool") or obj:IsA("Model")) and isTarget(obj.Name) then
-                            local rootPart = (obj:IsA("Model") and (obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart"))) or (obj:IsA("Tool") and obj:FindFirstChild("Handle"))
+                        if (obj:IsA("Tool") or obj:IsA("getgenv().FishmanState.Model")) and isTarget(obj.Name) then
+                            local rootPart = (obj:IsA("getgenv().FishmanState.Model") and (obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart"))) or (obj:IsA("Tool") and obj:FindFirstChild("Handle"))
                             if rootPart then
                                 local espName = "FruitESP_" .. obj.Name
                                 if not rootPart:FindFirstChild(espName) then
@@ -1067,8 +1069,8 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
                 end
                 
                 for _, obj in ipairs(workspace:GetChildren()) do
-                    if (obj:IsA("Tool") or obj:IsA("Model")) and isTarget(obj.Name) then
-                        local rootPart = (obj:IsA("Model") and (obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart"))) or (obj:IsA("Tool") and obj:FindFirstChild("Handle"))
+                    if (obj:IsA("Tool") or obj:IsA("getgenv().FishmanState.Model")) and isTarget(obj.Name) then
+                        local rootPart = (obj:IsA("getgenv().FishmanState.Model") and (obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart"))) or (obj:IsA("Tool") and obj:FindFirstChild("Handle"))
                         if rootPart then
                             local bgui = rootPart:FindFirstChild("FruitESP_" .. obj.Name)
                             if bgui then bgui:Destroy() end
@@ -1080,8 +1082,8 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
             end)
         else
             for _, obj in ipairs(workspace:GetChildren()) do
-                if (obj:IsA("Tool") or obj:IsA("Model")) and isTarget(obj.Name) then
-                    local rootPart = (obj:IsA("Model") and (obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart"))) or (obj:IsA("Tool") and obj:FindFirstChild("Handle"))
+                if (obj:IsA("Tool") or obj:IsA("getgenv().FishmanState.Model")) and isTarget(obj.Name) then
+                    local rootPart = (obj:IsA("getgenv().FishmanState.Model") and (obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart"))) or (obj:IsA("Tool") and obj:FindFirstChild("Handle"))
                     if rootPart then
                         local bgui = rootPart:FindFirstChild("FruitESP_" .. obj.Name)
                         if bgui then bgui:Destroy() end
@@ -1098,7 +1100,7 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
 -- ======================================================================
     getgenv().FishmanState.Tabs.Fishing:AddToggle("T_Fish", { Title = "Auto Fish", Default = false, Callback = function(Value) 
         if isLobby then if Value then getgenv().FishmanState.Fluent:Notify({ Title = "Error", Content = "Cannot fish in Lobby!", Duration = 3 }); getgenv().FishmanState.Fluent.Options.T_Fish:SetValue(false) end return end
-        Model.State.isFishing = Value 
+        getgenv().FishmanState.Model.State.isFishing = Value 
     end })
     getgenv().FishmanState.Tabs.Fishing:AddToggle("T_DeepSea", { Title = "Deep Sea Catcher (ONLY Beasts)", Default = false, Callback = function(Value) 
         if isLobby then if Value then getgenv().FishmanState.Fluent:Notify({ Title = "Error", Content = "Cannot fish in Lobby!", Duration = 3 }); getgenv().FishmanState.Fluent.Options.T_DeepSea:SetValue(false) end return end
@@ -1111,12 +1113,12 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
                 game:GetService("ReplicatedStorage"):WaitForChild("Events"):WaitForChild("Titles"):InvokeServer(unpack(args))
             end
         end)
-        Model.State.isDeepSeaCatcher = Value 
+        getgenv().FishmanState.Model.State.isDeepSeaCatcher = Value 
     end })
     
     getgenv().FishmanState.Tabs.Fishing:AddToggle("T_MegStack", { Title = "Megalodon Stack (Wait 10, Kill)", Default = false, Callback = function(Value) 
         if isLobby then if Value then getgenv().FishmanState.Fluent:Notify({ Title = "Error", Content = "Cannot stack in Lobby!", Duration = 3 }); getgenv().FishmanState.Fluent.Options.T_MegStack:SetValue(false) end return end
-        Model.State.isMegStacking = Value
+        getgenv().FishmanState.Model.State.isMegStacking = Value
         if Value then
             if getgenv().FishmanState.Fluent.Options.T_DeepSea then getgenv().FishmanState.Fluent.Options.T_DeepSea:SetValue(true) end
             if getgenv().FishmanState.Fluent.Options.T_Buy then getgenv().FishmanState.Fluent.Options.T_Buy:SetValue(true) end
@@ -1125,9 +1127,9 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
             if getgenv().FishmanState.Fluent.Options.T_AutoReturn then getgenv().FishmanState.Fluent.Options.T_AutoReturn:SetValue(true) end
             print("🌊 [MegStack] Meg stack starting now! Enabling deep sea catcher for 10 megalodons.")
             task.spawn(function()
-                while getgenv().FishmanState._running and Model.State.isMegStacking do
-                    local megCount = Model.countMegalodons()
-                    if megCount >= 10 and not Model.State.isBuying and not Model.State.isAutoTraveling and not Model.State.isRefillingMegBait and not Model.State.isManualTraveling then
+                while getgenv().FishmanState._running and getgenv().FishmanState.Model.State.isMegStacking do
+                    local megCount = getgenv().FishmanState.Model.countMegalodons()
+                    if megCount >= 10 and not getgenv().FishmanState.Model.State.isBuying and not getgenv().FishmanState.Model.State.isAutoTraveling and not getgenv().FishmanState.Model.State.isRefillingMegBait and not getgenv().FishmanState.Model.State.isManualTraveling then
                         print("🔥 [MegStack] 10 Megalodons reached! Disabling fishing and automatically toggling Cyborg Autofarm ON...")
                         if getgenv().FishmanState.Fluent.Options.T_DeepSea.Value == true then
                             getgenv().FishmanState.Fluent.Options.T_DeepSea:SetValue(false)
@@ -1138,11 +1140,11 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
                         end
                         
                         local waitTime = 0
-                        local lastCount = Model.countMegalodons()
-                        while getgenv().FishmanState._running and Model.countMegalodons() > 0 and Model.State.isMegStacking and waitTime < 180 do
+                        local lastCount = getgenv().FishmanState.Model.countMegalodons()
+                        while getgenv().FishmanState._running and getgenv().FishmanState.Model.countMegalodons() > 0 and getgenv().FishmanState.Model.State.isMegStacking and waitTime < 180 do
                             task.wait(1)
                             waitTime = waitTime + 1
-                            local curCount = Model.countMegalodons()
+                            local curCount = getgenv().FishmanState.Model.countMegalodons()
                             if curCount < lastCount then
                                 waitTime = 0
                                 lastCount = curCount
@@ -1155,7 +1157,7 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
                             getgenv().FishmanState.Fluent.Options.T_CyborgAuto:SetValue(false)
                         end
                         
-                        if Model.State.isMegStacking then
+                        if getgenv().FishmanState.Model.State.isMegStacking then
                             getgenv().FishmanState.Fluent.Options.T_DeepSea:SetValue(true)
                         end
                     end
@@ -1178,7 +1180,7 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
     
     getgenv().FishmanState.Tabs.Fishing:AddToggle("T_MegStackPassive", { Title = "Megalodon Stack (Wait 10, Wait for Kill)", Default = false, Callback = function(Value) 
         if isLobby then if Value then getgenv().FishmanState.Fluent:Notify({ Title = "Error", Content = "Cannot stack in Lobby!", Duration = 3 }); getgenv().FishmanState.Fluent.Options.T_MegStackPassive:SetValue(false) end return end
-        Model.State.isMegStackPassive = Value
+        getgenv().FishmanState.Model.State.isMegStackPassive = Value
         if Value then
             if getgenv().FishmanState.Fluent.Options.T_DeepSea then getgenv().FishmanState.Fluent.Options.T_DeepSea:SetValue(true) end
             if getgenv().FishmanState.Fluent.Options.T_Buy then getgenv().FishmanState.Fluent.Options.T_Buy:SetValue(true) end
@@ -1187,20 +1189,20 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
             if getgenv().FishmanState.Fluent.Options.T_AutoReturn then getgenv().FishmanState.Fluent.Options.T_AutoReturn:SetValue(true) end
             print("🌊 [MegStackPassive] Meg stack starting now! Enabling deep sea catcher for 10 megalodons.")
             task.spawn(function()
-                while getgenv().FishmanState._running and Model.State.isMegStackPassive do
-                    local megCount = Model.countMegalodons()
-                    if megCount >= 10 and not Model.State.isBuying and not Model.State.isAutoTraveling and not Model.State.isRefillingMegBait and not Model.State.isManualTraveling then
+                while getgenv().FishmanState._running and getgenv().FishmanState.Model.State.isMegStackPassive do
+                    local megCount = getgenv().FishmanState.Model.countMegalodons()
+                    if megCount >= 10 and not getgenv().FishmanState.Model.State.isBuying and not getgenv().FishmanState.Model.State.isAutoTraveling and not getgenv().FishmanState.Model.State.isRefillingMegBait and not getgenv().FishmanState.Model.State.isManualTraveling then
                         print("🔥 [MegStackPassive] 10 Megalodons reached! Disabling fishing and waiting for kill...")
                         if getgenv().FishmanState.Fluent.Options.T_DeepSea.Value == true then
                             getgenv().FishmanState.Fluent.Options.T_DeepSea:SetValue(false)
                         end
                         
                         local waitTime = 0
-                        local lastCount = Model.countMegalodons()
-                        while getgenv().FishmanState._running and Model.countMegalodons() > 0 and Model.State.isMegStackPassive and waitTime < 180 do
+                        local lastCount = getgenv().FishmanState.Model.countMegalodons()
+                        while getgenv().FishmanState._running and getgenv().FishmanState.Model.countMegalodons() > 0 and getgenv().FishmanState.Model.State.isMegStackPassive and waitTime < 180 do
                             task.wait(1)
                             waitTime = waitTime + 1
-                            local curCount = Model.countMegalodons()
+                            local curCount = getgenv().FishmanState.Model.countMegalodons()
                             if curCount < lastCount then
                                 waitTime = 0
                                 lastCount = curCount
@@ -1209,7 +1211,7 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
                         
                         print("✅ [MegStackPassive] Stack cleared! Resuming fishing...")
                         
-                        if Model.State.isMegStackPassive then
+                        if getgenv().FishmanState.Model.State.isMegStackPassive then
                             getgenv().FishmanState.Fluent.Options.T_DeepSea:SetValue(true)
                         end
                     end
@@ -1232,7 +1234,7 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
     
     getgenv().FishmanState.Tabs.Fishing:AddToggle("T_MegStackLoc", { Title = "Meg Stack Location (Auto Refill)", Default = false, Callback = function(Value) 
         if isLobby then if Value then getgenv().FishmanState.Fluent:Notify({ Title = "Error", Content = "Cannot use in Lobby!", Duration = 3 }); getgenv().FishmanState.Fluent.Options.T_MegStackLoc:SetValue(false) end return end
-        Model.State.isMegStackLoc = Value 
+        getgenv().FishmanState.Model.State.isMegStackLoc = Value 
     end })
     
     local manualTravelInitialized = false
@@ -1251,21 +1253,21 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
                 local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
                 if hrp then getgenv().CachedOriginalPos = hrp.Position end
                 
-                Model.State.isAutoTraveling = false
-                Model.DisableFlight()
-                if Model.UnequipRod then Model.UnequipRod() end
+                getgenv().FishmanState.Model.State.isAutoTraveling = false
+                getgenv().FishmanState.Model.DisableFlight()
+                if getgenv().FishmanState.Model.UnequipRod then getgenv().FishmanState.Model.UnequipRod() end
                 task.wait(1)
                 
                 if not getgenv().FishmanState.Fluent.Options.T_ManualMegStackLoc.Value then return end
                 
-                Model.State.isManualTraveling = true
-                Model.EnableFlight()
+                getgenv().FishmanState.Model.State.isManualTraveling = true
+                getgenv().FishmanState.Model.EnableFlight()
                 getgenv().FishmanState.Fluent:Notify({ Title = "Manual Travel", Content = "Flying to Meg Stack Island...", Duration = 3 })
-                Model.CraftFlyPath({ Vector3.new(-6760, 27, 9191) })
+                getgenv().FishmanState.Model.CraftFlyPath({ Vector3.new(-6760, 27, 9191) })
                 
-                if Model.State.isManualTraveling then
-                    Model.State.isManualTraveling = false
-                    Model.DisableFlight()
+                if getgenv().FishmanState.Model.State.isManualTraveling then
+                    getgenv().FishmanState.Model.State.isManualTraveling = false
+                    getgenv().FishmanState.Model.DisableFlight()
                     getgenv().FishmanState.Fluent:Notify({ Title = "Manual Travel", Content = "Arrived at Meg Stack Island!", Duration = 3 })
                     if getgenv().FishmanState.Fluent and getgenv().FishmanState.Fluent.Options and getgenv().FishmanState.Fluent.Options.T_ManualMegStackLoc then
                         getgenv().FishmanState.Fluent.Options.T_ManualMegStackLoc:SetValue(false)
@@ -1275,26 +1277,26 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
         else
             if not manualTravelInitialized then return end
             
-            if Model.State.isManualTraveling then
-                Model.State.isManualTraveling = false
-                Model.State.isRefillingMegBait = false
-                Model.State.isCraftFlying = false
-                Model.DisableFlight()
-                if Model.EquipRod then Model.EquipRod() end
+            if getgenv().FishmanState.Model.State.isManualTraveling then
+                getgenv().FishmanState.Model.State.isManualTraveling = false
+                getgenv().FishmanState.Model.State.isRefillingMegBait = false
+                getgenv().FishmanState.Model.State.isCraftFlying = false
+                getgenv().FishmanState.Model.DisableFlight()
+                if getgenv().FishmanState.Model.EquipRod then getgenv().FishmanState.Model.EquipRod() end
                 getgenv().FishmanState.Fluent:Notify({ Title = "Manual Travel", Content = "Travel paused - flight disabled.", Duration = 3 })
             end
         end
     end })
     
     getgenv().FishmanState.Tabs.Fishing:AddToggle("T_HoverboardESP", { Title = "Ship ESP", Default = false, Callback = function(Value) 
-        Model.State.isHoverboardESP = Value 
+        getgenv().FishmanState.Model.State.isHoverboardESP = Value 
         if Value then
             task.spawn(function()
-                while getgenv().FishmanState._running and Model.State.isHoverboardESP do
+                while getgenv().FishmanState._running and getgenv().FishmanState.Model.State.isHoverboardESP do
                     local shipsFolder = workspace:FindFirstChild("Ships")
                     if shipsFolder then
                         local myShip = shipsFolder:FindFirstChild(LocalPlayer.Name .. "Ship")
-                        if myShip and myShip:IsA("Model") then
+                        if myShip and myShip:IsA("getgenv().FishmanState.Model") then
                             if not myShip:FindFirstChild("HoverESP_Highlight") then
                                 local hl = Instance.new("Highlight")
                                 hl.Name = "HoverESP_Highlight"
@@ -1329,10 +1331,10 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
     end })
     
     getgenv().FishmanState.Tabs.Fishing:AddToggle("T_MegESP", { Title = "Megalodon ESP", Default = false, Callback = function(Value) 
-        Model.State.isMegESP = Value 
+        getgenv().FishmanState.Model.State.isMegESP = Value 
         if Value then
             task.spawn(function()
-                while getgenv().FishmanState._running and Model.State.isMegESP do
+                while getgenv().FishmanState._running and getgenv().FishmanState.Model.State.isMegESP do
                     local folders = {workspace:FindFirstChild("NPCs"), workspace:FindFirstChild("Env")}
                     for _, folder in ipairs(folders) do
                         if folder then
@@ -1385,7 +1387,7 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
         Callback = function()
             if isLobby then getgenv().FishmanState.Fluent:Notify({ Title = "Error", Content = "Cannot travel in Lobby!", Duration = 3 }); return end
             task.spawn(function()
-                local success = Model.ReturnToShip()
+                local success = getgenv().FishmanState.Model.ReturnToShip()
                 if success then
                     print("🚀 [ReturnToShip] Successfully arrived at hoverboard!")
                 else
@@ -1400,7 +1402,7 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
         Description = "Automatically flies back to your hoverboard if you fall off.",
         Default = false, 
         Callback = function(Value) 
-            Model.State.autoReturn = Value 
+            getgenv().FishmanState.Model.State.autoReturn = Value 
         end 
     })
 
@@ -1412,28 +1414,28 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
         Max = 1000,
         Rounding = 0,
         Callback = function(Value)
-            Model.State.shipSpeed = Value
+            getgenv().FishmanState.Model.State.shipSpeed = Value
         end
     })
 
     getgenv().FishmanState.Tabs.Fishing:AddToggle("T_StrictReel", { Title = "Only Reel > 1.0 Multiplier", Default = false, Callback = function(Value) 
-        Model.State.strictReel = Value 
+        getgenv().FishmanState.Model.State.strictReel = Value 
     end })
     getgenv().FishmanState.Tabs.Fishing:AddToggle("T_Buy", { Title = "Auto Buy Bait", Default = not isLobby, Callback = function(Value) 
         if isLobby then if Value then getgenv().FishmanState.Fluent:Notify({ Title = "Error", Content = "Cannot buy in Lobby!", Duration = 3 }); getgenv().FishmanState.Fluent.Options.T_Buy:SetValue(false) end return end
-        Model.State.autoBuy = Value; if Value then Model.CheckInventory() end 
+        getgenv().FishmanState.Model.State.autoBuy = Value; if Value then getgenv().FishmanState.Model.CheckInventory() end 
     end })
     getgenv().FishmanState.Tabs.Fishing:AddToggle("T_Sell", { Title = "Auto Sell Fish", Default = false, Callback = function(Value) 
         if isLobby then if Value then getgenv().FishmanState.Fluent:Notify({ Title = "Error", Content = "Cannot sell in Lobby!", Duration = 3 }); getgenv().FishmanState.Fluent.Options.T_Sell:SetValue(false) end return end
-        Model.State.autoSell = Value; if Value then Model.CheckInventory() end 
+        getgenv().FishmanState.Model.State.autoSell = Value; if Value then getgenv().FishmanState.Model.CheckInventory() end 
     end })
     getgenv().FishmanState.Tabs.Fishing:AddToggle("T_Travel", { Title = "Travel to Bait", Default = false, Callback = function(Value) 
         if isLobby then if Value then getgenv().FishmanState.Fluent:Notify({ Title = "Error", Content = "Cannot travel in Lobby!", Duration = 3 }); getgenv().FishmanState.Fluent.Options.T_Travel:SetValue(false) end return end
-        if Value then Model.StartTraveling() else Model.State.isAutoTraveling = false; if Model.DisableFlight then Model.DisableFlight() end; Model.State.travelMessage = "" end 
+        if Value then getgenv().FishmanState.Model.StartTraveling() else getgenv().FishmanState.Model.State.isAutoTraveling = false; if getgenv().FishmanState.Model.DisableFlight then getgenv().FishmanState.Model.DisableFlight() end; getgenv().FishmanState.Model.State.travelMessage = "" end 
     end })
     getgenv().FishmanState.Tabs.Fishing:AddToggle("T_Craft", { Title = "Auto Craft Legendary Bait", Default = false, Callback = function(Value) 
         if isLobby then if Value then getgenv().FishmanState.Fluent:Notify({ Title = "Error", Content = "Cannot craft in Lobby!", Duration = 3 }); getgenv().FishmanState.Fluent.Options.T_Craft:SetValue(false) end return end
-        Model.State.autoCraft = Value 
+        getgenv().FishmanState.Model.State.autoCraft = Value 
     end })
     getgenv().FishmanState.Tabs.Fishing:AddButton({
         Title = "🔨 Craft All Legendary Fish Now",
@@ -1443,12 +1445,12 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
                 getgenv().FishmanState.Fluent:Notify({ Title = "Error", Content = "Cannot craft in Lobby!", Duration = 3 })
                 return
             end
-            task.spawn(Model.ForceCraftAll)
+            task.spawn(getgenv().FishmanState.Model.ForceCraftAll)
         end
     })
     getgenv().FishmanState.Tabs.Fishing:AddToggle("T_AFK", { Title = "AFK Mode (Auto-start after 10s)", Default = false, Callback = function(Value) 
         if isLobby then if Value then getgenv().FishmanState.Fluent:Notify({ Title = "Error", Content = "AFK Mode requires Fishing server!", Duration = 3 }); getgenv().FishmanState.Fluent.Options.T_AFK:SetValue(false) end return end
-        isAFKModeActive = Value; secondsSinceLastInput = 0 
+        getgenv().FishmanState.isAFKModeActive = Value; getgenv().FishmanState.secondsSinceLastInput = 0 
     end })
 
     getgenv().FishmanState.Tabs.Fishing:AddButton({
@@ -1539,16 +1541,16 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
     task.spawn(function()
         while getgenv().FishmanState._running and task.wait(1) do
             table.clear(statusParts)
-            if Model.State.isFishing then table.insert(statusParts, "Fishing") end
-            if Model.State.autoBuy then table.insert(statusParts, "Buying") end
-            if Model.State.autoSell then table.insert(statusParts, "Selling") end
-            if Model.State.autoCraft then table.insert(statusParts,  Model.State.isCurrentlyCrafting and "Crafting" or "Craft ON") end
-            if isAFKModeActive then table.insert(statusParts, "[AFK ON]") end
+            if getgenv().FishmanState.Model.State.isFishing then table.insert(statusParts, "Fishing") end
+            if getgenv().FishmanState.Model.State.autoBuy then table.insert(statusParts, "Buying") end
+            if getgenv().FishmanState.Model.State.autoSell then table.insert(statusParts, "Selling") end
+            if getgenv().FishmanState.Model.State.autoCraft then table.insert(statusParts,  getgenv().FishmanState.Model.State.isCurrentlyCrafting and "Crafting" or "Craft ON") end
+            if getgenv().FishmanState.isAFKModeActive then table.insert(statusParts, "[AFK ON]") end
 
-            if Model.State.isAutoTraveling or Model.State.travelMessage ~= "" then
-                StatusPara:SetDesc("Status: " .. Model.State.travelMessage)
-                if Model.State.travelMessage == "Arrived at Bait" and Model.State.waitingForArrivalToFish then
-                    Model.State.waitingForArrivalToFish = false
+            if getgenv().FishmanState.Model.State.isAutoTraveling or getgenv().FishmanState.Model.State.travelMessage ~= "" then
+                StatusPara:SetDesc("Status: " .. getgenv().FishmanState.Model.State.travelMessage)
+                if getgenv().FishmanState.Model.State.travelMessage == "Arrived at Bait" and getgenv().FishmanState.Model.State.waitingForArrivalToFish then
+                    getgenv().FishmanState.Model.State.waitingForArrivalToFish = false
                     if getgenv().FishmanState.Fluent and getgenv().FishmanState.Fluent.Options and getgenv().FishmanState.Fluent.Options.T_Fish then getgenv().FishmanState.Fluent.Options.T_Fish:SetValue(true) end -- Automatically turn on fishing toggle in UI
                 end
             else
@@ -1557,7 +1559,7 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
         end
     end)
     
-    if not isLobby and GetCurrentPSCode() == GlobalMem.FishmanPSCode and GlobalMem.FishmanPSCode ~= "" then
+    if not isLobby and getgenv().FishmanState.GetCurrentPSCode() == GlobalMem.FishmanPSCode and GlobalMem.FishmanPSCode ~= "" then
         getgenv().FishmanState.Fluent:Notify({ Title = "Detection", Content = "Target Server " .. tostring(GlobalMem.FishmanPSCode) .. " Detected.", Duration = 5 })
     end
 
@@ -1686,9 +1688,9 @@ getgenv().FishmanState.Tabs.Autofarm:AddButton({
             
             if not targetPos then
                 for _, obj in ipairs(game.Workspace:GetDescendants()) do
-                    if obj:IsA("Model") and string.find(string.lower(obj.Name), "merchant") and obj:FindFirstChild("HumanoidRootPart") then
+                    if obj:IsA("getgenv().FishmanState.Model") and string.find(string.lower(obj.Name), "merchant") and obj:FindFirstChild("HumanoidRootPart") then
                         targetPos = obj.HumanoidRootPart.Position
-                        print("[Logic] Found Merchant Model in Workspace at: ", targetPos)
+                        print("[Logic] Found Merchant getgenv().FishmanState.Model in Workspace at: ", targetPos)
                         break
                     end
                 end
@@ -1867,7 +1869,7 @@ getgenv().FishmanState.Tabs.Settings:AddButton({
     Title = "🥔 Potato Graphics",
     Description = "Reduces all game graphics to the absolute minimum for maximum FPS.",
     Callback = function()
-        ActivatePotatoGraphics()
+        getgenv().FishmanState.ActivatePotatoGraphics()
     end
 })
 
@@ -1903,7 +1905,7 @@ local isPaused = false
 local savedState = {}
 
 getgenv().FishmanState.addConn(UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    secondsSinceLastInput = 0
+    getgenv().FishmanState.secondsSinceLastInput = 0
     if gameProcessed then return end
     
     if input.KeyCode == Enum.KeyCode.F then
@@ -1912,20 +1914,20 @@ getgenv().FishmanState.addConn(UserInputService.InputBegan:Connect(function(inpu
             getgenv().FishmanState.Fluent:Notify({ Title = "🛑 Emergency Stop", Content = "Script paused! Press F again to resume.", Duration = 5 })
             
             -- Stop Auto Start state (AFK Mode)
-            isAFKModeActive = false
+            getgenv().FishmanState.isAFKModeActive = false
             if getgenv().FishmanState.Fluent.Options and getgenv().FishmanState.Fluent.Options.T_AFK then
                 getgenv().FishmanState.Fluent.Options.T_AFK:SetValue(false)
             end
 
-            if Model and Model.State then
+            if getgenv().FishmanState.Model and getgenv().FishmanState.Model.State then
                 -- Save current task states
                 savedState = {
-                    isFishing = Model.State.isFishing,
-                    autoBuy = Model.State.autoBuy,
-                    autoSell = Model.State.autoSell,
-                    isAutoTraveling = Model.State.isAutoTraveling,
-                    autoCraft = Model.State.autoCraft,
-                    isCurrentlyCrafting = Model.State.isCurrentlyCrafting,
+                    isFishing = getgenv().FishmanState.Model.State.isFishing,
+                    autoBuy = getgenv().FishmanState.Model.State.autoBuy,
+                    autoSell = getgenv().FishmanState.Model.State.autoSell,
+                    isAutoTraveling = getgenv().FishmanState.Model.State.isAutoTraveling,
+                    autoCraft = getgenv().FishmanState.Model.State.autoCraft,
+                    isCurrentlyCrafting = getgenv().FishmanState.Model.State.isCurrentlyCrafting,
                     antiLag = (getgenv().FishmanState.Fluent.Options and getgenv().FishmanState.Fluent.Options.T_AntiLag) and getgenv().FishmanState.Fluent.Options.T_AntiLag.Value or false,
                     deepSea = (getgenv().FishmanState.Fluent and getgenv().FishmanState.Fluent.Options and getgenv().FishmanState.Fluent.Options.T_DeepSea) and getgenv().FishmanState.Fluent.Options.T_DeepSea.Value or false,
                     megStack = (getgenv().FishmanState.Fluent and getgenv().FishmanState.Fluent.Options and getgenv().FishmanState.Fluent.Options.T_MegStack) and getgenv().FishmanState.Fluent.Options.T_MegStack.Value or false,
@@ -1933,14 +1935,14 @@ getgenv().FishmanState.addConn(UserInputService.InputBegan:Connect(function(inpu
                 }
 
                 -- Force stop everything instantly
-                Model.State.isFishing = false
-                -- Model.State.autoBuy = false
-                Model.State.autoSell = false
-                Model.State.isAutoTraveling = false
-                Model.State.autoCraft = false
-                Model.State.isCurrentlyCrafting = false
-                Model.State.isCraftFlying = false
-                Model.State.isBuying = false
+                getgenv().FishmanState.Model.State.isFishing = false
+                -- getgenv().FishmanState.Model.State.autoBuy = false
+                getgenv().FishmanState.Model.State.autoSell = false
+                getgenv().FishmanState.Model.State.isAutoTraveling = false
+                getgenv().FishmanState.Model.State.autoCraft = false
+                getgenv().FishmanState.Model.State.isCurrentlyCrafting = false
+                getgenv().FishmanState.Model.State.isCraftFlying = false
+                getgenv().FishmanState.Model.State.isBuying = false
                 
                 -- Update UI toggles to visually show they are off
                 if getgenv().FishmanState.Fluent.Options then
@@ -1956,10 +1958,10 @@ getgenv().FishmanState.addConn(UserInputService.InputBegan:Connect(function(inpu
                 end
 
                 -- Abort actions
-                if Model.DisableFlight then pcall(Model.DisableFlight) end
-                if Model.UnequipRod then pcall(Model.UnequipRod) end
-                if Model.State.activeNavigation and Model.State.activeNavigation._isNavigating then
-                    Model.State.activeNavigation:Cancel()
+                if getgenv().FishmanState.Model.DisableFlight then pcall(getgenv().FishmanState.Model.DisableFlight) end
+                if getgenv().FishmanState.Model.UnequipRod then pcall(getgenv().FishmanState.Model.UnequipRod) end
+                if getgenv().FishmanState.Model.State.activeNavigation and getgenv().FishmanState.Model.State.activeNavigation._isNavigating then
+                    getgenv().FishmanState.Model.State.activeNavigation:Cancel()
                 end
 
                 -- Close any dialogue
@@ -1972,21 +1974,21 @@ getgenv().FishmanState.addConn(UserInputService.InputBegan:Connect(function(inpu
         else
             getgenv().FishmanState.Fluent:Notify({ Title = "▶️ Resumed", Content = "Script restored to previous tasks.", Duration = 5 })
 
-            if Model and Model.State then
+            if getgenv().FishmanState.Model and getgenv().FishmanState.Model.State then
                 -- Restore previously active tasks
-                Model.State.isFishing = savedState.isFishing or false
-                Model.State.autoBuy = savedState.autoBuy or false
-                Model.State.autoSell = savedState.autoSell or false
-                Model.State.isAutoTraveling = savedState.isAutoTraveling or false
-                Model.State.autoCraft = savedState.autoCraft or false
+                getgenv().FishmanState.Model.State.isFishing = savedState.isFishing or false
+                getgenv().FishmanState.Model.State.autoBuy = savedState.autoBuy or false
+                getgenv().FishmanState.Model.State.autoSell = savedState.autoSell or false
+                getgenv().FishmanState.Model.State.isAutoTraveling = savedState.isAutoTraveling or false
+                getgenv().FishmanState.Model.State.autoCraft = savedState.autoCraft or false
                 
                 -- Update UI toggles visually to match restored state
                 if getgenv().FishmanState.Fluent.Options then
-                    if getgenv().FishmanState.Fluent.Options.T_Fish then getgenv().FishmanState.Fluent.Options.T_Fish:SetValue(Model.State.isFishing) end
-                    if getgenv().FishmanState.Fluent.Options.T_Buy then getgenv().FishmanState.Fluent.Options.T_Buy:SetValue(Model.State.autoBuy) end
-                    if getgenv().FishmanState.Fluent.Options.T_Sell then getgenv().FishmanState.Fluent.Options.T_Sell:SetValue(Model.State.autoSell) end
-                    if getgenv().FishmanState.Fluent.Options.T_Travel then getgenv().FishmanState.Fluent.Options.T_Travel:SetValue(Model.State.isAutoTraveling) end
-                    if getgenv().FishmanState.Fluent.Options.T_Craft then getgenv().FishmanState.Fluent.Options.T_Craft:SetValue(Model.State.autoCraft) end
+                    if getgenv().FishmanState.Fluent.Options.T_Fish then getgenv().FishmanState.Fluent.Options.T_Fish:SetValue(getgenv().FishmanState.Model.State.isFishing) end
+                    if getgenv().FishmanState.Fluent.Options.T_Buy then getgenv().FishmanState.Fluent.Options.T_Buy:SetValue(getgenv().FishmanState.Model.State.autoBuy) end
+                    if getgenv().FishmanState.Fluent.Options.T_Sell then getgenv().FishmanState.Fluent.Options.T_Sell:SetValue(getgenv().FishmanState.Model.State.autoSell) end
+                    if getgenv().FishmanState.Fluent.Options.T_Travel then getgenv().FishmanState.Fluent.Options.T_Travel:SetValue(getgenv().FishmanState.Model.State.isAutoTraveling) end
+                    if getgenv().FishmanState.Fluent.Options.T_Craft then getgenv().FishmanState.Fluent.Options.T_Craft:SetValue(getgenv().FishmanState.Model.State.autoCraft) end
                     if getgenv().FishmanState.Fluent.Options.T_AntiLag and savedState.antiLag then getgenv().FishmanState.Fluent.Options.T_AntiLag:SetValue(true) end
                     if getgenv().FishmanState.Fluent.Options.T_DeepSea then getgenv().FishmanState.Fluent.Options.T_DeepSea:SetValue(savedState.deepSea) end
                     if getgenv().FishmanState.Fluent.Options.T_MegStack then getgenv().FishmanState.Fluent.Options.T_MegStack:SetValue(savedState.megStack) end
@@ -1994,11 +1996,11 @@ getgenv().FishmanState.addConn(UserInputService.InputBegan:Connect(function(inpu
                 end
 
                 -- Resume traveling if needed
-                if Model.State.isAutoTraveling and Model.StartTraveling then
-                    Model.StartTraveling()
+                if getgenv().FishmanState.Model.State.isAutoTraveling and getgenv().FishmanState.Model.StartTraveling then
+                    getgenv().FishmanState.Model.StartTraveling()
                 end
             end
         end
     end
 end))
-getgenv().FishmanState.addConn(UserInputService.InputChanged:Connect(function() secondsSinceLastInput = 0 end))
+getgenv().FishmanState.addConn(UserInputService.InputChanged:Connect(function() getgenv().FishmanState.secondsSinceLastInput = 0 end))
