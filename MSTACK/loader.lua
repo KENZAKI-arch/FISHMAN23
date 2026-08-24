@@ -48,8 +48,8 @@ end)
 local AccountConfigs = {
     ["ReneButterbones"] = "qj1ttW4JG1",
     ["ButterbonesClan"] = "KY4ilrrIXX",
-    ["BarriacadedAlex"] = "INSERT_CODE_1",
-    ["pc_Romer900"] = "INSERT_CODE_2"
+    ["BarriacadedAlex"] = "vcvq1Xp6GC",
+    ["pc_Romer900"] = "dmNfaqsjjj"
 }
 
 -- ⚙️ GLOBAL SETTINGS
