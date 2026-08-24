@@ -1,6 +1,12 @@
 -- ==========================================
 -- Fishman Hub Multi-Account Loader
 -- ==========================================
+if getgenv().FishmanLoaderExecuted then
+    warn("[Fishman Loader] Script is already running. Preventing duplicate execution.")
+    return
+end
+getgenv().FishmanLoaderExecuted = true
+
 local Players = game:GetService("Players")
 
 if not game:IsLoaded() then
