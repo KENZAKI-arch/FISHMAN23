@@ -568,7 +568,7 @@ getgenv().FishmanState.Tabs = Tabs
             local confirmArgs = { [1] = destination }
             pcall(function()
                 if destination == "Lobby" then
-                    TeleportService:Teleport(targetPlaceId, LocalPlayer)
+                    TeleportService:Teleport(getgenv().FishmanState.targetPlaceId, LocalPlayer)
                 else
                     local playerGui = LocalPlayer:WaitForChild("PlayerGui", 20)
                     local chooseType = playerGui:WaitForChild("chooseType", 20)
@@ -601,7 +601,7 @@ getgenv().FishmanState.Tabs = Tabs
                 end
             end)
         else
-            TeleportService:Teleport(targetPlaceId, LocalPlayer)
+            TeleportService:Teleport(getgenv().FishmanState.targetPlaceId, LocalPlayer)
         end
     end
 
