@@ -766,7 +766,7 @@ local function isAtWholeCakeIsland()
         local hrp = char and char:FindFirstChild("HumanoidRootPart")
         local wci = workspace:FindFirstChild("Islands") and workspace.Islands:FindFirstChild("Whole Cake Island")
         if hrp and wci then
-            local part = wci:IsA("getgenv().FishmanState.Model") and wci.PrimaryPart or wci:FindFirstChildWhichIsA("BasePart", true)
+            local part = wci:IsA("Model") and wci.PrimaryPart or wci:FindFirstChildWhichIsA("BasePart", true)
             if part and (hrp.Position - part.Position).Magnitude < 4000 then
                 result = true
             end
@@ -943,8 +943,8 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
                     local islandsFolder = workspace:FindFirstChild("Islands")
                     if islandsFolder then
                         for _, island in ipairs(islandsFolder:GetChildren()) do
-                            if island:IsA("getgenv().FishmanState.Model") or island:IsA("BasePart") then
-                                local rootPart = island:IsA("getgenv().FishmanState.Model") and (island.PrimaryPart or island:FindFirstChildWhichIsA("BasePart")) or island
+                            if island:IsA("Model") or island:IsA("BasePart") then
+                                local rootPart = island:IsA("Model") and (island.PrimaryPart or island:FindFirstChildWhichIsA("BasePart")) or island
                                 if rootPart then
                                     local espName = "IslandESP_" .. island.Name
                                     if not rootPart:FindFirstChild(espName) then
@@ -984,7 +984,7 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
                 local islandsFolder = workspace:FindFirstChild("Islands")
                 if islandsFolder then
                     for _, island in ipairs(islandsFolder:GetChildren()) do
-                        local rootPart = island:IsA("getgenv().FishmanState.Model") and (island.PrimaryPart or island:FindFirstChildWhichIsA("BasePart")) or island
+                        local rootPart = island:IsA("Model") and (island.PrimaryPart or island:FindFirstChildWhichIsA("BasePart")) or island
                         if rootPart then
                             local bgui = rootPart:FindFirstChild("IslandESP_" .. island.Name)
                             if bgui then bgui:Destroy() end
@@ -998,7 +998,7 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
             local islandsFolder = workspace:FindFirstChild("Islands")
             if islandsFolder then
                 for _, island in ipairs(islandsFolder:GetChildren()) do
-                    local rootPart = island:IsA("getgenv().FishmanState.Model") and (island.PrimaryPart or island:FindFirstChildWhichIsA("BasePart")) or island
+                    local rootPart = island:IsA("Model") and (island.PrimaryPart or island:FindFirstChildWhichIsA("BasePart")) or island
                     if rootPart then
                         local bgui = rootPart:FindFirstChild("IslandESP_" .. island.Name)
                         if bgui then bgui:Destroy() end
@@ -1031,8 +1031,8 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
             task.spawn(function()
                 while getgenv().FishmanState._running and getgenv().FishmanState.Model.State.isFruitESP do
                     for _, obj in ipairs(workspace:GetChildren()) do
-                        if (obj:IsA("Tool") or obj:IsA("getgenv().FishmanState.Model")) and isTarget(obj.Name) then
-                            local rootPart = (obj:IsA("getgenv().FishmanState.Model") and (obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart"))) or (obj:IsA("Tool") and obj:FindFirstChild("Handle"))
+                        if (obj:IsA("Tool") or obj:IsA("Model")) and isTarget(obj.Name) then
+                            local rootPart = (obj:IsA("Model") and (obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart"))) or (obj:IsA("Tool") and obj:FindFirstChild("Handle"))
                             if rootPart then
                                 local espName = "FruitESP_" .. obj.Name
                                 if not rootPart:FindFirstChild(espName) then
@@ -1069,8 +1069,8 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
                 end
                 
                 for _, obj in ipairs(workspace:GetChildren()) do
-                    if (obj:IsA("Tool") or obj:IsA("getgenv().FishmanState.Model")) and isTarget(obj.Name) then
-                        local rootPart = (obj:IsA("getgenv().FishmanState.Model") and (obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart"))) or (obj:IsA("Tool") and obj:FindFirstChild("Handle"))
+                    if (obj:IsA("Tool") or obj:IsA("Model")) and isTarget(obj.Name) then
+                        local rootPart = (obj:IsA("Model") and (obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart"))) or (obj:IsA("Tool") and obj:FindFirstChild("Handle"))
                         if rootPart then
                             local bgui = rootPart:FindFirstChild("FruitESP_" .. obj.Name)
                             if bgui then bgui:Destroy() end
@@ -1082,8 +1082,8 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
             end)
         else
             for _, obj in ipairs(workspace:GetChildren()) do
-                if (obj:IsA("Tool") or obj:IsA("getgenv().FishmanState.Model")) and isTarget(obj.Name) then
-                    local rootPart = (obj:IsA("getgenv().FishmanState.Model") and (obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart"))) or (obj:IsA("Tool") and obj:FindFirstChild("Handle"))
+                if (obj:IsA("Tool") or obj:IsA("Model")) and isTarget(obj.Name) then
+                    local rootPart = (obj:IsA("Model") and (obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart"))) or (obj:IsA("Tool") and obj:FindFirstChild("Handle"))
                     if rootPart then
                         local bgui = rootPart:FindFirstChild("FruitESP_" .. obj.Name)
                         if bgui then bgui:Destroy() end
@@ -1296,7 +1296,7 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
                     local shipsFolder = workspace:FindFirstChild("Ships")
                     if shipsFolder then
                         local myShip = shipsFolder:FindFirstChild(LocalPlayer.Name .. "Ship")
-                        if myShip and myShip:IsA("getgenv().FishmanState.Model") then
+                        if myShip and myShip:IsA("Model") then
                             if not myShip:FindFirstChild("HoverESP_Highlight") then
                                 local hl = Instance.new("Highlight")
                                 hl.Name = "HoverESP_Highlight"
@@ -1688,7 +1688,7 @@ getgenv().FishmanState.Tabs.Autofarm:AddButton({
             
             if not targetPos then
                 for _, obj in ipairs(game.Workspace:GetDescendants()) do
-                    if obj:IsA("getgenv().FishmanState.Model") and string.find(string.lower(obj.Name), "merchant") and obj:FindFirstChild("HumanoidRootPart") then
+                    if obj:IsA("Model") and string.find(string.lower(obj.Name), "merchant") and obj:FindFirstChild("HumanoidRootPart") then
                         targetPos = obj.HumanoidRootPart.Position
                         print("[Logic] Found Merchant getgenv().FishmanState.Model in Workspace at: ", targetPos)
                         break

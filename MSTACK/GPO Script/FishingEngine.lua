@@ -117,7 +117,7 @@ if not isLobby then
     -- ======================================================================
     -- 🚀 FLIGHT & MOVEMENT SUBSYSTEM
     -- ======================================================================
-    function getgenv().FishmanState.Model.EnableFlight()
+    getgenv().FishmanState.Model.EnableFlight = function()
         local character = LocalPlayer.Character
         if not character then return end
         local rootPart = character:FindFirstChild("HumanoidRootPart")
@@ -138,7 +138,7 @@ if not isLobby then
         end
     end
 
-    function getgenv().FishmanState.Model.DisableFlight()
+    getgenv().FishmanState.Model.DisableFlight = function()
         local character = LocalPlayer.Character
         if not character then return end
         local rootPart = character:FindFirstChild("HumanoidRootPart")
@@ -158,16 +158,16 @@ if not isLobby then
         if humanoid then humanoid.PlatformStand = false end
     end
     
-    function getgenv().FishmanState.Model.NavigateTo(object, targetPosition, speed, arrivalDistance)
+    getgenv().FishmanState.Model.NavigateTo = function(object, targetPosition, speed, arrivalDistance)
         speed = speed or 100
         arrivalDistance = arrivalDistance or 20
         
-        local primaryPart = object:IsA("getgenv().FishmanState.Model") and object.PrimaryPart or (object:IsA("BasePart") and object or nil)
+        local primaryPart = object:IsA("Model") and object.PrimaryPart or (object:IsA("BasePart") and object or nil)
         if not primaryPart then return nil end
 
         local startPosition = primaryPart.Position
         local size = primaryPart.Size
-        if object:IsA("getgenv().FishmanState.Model") then
+        if object:IsA("Model") then
             local _, modelSize = object:GetBoundingBox()
             size = modelSize
         end
@@ -480,7 +480,7 @@ if not isLobby then
     local cachedTravelParams = RaycastParams.new()
     cachedTravelParams.FilterType = Enum.RaycastFilterType.Exclude
 
-    function getgenv().FishmanState.Model.HandleMovement(deltaTime)
+    getgenv().FishmanState.Model.HandleMovement = function(deltaTime)
         local rootPart = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
         if not rootPart then return end
         local cur = rootPart.Position
@@ -568,7 +568,7 @@ if not isLobby then
         rootPart.AssemblyAngularVelocity = Vector3.zero
     end
     
-    function getgenv().FishmanState.Model.StartTraveling()
+    getgenv().FishmanState.Model.StartTraveling = function()
         local char = LocalPlayer.Character
         local hrp = char and char:FindFirstChild("HumanoidRootPart")
         if not hrp then return end
@@ -662,19 +662,19 @@ if not isLobby then
         getgenv().FishmanState.Model.State.isCraftFlying = false
     end
 
-    function getgenv().FishmanState.Model.CraftFlyPath(pathTable)
+    getgenv().FishmanState.Model.CraftFlyPath = function(pathTable)
         for _, targetPos in ipairs(pathTable) do 
             if not getgenv().FishmanState.Model.State.autoCraft and not getgenv().FishmanState.Model.State.isRefillingMegBait and not getgenv().FishmanState.Model.State.isManualTraveling then break end
             CraftFlyToAndWait(targetPos) 
         end
     end
     
-    function getgenv().FishmanState.Model.ReturnToShip()
+    getgenv().FishmanState.Model.ReturnToShip = function()
         local hoverboard = getgenv().FishmanState.Model.FindHoverboard()
         local targetVector = nil
         
         if hoverboard then
-            local hbCFrame = hoverboard:IsA("getgenv().FishmanState.Model") and hoverboard:GetPivot() or hoverboard.CFrame
+            local hbCFrame = hoverboard:IsA("Model") and hoverboard:GetPivot() or hoverboard.CFrame
             targetVector = (hbCFrame * CFrame.new(0, 3, 4)).Position
             getgenv().FishmanState.Model.SaveHoverboardPos(targetVector)
         elseif getgenv().FishmanState.Model.LoadHoverboardPos() then
@@ -730,7 +730,7 @@ if not isLobby then
         pcall(function() questEvent:InvokeServer({ [1] = "npcChat", [2] = chatState }) end)
     end
     
-    function getgenv().FishmanState.Model.ExecuteLegendaryCraft(craftQueue)
+    getgenv().FishmanState.Model.ExecuteLegendaryCraft = function(craftQueue)
         local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
         if not hrp then return end
         local originalPos = hrp.Position
@@ -777,7 +777,7 @@ if not isLobby then
         getgenv().FishmanState.Model.State.waitingForArrivalToFish = true 
     end
 
-    function getgenv().FishmanState.Model.GetInventoryData()
+    getgenv().FishmanState.Model.GetInventoryData = function()
         if inventoryObj then
             local ok, data = pcall(function() return HttpService:JSONDecode(inventoryObj.Value) end)
             if ok and type(data) == "table" then return data end
@@ -785,7 +785,7 @@ if not isLobby then
         return nil
     end
 
-    function getgenv().FishmanState.Model.ForceCraftAll()
+    getgenv().FishmanState.Model.ForceCraftAll = function()
         if getgenv().FishmanState.Model.State.isCurrentlyCrafting then return end
         
         local inventoryData = getgenv().FishmanState.Model.GetInventoryData()
@@ -854,7 +854,7 @@ if not isLobby then
     -- ======================================================================
     -- 🎣 FISHING & INVENTORY MANAGEMENT
     -- ======================================================================
-    function getgenv().FishmanState.Model.EquipRod()
+    getgenv().FishmanState.Model.EquipRod = function()
         local character = LocalPlayer.Character
         local humanoid  = character and character:FindFirstChildOfClass("Humanoid")
         if not humanoid then return end
@@ -873,7 +873,7 @@ if not isLobby then
         end
     end
 
-    function getgenv().FishmanState.Model.UnequipRod()
+    getgenv().FishmanState.Model.UnequipRod = function()
         local character = LocalPlayer.Character
         if not character then return end
         local humanoid  = character and character:FindFirstChildOfClass("Humanoid")
@@ -887,7 +887,7 @@ if not isLobby then
         end
     end
     
-    function getgenv().FishmanState.Model.BuyNearestBait()
+    getgenv().FishmanState.Model.BuyNearestBait = function()
         if getgenv().FishmanState.Model.State.isBuying then return end
         getgenv().FishmanState.Model.State.isBuying = true
         local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
@@ -909,7 +909,7 @@ if not isLobby then
         end
 
         for _, item in ipairs(cachedBaitItems) do
-            local pos = (item:IsA("getgenv().FishmanState.Model") and item.PrimaryPart and item.PrimaryPart.Position) or (item:IsA("BasePart") and item.Position)
+            local pos = (item:IsA("Model") and item.PrimaryPart and item.PrimaryPart.Position) or (item:IsA("BasePart") and item.Position)
             if pos then
                 local d = (rootPart.Position - pos).Magnitude
                 if d < nearestDist then nearestDist = d; nearest = item end
@@ -928,7 +928,7 @@ if not isLobby then
 
     local hoverboardSaveFile = "FISHMAN23_HoverboardPos_" .. LocalPlayer.Name .. ".json"
     
-    function getgenv().FishmanState.Model.SaveHoverboardPos(pos)
+    getgenv().FishmanState.Model.SaveHoverboardPos = function(pos)
         getgenv().CachedHoverboardTailPos = pos
         if writefile and HttpService then
             local data = { X = pos.X, Y = pos.Y, Z = pos.Z }
@@ -938,7 +938,7 @@ if not isLobby then
         end
     end
     
-    function getgenv().FishmanState.Model.LoadHoverboardPos()
+    getgenv().FishmanState.Model.LoadHoverboardPos = function()
         if getgenv().CachedHoverboardTailPos then
             return getgenv().CachedHoverboardTailPos
         end
@@ -955,7 +955,7 @@ if not isLobby then
         return nil
     end
 
-    function getgenv().FishmanState.Model.FindHoverboard()
+    getgenv().FishmanState.Model.FindHoverboard = function()
         if getgenv().CachedHoverboard and getgenv().CachedHoverboard.Parent then
             return getgenv().CachedHoverboard
         end
@@ -998,7 +998,7 @@ if not isLobby then
         return nil
     end
 
-    function getgenv().FishmanState.Model.RefillMegBait()
+    getgenv().FishmanState.Model.RefillMegBait = function()
         if getgenv().FishmanState.Model.State.isRefillingMegBait then return end
         getgenv().FishmanState.Model.State.isRefillingMegBait = true
         
@@ -1025,7 +1025,7 @@ if not isLobby then
         print("🚀 [MegStackLoc] Flying back to fishing spot...")
         local hoverboard = getgenv().FishmanState.Model.FindHoverboard()
         if hoverboard then
-            local hbCFrame = hoverboard:IsA("getgenv().FishmanState.Model") and hoverboard:GetPivot() or hoverboard.CFrame
+            local hbCFrame = hoverboard:IsA("Model") and hoverboard:GetPivot() or hoverboard.CFrame
             local tailPos = (hbCFrame * CFrame.new(0, 3, 4)).Position
             getgenv().FishmanState.Model.SaveHoverboardPos(tailPos)
             getgenv().FishmanState.Model.CraftFlyPath({ tailPos })
@@ -1043,7 +1043,7 @@ if not isLobby then
         getgenv().FishmanState.Model.State.isRefillingMegBait = false
     end
 
-    function getgenv().FishmanState.Model.CheckInventory()
+    getgenv().FishmanState.Model.CheckInventory = function()
         local inventoryData = getgenv().FishmanState.Model.GetInventoryData()
         if not inventoryData then return end
         
@@ -1068,7 +1068,7 @@ if not isLobby then
             end
         end
     end
-    function getgenv().FishmanState.Model.countMegalodons()
+    getgenv().FishmanState.Model.countMegalodons = function()
         local count = 0
         local folders = {workspace:FindFirstChild("NPCs"), workspace:FindFirstChild("Env")}
         for _, folder in ipairs(folders) do
@@ -1083,7 +1083,7 @@ if not isLobby then
         return count
     end
     
-    function getgenv().FishmanState.Model.DoFishingCycle()
+    getgenv().FishmanState.Model.DoFishingCycle = function()
         local currentPeli = peliObject and peliObject.Value or 0
         local hookName = LocalPlayer.Name .. "'s hook"
         if workspace.Effects:FindFirstChild(hookName) then 
@@ -1301,7 +1301,7 @@ if not isLobby then
         while getgenv().FishmanState._running and task.wait(3) do
             local hb = getgenv().FishmanState.Model.FindHoverboard and getgenv().FishmanState.Model.FindHoverboard()
             if hb then
-                local hbCFrame = hb:IsA("getgenv().FishmanState.Model") and hb:GetPivot() or hb.CFrame
+                local hbCFrame = hb:IsA("Model") and hb:GetPivot() or hb.CFrame
                 getgenv().CachedHoverboardTailPos = (hbCFrame * CFrame.new(0, 3, 4)).Position
             end
         end
@@ -1318,7 +1318,7 @@ if not isLobby then
                     local targetVector = nil
                     local hb = getgenv().FishmanState.Model.FindHoverboard and getgenv().FishmanState.Model.FindHoverboard()
                     if hb then
-                        local hbCFrame = hb:IsA("getgenv().FishmanState.Model") and hb:GetPivot() or hb.CFrame
+                        local hbCFrame = hb:IsA("Model") and hb:GetPivot() or hb.CFrame
                         targetVector = (hbCFrame * CFrame.new(0, 3, 4)).Position
                     elseif getgenv().FishmanState.Model.LoadHoverboardPos then
                         targetVector = getgenv().FishmanState.Model.LoadHoverboardPos()
