@@ -550,7 +550,7 @@ getgenv().FishmanState.Tabs = Tabs
     })
 
     local function ExecuteTeleport(destination, psCode)
-        if UpdateTeleportMemory then getgenv().FishmanState.UpdateTeleportMemory(GlobalMem.FishmanAutoTeleport) end
+        if getgenv().FishmanState.UpdateTeleportMemory then getgenv().FishmanState.UpdateTeleportMemory(GlobalMem.FishmanAutoTeleport) end
         if isLobby then
             if destination == "Lobby" then
                 getgenv().FishmanState.Fluent:Notify({ Title = "Lobby", Content = "You are already in the Lobby!", Duration = 3 })
