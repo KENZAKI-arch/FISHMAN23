@@ -103,9 +103,9 @@ local GlobalMem = env
 -- ======================================================================
 -- ⚙️ CONFIGURATION SYSTEM
 -- ======================================================================
-getgenv().FishmanState.configFileName = "FishmanConfig_" .. tostring(LocalPlayer.UserId) .. ".json"
+local configFileName = "FishmanConfig_" .. tostring(LocalPlayer.UserId) .. ".json"
 
-getgenv().FishmanState.isFreshStart = true
+local isFreshStart = true
 pcall(function()
     if isfile and readfile and isfile(configFileName) then
         local data = HttpService:JSONDecode(readfile(configFileName))
