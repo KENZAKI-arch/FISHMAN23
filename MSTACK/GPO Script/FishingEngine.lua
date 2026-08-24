@@ -1378,7 +1378,7 @@ if not isLobby then
     end
 end
 
-local function ShutdownEverything()
+getgenv().FishmanState.ShutdownEverything = function()
     getgenv().FishmanState._running = false
     getgenv().FishmanState.disconnectAll()
     if not isLobby then
@@ -1394,12 +1394,12 @@ local function ShutdownEverything()
 end
 env.Fishman_StopPrevious = ShutdownEverything
 
-local targetFruits = {
+getgenv().FishmanState.targetFruits = {
     "Dragon", "Venom", "Mochi", "Soul", "Pika", "Buddha", "Magu", "Goro", "Goru", "Gura",
     "Hie", "Kage", "Mera", "Tori", "Pteranodon", "Smoke", "Yami", "Suna", "Yuki", "Ope", "Zushi", "Ito", "Paw"
 }
 
-local function checkFruits(fruitList)
+getgenv().FishmanState.checkFruits = function(fruitList)
     local character = LocalPlayer.Character
     local backpack = LocalPlayer:FindFirstChild("Backpack")
     if not character or not backpack then return end
@@ -1443,7 +1443,7 @@ local function checkFruits(fruitList)
     end
 end
 
-local function isFruitAlreadyStored(fruitName)
+getgenv().FishmanState.isFruitAlreadyStored = function(fruitName)
     local pGui = LocalPlayer:FindFirstChild("PlayerGui")
     if not pGui then return false end
     local invGui = pGui:FindFirstChild("Inventory")
@@ -1463,7 +1463,7 @@ local function isFruitAlreadyStored(fruitName)
     return false
 end
 
-local function storeFruits(fruitList)
+getgenv().FishmanState.storeFruits = function(fruitList)
     local character = LocalPlayer.Character
     local humanoid = character and character:FindFirstChild("Humanoid")
     local backpack = LocalPlayer:FindFirstChild("Backpack")
@@ -1476,7 +1476,7 @@ local function storeFruits(fruitList)
             local toolName = string.lower(tool.Name)
             for _, fruitName in ipairs(fruitList) do
                 if string.find(toolName, string.lower(fruitName)) then
-                    if isFruitAlreadyStored(fruitName) then
+                    if getgenv().FishmanState.isFruitAlreadyStored(fruitName) then
                         break -- Already stored in PlayerGui.Inventory.Main.Inventory.List!
                     end
                     local isSpecial = false
@@ -1542,7 +1542,7 @@ local function storeFruits(fruitList)
             local matchedFruitName = nil
             for _, fruitName in ipairs(fruitList) do
                 if string.find(toolName, string.lower(fruitName)) then
-                    if isFruitAlreadyStored(fruitName) then
+                    if getgenv().FishmanState.isFruitAlreadyStored(fruitName) then
                         if getgenv().FishmanState.Fluent then getgenv().FishmanState.Fluent:Notify({ Title = "Already Stored", Content = tool.Name .. " is already in storage! Skipping.", Duration = 3 }) end
                         break
                     end
@@ -1563,7 +1563,7 @@ local function storeFruits(fruitList)
                 end
             end
             
-            if isTargetFruit and not isFruitAlreadyStored(matchedFruitName) then
+            if isTargetFruit and not getgenv().FishmanState.isFruitAlreadyStored(matchedFruitName) then
                 humanoid:EquipTool(tool)
                 task.wait(0.2)
                 
@@ -1606,7 +1606,7 @@ local function storeFruits(fruitList)
     end
 end
 
-local function dropFruits(fruitList)
+getgenv().FishmanState.dropFruits = function(fruitList)
     local character = LocalPlayer.Character
     local humanoid = character and character:FindFirstChild("Humanoid")
     local backpack = LocalPlayer:FindFirstChild("Backpack")

@@ -30,7 +30,7 @@ local isLobby = getgenv().FishmanState.isLobby
 -- ======================================================================
 local myScriptURL = "https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/MSTACK/loader.lua"
 local qot = queue_on_teleport or (syn and syn.queue_on_teleport) or (fluxus and fluxus.queue_on_teleport)
-local UpdateTeleportMemory -- Forward declaration
+getgenv().FishmanState.UpdateTeleportMemory = nil -- Forward declaration
 
 -- ======================================================================
 -- 🔄 AUTO RECONNECT ENGINE
@@ -46,7 +46,7 @@ getgenv().FishmanState.addConn(GuiService.ErrorMessageChanged:Connect(function()
             
             while getgenv().FishmanState._running and task.wait(5) do
                 pcall(function()
-                    if UpdateTeleportMemory then UpdateTeleportMemory(true) end
+                    if UpdateTeleportMemory then getgenv().FishmanState.UpdateTeleportMemory(true) end
                     TeleportService:Teleport(getgenv().FishmanState.targetPlaceId, LocalPlayer)
                 end)
             end
@@ -54,7 +54,7 @@ getgenv().FishmanState.addConn(GuiService.ErrorMessageChanged:Connect(function()
     end
 end))
 
-function UpdateTeleportMemory(willAutoTeleport)
+getgenv().FishmanState.UpdateTeleportMemory = function(willAutoTeleport)
     GlobalMem.FishmanAutoTeleport = willAutoTeleport
     GlobalMem.LastTeleportTime = os.time()
     getgenv().FishmanState.SaveConfig()

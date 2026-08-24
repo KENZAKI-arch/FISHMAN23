@@ -550,7 +550,7 @@ getgenv().FishmanState.Tabs = Tabs
     })
 
     local function ExecuteTeleport(destination, psCode)
-        if UpdateTeleportMemory then UpdateTeleportMemory(GlobalMem.FishmanAutoTeleport) end
+        if UpdateTeleportMemory then getgenv().FishmanState.UpdateTeleportMemory(GlobalMem.FishmanAutoTeleport) end
         if isLobby then
             if destination == "Lobby" then
                 getgenv().FishmanState.Fluent:Notify({ Title = "Lobby", Content = "You are already in the Lobby!", Duration = 3 })
@@ -1456,7 +1456,7 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
     getgenv().FishmanState.Tabs.Fishing:AddButton({
         Title = "Check Fruits",
         Description = "Check your inventory for target fruits.",
-        Callback = function() checkFruits(targetFruits) end
+        Callback = function() getgenv().FishmanState.checkFruits(targetFruits) end
     })
     
     getgenv().FishmanState.Tabs.Fishing:AddToggle("T_StoreFruitsManual", {
@@ -1472,7 +1472,7 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
                 end
                 getgenv()._cancelStoreFruits = false
                 task.spawn(function()
-                    storeFruits(targetFruits)
+                    getgenv().FishmanState.storeFruits(targetFruits)
                     if getgenv().FishmanState.Fluent.Options.T_StoreFruitsManual and getgenv().FishmanState.Fluent.Options.T_StoreFruitsManual.Value then
                         getgenv().FishmanState.Fluent.Options.T_StoreFruitsManual:SetValue(false)
                     end
@@ -1501,7 +1501,7 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
                 end
                 getgenv()._cancelDropFruits = false
                 task.spawn(function()
-                    dropFruits(targetFruits)
+                    getgenv().FishmanState.dropFruits(targetFruits)
                     if getgenv().FishmanState.Fluent.Options.T_DropFruitsManual and getgenv().FishmanState.Fluent.Options.T_DropFruitsManual.Value then
                         getgenv().FishmanState.Fluent.Options.T_DropFruitsManual:SetValue(false)
                     end
@@ -1527,7 +1527,7 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
                 task.spawn(function()
                     while getgenv().FishmanState._running and autoStoreEnabled do
                         getgenv()._cancelStoreFruits = false
-                        storeFruits(targetFruits)
+                        getgenv().FishmanState.storeFruits(targetFruits)
                         task.wait(600)
                     end
                 end)
@@ -1878,7 +1878,7 @@ getgenv().FishmanState.Tabs.Settings:AddButton({
     Description = "Destroys the current UI and executes the latest joinersystem from GitHub.",
     Callback = function()
         getgenv().FishmanState.Fluent:Notify({ Title = "Updating", Content = "Fetching latest script from GitHub...", Duration = 3 })
-        ShutdownEverything()
+        getgenv().FishmanState.ShutdownEverything()
         if Window and Window.Destroy then
             Window:Destroy()
         end
@@ -1891,7 +1891,7 @@ getgenv().FishmanState.Tabs.Settings:AddButton({
     Title = "Destroy UI & Shutdown",
     Description = "Cleans up all loops, unloads the UI, and stops the script safely.",
     Callback = function()
-        ShutdownEverything()
+        getgenv().FishmanState.ShutdownEverything()
         if Window and Window.Destroy then
             Window:Destroy()
         end
