@@ -58,7 +58,9 @@ local AccountConfigs = {
     ["NinelieJohnmark"] = "UO4gc2IyTY",
     ["KingOfAOC"] = "Ay5J7LqxL4",
     ["ChristianExpress"] = "HiBe6mk1H7",
-    ["ButterbonesClan"] = "KY4ilrrIXX"
+    ["ButterbonesClan"] = "KY4ilrrIXX",
+    ["BarriacadedAlex"] = "INSERT_CODE_1",
+    ["pc_Romer900"] = "INSERT_CODE_2"
 }
 
 -- ⚙️ GLOBAL SETTINGS
