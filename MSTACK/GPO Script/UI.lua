@@ -26,7 +26,8 @@ local SaveConfig = getgenv().FishmanState.SaveConfig
 -- ======================================================================
 -- 🎨 CUSTOM LIGHTWEIGHT UI INTEGRATION
 -- ======================================================================
-getgenv().FishmanState.Fluent = { Options = {} }
+Fluent = { Options = {} }
+getgenv().FishmanState.Fluent = Fluent
 
 function Fluent:Notify(options)
     task.spawn(function()
@@ -462,13 +463,14 @@ pcall(function()
     game:GetService("ContextActionService"):UnbindAction("FluentMinimize")
 end)
 
-getgenv().FishmanState.Tabs = {
+Tabs = {
     Teleport = Window:AddTab({ Title = "Teleport", Icon = "plane" }),
     Navigation = Window:AddTab({ Title = "Navigation", Icon = "map" }),
     Fishing = Window:AddTab({ Title = "Fishing", Icon = "anchor" }),
     Autofarm = Window:AddTab({ Title = "Autofarm", Icon = "swords" }),
     Settings = Window:AddTab({ Title = "Settings", Icon = "settings" })
 }
+getgenv().FishmanState.Tabs = Tabs
 
 -- ======================================================================
 -- 🗺️ TELEPORT TAB UI
