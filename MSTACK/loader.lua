@@ -46,18 +46,7 @@ end)
 -- ⚙️ ACCOUNT CONFIGURATION
 -- Add your accounts and their corresponding private server codes here.
 local AccountConfigs = {
-    ["MKRBarbershop"] = "vcvq1Xp6GC",
-    ["KevinSanjaya230"] = "dmNfaqsjjj",
-    ["KimchiHwarang"] = "MCVwx2gvJv",
-    ["KimGuk4ap"] = "tirAZ2rx2s",
-    ["EUNHAMARKET"] = "dTuByY1k0O",
-    ["VoicesOfTheChord0"] = "IxM1NarToN",
-    ["ReneAckerman0"] = "CnHpO5Kwa9",
     ["ReneButterbones"] = "qj1ttW4JG1",
-    ["JackButterbones"] = "gVKAsClzbt",
-    ["NinelieJohnmark"] = "UO4gc2IyTY",
-    ["KingOfAOC"] = "Ay5J7LqxL4",
-    ["ChristianExpress"] = "HiBe6mk1H7",
     ["ButterbonesClan"] = "KY4ilrrIXX",
     ["BarriacadedAlex"] = "INSERT_CODE_1",
     ["pc_Romer900"] = "INSERT_CODE_2"
