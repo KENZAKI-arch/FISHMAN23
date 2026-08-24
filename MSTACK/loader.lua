@@ -54,7 +54,7 @@ local AccountConfigs = {
     ["VoicesOfTheChord0"] = "IxM1NarToN",
     ["ReneAckerman0"] = "CnHpO5Kwa9",
     ["ReneButterbones"] = "qj1ttW4JG1",
-    ["JackButterbones"] = "PRriWnrVWW",
+    ["JackButterbones"] = "gVKAsClzbt",
     ["NinelieJohnmark"] = "UO4gc2IyTY",
     ["KingOfAOC"] = "Ay5J7LqxL4",
     ["ChristianExpress"] = "HiBe6mk1H7",
@@ -139,10 +139,9 @@ end
 print("[Fishman Loader] Account detected: " .. playerName)
 print("[Fishman Loader] Assigned PS Code: " .. chosenCode)
 
--- Execute Main Script
-local scriptURL = "https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/main/MSTACK/joinersystem.lua?t=" .. tostring(tick())
+local scriptURL = "https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/main/MSTACK/GPO%20Script/Main.lua?t=" .. tostring(tick())
 
-print("[Fishman Loader] Loading joinersystem...")
+print("[Fishman Loader] Loading modular Main.lua...")
 local success, err = pcall(function()
     loadstring(game:HttpGet(scriptURL))()
 end)

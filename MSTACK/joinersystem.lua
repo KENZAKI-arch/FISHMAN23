@@ -48,6 +48,53 @@ while not LocalPlayer do
     LocalPlayer = Players.LocalPlayer 
 end
 
+local function TriggerSafeguardShutdown(reason)
+    warn("[Fishman] WIFI SAFEGUARD TRIGGERED: " .. tostring(reason))
+    _running = false
+    disconnectAll()
+    if env.Fishman_DestroyUI then pcall(env.Fishman_DestroyUI) end
+end
+
+-- Robust network/weak wifi safeguard: wait for essential player instances to fully replicate
+print("[Fishman] Waiting for weak connection safeguard (Character & PlayerGui)...")
+local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+if not character:FindFirstChild("HumanoidRootPart") then
+    local hrp = character:WaitForChild("HumanoidRootPart", 60)
+    if not hrp then
+        TriggerSafeguardShutdown("HumanoidRootPart failed to load within 60 seconds.")
+        return -- Exit main thread
+    end
+end
+if not LocalPlayer:FindFirstChild("PlayerGui") then
+    local gui = LocalPlayer:WaitForChild("PlayerGui", 60)
+    if not gui then
+        TriggerSafeguardShutdown("PlayerGui failed to load within 60 seconds.")
+        return -- Exit main thread
+    end
+end
+task.wait(2) -- Additional buffer to ensure client is fully responsive
+print("[Fishman] Game fully loaded!")
+
+-- Active Ping Monitor (Shuts down script if wifi drops mid-game)
+task.spawn(function()
+    local Stats = game:GetService("Stats")
+    local consecutiveHighPing = 0
+    while _running and task.wait(5) do
+        pcall(function()
+            local pingStr = Stats.Network.ServerStatsItem["Data Ping"]:GetValueString()
+            local pingVal = tonumber(string.match(pingStr, "%d+%.?%d*"))
+            if pingVal and pingVal > 4000 then -- 4 seconds behind
+                consecutiveHighPing = consecutiveHighPing + 1
+                if consecutiveHighPing >= 6 then -- 30 seconds of pure 4000+ ping
+                    TriggerSafeguardShutdown("Ping exceeded 4000ms for 30s. Connection lost.")
+                end
+            else
+                consecutiveHighPing = 0
+            end
+        end)
+    end
+end)
+
 local targetPlaceId = 1730877806
 local isLobby = (game.PlaceId == targetPlaceId)
 local GlobalMem = env
