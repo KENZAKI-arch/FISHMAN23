@@ -97,7 +97,7 @@ task.spawn(function()
 end)
 
 getgenv().FishmanState.targetPlaceId = 1730877806
-getgenv().FishmanState.isLobby = (game.PlaceId == targetPlaceId)
+getgenv().FishmanState.isLobby = (game.PlaceId == getgenv().FishmanState.targetPlaceId)
 local GlobalMem = env
 
 -- ======================================================================
