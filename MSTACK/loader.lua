@@ -47,9 +47,15 @@ end)
 -- Add your accounts and their corresponding private server codes here.
 local AccountConfigs = {
     ["ReneButterbones"] = "qj1ttW4JG1",
-    ["ButterbonesClan"] = "KY4ilrrIXX",
     ["BarriacadedAlex"] = "vcvq1Xp6GC",
-    ["pc_Romer900"] = "dmNfaqsjjj"
+    ["pc_Romer900"] = "dmNfaqsjjj",
+    ["LumpiangToge234"] = "MCVwx2gvJv",
+    ["TuronLovers"] = "tirAZ2rx2s",
+    ["SiomaiRice12369"] = "dTuByY1k0O",
+    ["Haswell128"] = "IxM1NarToN",
+    ["KamiSiRene"] = "CnHpO5Kwa9",
+    ["LumpiangChina"] = "gVKAsClzbt",
+    ["BeeswarmTensei"] = "UO4gc2IyTY"
 }
 
 -- ⚙️ GLOBAL SETTINGS
