@@ -26,7 +26,7 @@ local SaveConfig = getgenv().FishmanState.SaveConfig
 -- ======================================================================
 -- 🚀 TELEPORT MEMORY INJECTION
 -- ======================================================================
-local myScriptURL = "https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/MSTACK/joinersystem.lua"
+local myScriptURL = "https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/MSTACK/loader.lua"
 local qot = queue_on_teleport or (syn and syn.queue_on_teleport) or (fluxus and fluxus.queue_on_teleport)
 local UpdateTeleportMemory -- Forward declaration
 
