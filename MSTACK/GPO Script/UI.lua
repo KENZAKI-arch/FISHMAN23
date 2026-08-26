@@ -1128,6 +1128,13 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
             print("🌊 [MegStack] Meg stack starting now! Enabling deep sea catcher for 10 megalodons.")
             task.spawn(function()
                 while getgenv().FishmanState._running and getgenv().FishmanState.Model.State.isMegStacking do
+                    local char = game:GetService("Players").LocalPlayer.Character
+                    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+                    if hrp and (hrp:FindFirstChild("AntiGravity") or hrp:FindFirstChildOfClass("BodyVelocity")) then
+                        print("⚠️ [MegStack] Safeguard triggered: In Air / AntiGravity detected. Disabling MegStack!")
+                        if getgenv().FishmanState.Fluent.Options.T_MegStack then getgenv().FishmanState.Fluent.Options.T_MegStack:SetValue(false) end
+                        break
+                    end
                     local megCount = getgenv().FishmanState.Model.countMegalodons()
                     if megCount >= 10 and not getgenv().FishmanState.Model.State.isBuying and not getgenv().FishmanState.Model.State.isAutoTraveling and not getgenv().FishmanState.Model.State.isRefillingMegBait and not getgenv().FishmanState.Model.State.isManualTraveling then
                         print("🔥 [MegStack] 10 Megalodons reached! Disabling fishing and automatically toggling Cyborg Autofarm ON...")
@@ -1190,6 +1197,13 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
             print("🌊 [MegStackPassive] Meg stack starting now! Enabling deep sea catcher for 10 megalodons.")
             task.spawn(function()
                 while getgenv().FishmanState._running and getgenv().FishmanState.Model.State.isMegStackPassive do
+                    local char = game:GetService("Players").LocalPlayer.Character
+                    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+                    if hrp and (hrp:FindFirstChild("AntiGravity") or hrp:FindFirstChildOfClass("BodyVelocity")) then
+                        print("⚠️ [MegStackPassive] Safeguard triggered: In Air / AntiGravity detected. Disabling MegStack!")
+                        if getgenv().FishmanState.Fluent.Options.T_MegStackPassive then getgenv().FishmanState.Fluent.Options.T_MegStackPassive:SetValue(false) end
+                        break
+                    end
                     local megCount = getgenv().FishmanState.Model.countMegalodons()
                     if megCount >= 10 and not getgenv().FishmanState.Model.State.isBuying and not getgenv().FishmanState.Model.State.isAutoTraveling and not getgenv().FishmanState.Model.State.isRefillingMegBait and not getgenv().FishmanState.Model.State.isManualTraveling then
                         print("🔥 [MegStackPassive] 10 Megalodons reached! Disabling fishing and waiting for kill...")
