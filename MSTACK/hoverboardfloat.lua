@@ -229,7 +229,7 @@ getgenv().HoverboardController.AutoSpawn = function(onFinishedCallback)
     spawnBtn.Text = "Flying to Target..."
     spawnBtn.BackgroundColor3 = Color3.fromRGB(200, 150, 45)
     
-    local targetPos = Vector3.new(-3710, 244, 7598)
+    local targetPos = Vector3.new(-4977, 209, 8303)
     flyToWithGeppo(targetPos)
     
     spawnBtn.Text = "Spawning & Setting Height..."
