@@ -1456,7 +1456,7 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
     getgenv().FishmanState.Tabs.Fishing:AddButton({
         Title = "Check Fruits",
         Description = "Check your inventory for target fruits.",
-        Callback = function() getgenv().FishmanState.checkFruits(targetFruits) end
+        Callback = function() getgenv().FishmanState.checkFruits(getgenv().FishmanState.targetFruits) end
     })
     
     getgenv().FishmanState.Tabs.Fishing:AddToggle("T_StoreFruitsManual", {
@@ -1472,7 +1472,7 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
                 end
                 getgenv()._cancelStoreFruits = false
                 task.spawn(function()
-                    getgenv().FishmanState.storeFruits(targetFruits)
+                    getgenv().FishmanState.storeFruits(getgenv().FishmanState.targetFruits)
                     if getgenv().FishmanState.Fluent.Options.T_StoreFruitsManual and getgenv().FishmanState.Fluent.Options.T_StoreFruitsManual.Value then
                         getgenv().FishmanState.Fluent.Options.T_StoreFruitsManual:SetValue(false)
                     end
@@ -1501,7 +1501,7 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
                 end
                 getgenv()._cancelDropFruits = false
                 task.spawn(function()
-                    getgenv().FishmanState.dropFruits(targetFruits)
+                    getgenv().FishmanState.dropFruits(getgenv().FishmanState.targetFruits)
                     if getgenv().FishmanState.Fluent.Options.T_DropFruitsManual and getgenv().FishmanState.Fluent.Options.T_DropFruitsManual.Value then
                         getgenv().FishmanState.Fluent.Options.T_DropFruitsManual:SetValue(false)
                     end
@@ -1527,7 +1527,7 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
                 task.spawn(function()
                     while getgenv().FishmanState._running and autoStoreEnabled do
                         getgenv()._cancelStoreFruits = false
-                        getgenv().FishmanState.storeFruits(targetFruits)
+                        getgenv().FishmanState.storeFruits(getgenv().FishmanState.targetFruits)
                         task.wait(600)
                     end
                 end)
