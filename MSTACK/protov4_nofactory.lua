@@ -150,8 +150,10 @@ local function findBestTarget(allEnemies)
             if a.seq ~= b.seq then
                 return a.seq < b.seq -- Absolute Priority 1: Target Sequence
             else
-                -- Priority 2: Lowest Y coordinate (bottom-most enemy)
-                return posA.Y < posB.Y
+                -- Priority 2: Farthest vertical distance
+                local distA = math.abs(myPos.Y - posA.Y)
+                local distB = math.abs(myPos.Y - posB.Y)
+                return distA > distB
             end
         end)
         
@@ -480,7 +482,7 @@ function Model.GetEnemiesInRange()
                     local npcPos = root.Position
                     local distXZ = Vector2.new(myPos.X - npcPos.X, myPos.Z - npcPos.Z).Magnitude
                     local alt = getgenv().CyborgFlyAltitude or 250
-                    if distXZ <= 500 then
+                    if distXZ <= 80 then
                         table.insert(enemiesList, npc)
                     end
                 end
@@ -489,12 +491,13 @@ function Model.GetEnemiesInRange()
         end
     end
     
+    local myPos = character.HumanoidRootPart.Position
     table.sort(enemiesList, function(a, b)
         local rootA = getRoot(a)
         local rootB = getRoot(b)
-        local yA = rootA and rootA.Position.Y or 9999
-        local yB = rootB and rootB.Position.Y or 9999
-        return yA < yB
+        local distA = rootA and math.abs(myPos.Y - rootA.Position.Y) or -1
+        local distB = rootB and math.abs(myPos.Y - rootB.Position.Y) or -1
+        return distA > distB
     end)
     
     return enemiesList
@@ -588,7 +591,7 @@ View.Build(function(isFarming)
                             pcall(function()
                                 local targetPos = rootPart.Position
                                 if targetRoot then
-                                    targetPos = targetRoot.Position + Vector3.new(20, 0, 20)
+                                    targetPos = targetRoot.Position
                                 end
                                 
                                 -- Send the target position directly like Mouse.Hit does, instead of the character's position
@@ -615,8 +618,7 @@ View.Build(function(isFarming)
                                         
                                         local currentAim
                                         if targetToShoot and targetToShoot:FindFirstChild("HumanoidRootPart") then
-                                            local pos = targetToShoot.HumanoidRootPart.Position + Vector3.new(20, 0, 20)
-                                            currentAim = CFrame.new(pos)
+                                            currentAim = CFrame.new(targetToShoot.HumanoidRootPart.Position)
                                         else
                                             -- If flying between distant enemies, rain missiles straight down!
                                             currentAim = CFrame.new(LocalPlayer.Character.HumanoidRootPart.Position - Vector3.new(0, 50, 0))
@@ -678,99 +680,7 @@ getgenv().StopAutofarm = function()
     local hGui = game:GetService("CoreGui"):FindFirstChild("HoverboardFlightPanel")
     if hGui then hGui:Destroy() end
     
-    local offGui = game:GetService("CoreGui"):FindFirstChild("CyborgOffBtnGui")
-    if offGui then offGui:Destroy() end
-    
 
     print("[Cyborg Autofarm] Autofarm forcefully stopped, memory cleared, and UI destroyed.")
 end
 
--- ==========================================
--- TINY CONTROL PANEL UI
--- ==========================================
-local function CreateControlPanel()
-    local coreGui = game:GetService("CoreGui")
-    if coreGui:FindFirstChild("CyborgOffBtnGui") then
-        coreGui.CyborgOffBtnGui:Destroy()
-    end
-    
-    local screenGui = Instance.new("ScreenGui")
-    screenGui.Name = "CyborgOffBtnGui"
-    screenGui.ResetOnSpawn = false
-    screenGui.Parent = coreGui
-    
-    local frame = Instance.new("Frame")
-    frame.Name = "CyborgControlFrame"
-    frame.Size = UDim2.new(0, 100, 0, 40)
-    frame.Position = UDim2.new(0.5, -50, 0, 15)
-    frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-    frame.Parent = screenGui
-    frame.Active = true
-    frame.Draggable = true
-    
-    local uicorner = Instance.new("UICorner")
-    uicorner.CornerRadius = UDim.new(0, 8)
-    uicorner.Parent = frame
-    
-    local stroke = Instance.new("UIStroke")
-    stroke.Thickness = 2
-    stroke.Color = Color3.fromRGB(80, 80, 80)
-    stroke.Parent = frame
-    
-    local toggleBtn = Instance.new("TextButton")
-    toggleBtn.Name = "ToggleBtn"
-    toggleBtn.Size = UDim2.new(0, 60, 1, 0)
-    toggleBtn.Position = UDim2.new(0, 0, 0, 0)
-    toggleBtn.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
-    toggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    toggleBtn.Font = Enum.Font.GothamBold
-    toggleBtn.TextScaled = true
-    toggleBtn.Text = "ON"
-    toggleBtn.Parent = frame
-    
-    local toggleCorner = Instance.new("UICorner")
-    toggleCorner.CornerRadius = UDim.new(0, 8)
-    toggleCorner.Parent = toggleBtn
-    
-    local closeBtn = Instance.new("TextButton")
-    closeBtn.Name = "CloseBtn"
-    closeBtn.Size = UDim2.new(0, 40, 1, 0)
-    closeBtn.Position = UDim2.new(0, 60, 0, 0)
-    closeBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-    closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    closeBtn.Font = Enum.Font.GothamBold
-    closeBtn.TextScaled = true
-    closeBtn.Text = "X"
-    closeBtn.Parent = frame
-    
-    local closeCorner = Instance.new("UICorner")
-    closeCorner.CornerRadius = UDim.new(0, 8)
-    closeCorner.Parent = closeBtn
-    
-    task.spawn(function()
-        while screenGui.Parent do
-            if Model.State.isAutoFarming then
-                toggleBtn.Text = "ON"
-                toggleBtn.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
-            else
-                toggleBtn.Text = "OFF"
-                toggleBtn.BackgroundColor3 = Color3.fromRGB(150, 150, 150)
-            end
-            task.wait(0.5)
-        end
-    end)
-    
-    toggleBtn.MouseButton1Click:Connect(function()
-        if getgenv().ToggleCyborgAutofarm then
-            getgenv().ToggleCyborgAutofarm(not Model.State.isAutoFarming)
-        end
-    end)
-    
-    closeBtn.MouseButton1Click:Connect(function()
-        if getgenv().StopAutofarm then
-            getgenv().StopAutofarm()
-        end
-    end)
-end
-
-CreateControlPanel()
