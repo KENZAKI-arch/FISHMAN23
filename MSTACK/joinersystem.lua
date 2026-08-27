@@ -3116,7 +3116,7 @@ Tabs.Teleport:AddButton({
                 while _running and Model.State.isMegStacking do
                     local char = game:GetService("Players").LocalPlayer.Character
                     local hrp = char and char:FindFirstChild("HumanoidRootPart")
-                    if hrp and (hrp:FindFirstChild("AntiGravity") or hrp:FindFirstChildOfClass("BodyVelocity")) then
+                    if hrp and (hrp:FindFirstChild("AntiGravity") or hrp:FindFirstChildOfClass("BodyVelocity")) and not Model.State.isRefillingMegBait and not Model.State.isAutoTraveling then
                         print("⚠️ [MegStack] Safeguard triggered: In Air / AntiGravity detected. Disabling MegStack!")
                         if Fluent and Fluent.Options and Fluent.Options.T_MegStack then Fluent.Options.T_MegStack:SetValue(false) end
                         break
@@ -3185,7 +3185,7 @@ Tabs.Teleport:AddButton({
                 while _running and Model.State.isMegStackPassive do
                     local char = game:GetService("Players").LocalPlayer.Character
                     local hrp = char and char:FindFirstChild("HumanoidRootPart")
-                    if hrp and (hrp:FindFirstChild("AntiGravity") or hrp:FindFirstChildOfClass("BodyVelocity")) then
+                    if hrp and (hrp:FindFirstChild("AntiGravity") or hrp:FindFirstChildOfClass("BodyVelocity")) and not Model.State.isRefillingMegBait and not Model.State.isAutoTraveling then
                         print("⚠️ [MegStackPassive] Safeguard triggered: In Air / AntiGravity detected. Disabling MegStack!")
                         if Fluent and Fluent.Options and Fluent.Options.T_MegStackPassive then Fluent.Options.T_MegStackPassive:SetValue(false) end
                         break
