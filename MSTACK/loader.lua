@@ -142,7 +142,7 @@ end
 print("[Fishman Loader] Account detected: " .. playerName)
 print("[Fishman Loader] Assigned PS Code: " .. chosenCode)
 
-local scriptURL = "https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/main/MSTACK/GPO%20Script/Main.lua?t=" .. tostring(tick())
+local scriptURL = "https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/main/MSTACK/Modularized/Main.lua?t=" .. tostring(tick())
 
 print("[Fishman Loader] Loading modular Main.lua...")
 local success, err = pcall(function()
