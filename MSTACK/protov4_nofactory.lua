@@ -150,10 +150,8 @@ local function findBestTarget(allEnemies)
             if a.seq ~= b.seq then
                 return a.seq < b.seq -- Absolute Priority 1: Target Sequence
             else
-                -- Priority 2: Farthest horizontal distance
-                local distA = Vector2.new(myPos.X - posA.X, myPos.Z - posA.Z).Magnitude
-                local distB = Vector2.new(myPos.X - posB.X, myPos.Z - posB.Z).Magnitude
-                return distA > distB
+                -- Priority 2: Lowest Y coordinate (bottom-most enemy)
+                return posA.Y < posB.Y
             end
         end)
         
