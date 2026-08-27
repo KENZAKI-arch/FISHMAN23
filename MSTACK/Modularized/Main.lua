@@ -1,6 +1,6 @@
 -- Main Loader Orchestrator
 print("[Fishman] Loading Modular Architecture...")
-local repoURL = "https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/MSTACK/GPO%20Script/"
+local repoURL = "https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/MSTACK/Modularized/"
 
 local modules = {
     "Config.lua",
