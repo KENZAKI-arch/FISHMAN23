@@ -19,6 +19,8 @@ if getgenv().StopAutofarm then
     pcall(getgenv().StopAutofarm)
 end
 
+print("Cyborg autofarm v2 is running!")
+
 local _connections = {}
 local function addConn(conn)
     table.insert(_connections, conn)
