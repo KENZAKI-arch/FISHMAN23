@@ -680,7 +680,52 @@ getgenv().StopAutofarm = function()
     local hGui = game:GetService("CoreGui"):FindFirstChild("HoverboardFlightPanel")
     if hGui then hGui:Destroy() end
     
+    local offGui = game:GetService("CoreGui"):FindFirstChild("CyborgOffBtnGui")
+    if offGui then offGui:Destroy() end
+    
 
     print("[Cyborg Autofarm] Autofarm forcefully stopped, memory cleared, and UI destroyed.")
 end
 
+-- ==========================================
+-- TINY OFF BUTTON UI
+-- ==========================================
+local function CreateOffButton()
+    local coreGui = game:GetService("CoreGui")
+    if coreGui:FindFirstChild("CyborgOffBtnGui") then
+        coreGui.CyborgOffBtnGui:Destroy()
+    end
+    
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "CyborgOffBtnGui"
+    screenGui.ResetOnSpawn = false
+    screenGui.Parent = coreGui
+    
+    local offBtn = Instance.new("TextButton")
+    offBtn.Name = "OffBtn"
+    offBtn.Size = UDim2.new(0, 50, 0, 50)
+    offBtn.Position = UDim2.new(0.5, -25, 0, 15) -- Top center
+    offBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+    offBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    offBtn.TextScaled = true
+    offBtn.Font = Enum.Font.GothamBold
+    offBtn.Text = "OFF"
+    offBtn.Parent = screenGui
+    
+    local uicorner = Instance.new("UICorner")
+    uicorner.CornerRadius = UDim.new(1, 0)
+    uicorner.Parent = offBtn
+    
+    local stroke = Instance.new("UIStroke")
+    stroke.Thickness = 2
+    stroke.Color = Color3.fromRGB(255, 255, 255)
+    stroke.Parent = offBtn
+    
+    offBtn.MouseButton1Click:Connect(function()
+        if getgenv().StopAutofarm then
+            getgenv().StopAutofarm()
+        end
+    end)
+end
+
+CreateOffButton()
