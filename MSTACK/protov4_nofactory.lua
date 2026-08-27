@@ -480,7 +480,7 @@ function Model.GetEnemiesInRange()
                     local npcPos = root.Position
                     local distXZ = Vector2.new(myPos.X - npcPos.X, myPos.Z - npcPos.Z).Magnitude
                     local alt = getgenv().CyborgFlyAltitude or 250
-                    if distXZ <= 80 then
+                    if distXZ <= 500 then
                         table.insert(enemiesList, npc)
                     end
                 end
