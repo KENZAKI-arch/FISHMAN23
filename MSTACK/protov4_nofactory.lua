@@ -491,13 +491,12 @@ function Model.GetEnemiesInRange()
         end
     end
     
-    local expectedY = character.HumanoidRootPart.Position.Y - (getgenv().CyborgFlyAltitude or 190)
     table.sort(enemiesList, function(a, b)
         local rootA = getRoot(a)
         local rootB = getRoot(b)
-        local diffA = rootA and math.abs(rootA.Position.Y - expectedY) or 9999
-        local diffB = rootB and math.abs(rootB.Position.Y - expectedY) or 9999
-        return diffA < diffB
+        local yA = rootA and rootA.Position.Y or 9999
+        local yB = rootB and rootB.Position.Y or 9999
+        return yA < yB
     end)
     
     return enemiesList
