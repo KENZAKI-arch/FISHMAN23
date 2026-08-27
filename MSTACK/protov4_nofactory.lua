@@ -588,7 +588,7 @@ View.Build(function(isFarming)
                             pcall(function()
                                 local targetPos = rootPart.Position
                                 if targetRoot then
-                                    targetPos = targetRoot.Position
+                                    targetPos = targetRoot.Position + Vector3.new(20, 0, 20)
                                 end
                                 
                                 -- Send the target position directly like Mouse.Hit does, instead of the character's position
@@ -615,7 +615,8 @@ View.Build(function(isFarming)
                                         
                                         local currentAim
                                         if targetToShoot and targetToShoot:FindFirstChild("HumanoidRootPart") then
-                                            currentAim = CFrame.new(targetToShoot.HumanoidRootPart.Position)
+                                            local pos = targetToShoot.HumanoidRootPart.Position + Vector3.new(20, 0, 20)
+                                            currentAim = CFrame.new(pos)
                                         else
                                             -- If flying between distant enemies, rain missiles straight down!
                                             currentAim = CFrame.new(LocalPlayer.Character.HumanoidRootPart.Position - Vector3.new(0, 50, 0))
