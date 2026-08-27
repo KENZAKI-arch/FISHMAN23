@@ -688,9 +688,9 @@ getgenv().StopAutofarm = function()
 end
 
 -- ==========================================
--- TINY OFF BUTTON UI
+-- TINY CONTROL PANEL UI
 -- ==========================================
-local function CreateOffButton()
+local function CreateControlPanel()
     local coreGui = game:GetService("CoreGui")
     if coreGui:FindFirstChild("CyborgOffBtnGui") then
         coreGui.CyborgOffBtnGui:Destroy()
@@ -701,31 +701,78 @@ local function CreateOffButton()
     screenGui.ResetOnSpawn = false
     screenGui.Parent = coreGui
     
-    local offBtn = Instance.new("TextButton")
-    offBtn.Name = "OffBtn"
-    offBtn.Size = UDim2.new(0, 50, 0, 50)
-    offBtn.Position = UDim2.new(0.5, -25, 0, 15) -- Top center
-    offBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-    offBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    offBtn.TextScaled = true
-    offBtn.Font = Enum.Font.GothamBold
-    offBtn.Text = "OFF"
-    offBtn.Parent = screenGui
+    local frame = Instance.new("Frame")
+    frame.Name = "CyborgControlFrame"
+    frame.Size = UDim2.new(0, 100, 0, 40)
+    frame.Position = UDim2.new(0.5, -50, 0, 15)
+    frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    frame.Parent = screenGui
+    frame.Active = true
+    frame.Draggable = true
     
     local uicorner = Instance.new("UICorner")
-    uicorner.CornerRadius = UDim.new(1, 0)
-    uicorner.Parent = offBtn
+    uicorner.CornerRadius = UDim.new(0, 8)
+    uicorner.Parent = frame
     
     local stroke = Instance.new("UIStroke")
     stroke.Thickness = 2
-    stroke.Color = Color3.fromRGB(255, 255, 255)
-    stroke.Parent = offBtn
+    stroke.Color = Color3.fromRGB(80, 80, 80)
+    stroke.Parent = frame
     
-    offBtn.MouseButton1Click:Connect(function()
+    local toggleBtn = Instance.new("TextButton")
+    toggleBtn.Name = "ToggleBtn"
+    toggleBtn.Size = UDim2.new(0, 60, 1, 0)
+    toggleBtn.Position = UDim2.new(0, 0, 0, 0)
+    toggleBtn.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
+    toggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    toggleBtn.Font = Enum.Font.GothamBold
+    toggleBtn.TextScaled = true
+    toggleBtn.Text = "ON"
+    toggleBtn.Parent = frame
+    
+    local toggleCorner = Instance.new("UICorner")
+    toggleCorner.CornerRadius = UDim.new(0, 8)
+    toggleCorner.Parent = toggleBtn
+    
+    local closeBtn = Instance.new("TextButton")
+    closeBtn.Name = "CloseBtn"
+    closeBtn.Size = UDim2.new(0, 40, 1, 0)
+    closeBtn.Position = UDim2.new(0, 60, 0, 0)
+    closeBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+    closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    closeBtn.Font = Enum.Font.GothamBold
+    closeBtn.TextScaled = true
+    closeBtn.Text = "X"
+    closeBtn.Parent = frame
+    
+    local closeCorner = Instance.new("UICorner")
+    closeCorner.CornerRadius = UDim.new(0, 8)
+    closeCorner.Parent = closeBtn
+    
+    task.spawn(function()
+        while screenGui.Parent do
+            if Model.State.isAutoFarming then
+                toggleBtn.Text = "ON"
+                toggleBtn.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
+            else
+                toggleBtn.Text = "OFF"
+                toggleBtn.BackgroundColor3 = Color3.fromRGB(150, 150, 150)
+            end
+            task.wait(0.5)
+        end
+    end)
+    
+    toggleBtn.MouseButton1Click:Connect(function()
+        if getgenv().ToggleCyborgAutofarm then
+            getgenv().ToggleCyborgAutofarm(not Model.State.isAutoFarming)
+        end
+    end)
+    
+    closeBtn.MouseButton1Click:Connect(function()
         if getgenv().StopAutofarm then
             getgenv().StopAutofarm()
         end
     end)
 end
 
-CreateOffButton()
+CreateControlPanel()
