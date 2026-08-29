@@ -1,10 +1,14 @@
 -- ==========================================
 -- Fishman Hub Multi-Account Loader (First Sea)
 -- ==========================================
-if getgenv().FishmanLoaderExecuted then
+if getgenv().FishmanLoaderLastExecuted and (tick() - getgenv().FishmanLoaderLastExecuted < 10) then
+    warn("[Fishman Loader] Aborting duplicate execution (preventing autoexec/queue_on_teleport overlap)")
+    return
+end
+if getgenv().FishmanLoaderLastExecuted then
     warn("[Fishman Loader] Reloading script with updated version...")
 end
-getgenv().FishmanLoaderExecuted = true
+getgenv().FishmanLoaderLastExecuted = tick()
 
 local Players = game:GetService("Players")
 
