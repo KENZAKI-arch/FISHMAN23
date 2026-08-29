@@ -1446,7 +1446,7 @@ getgenv().FishmanState.ShutdownEverything = function()
     env.FishmanScriptServer = nil
     print("[Fishman] Successfully shut down.")
 end
-env.Fishman_StopPrevious = ShutdownEverything
+env.Fishman_StopPrevious = getgenv().FishmanState.ShutdownEverything
 
 getgenv().FishmanState.targetFruits = {
     "Dragon", "Venom", "Mochi", "Soul", "Pika", "Buddha", "Magu", "Goro", "Goru", "Gura",
