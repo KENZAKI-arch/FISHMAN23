@@ -868,6 +868,61 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
             getgenv().FishmanState.Fluent:Notify({ Title = "Refreshed", Content = "Island list updated.", Duration = 3 })
         end
     })
+
+    -- ======================================================================
+    -- 👥 PLAYER TELEPORTER
+    -- ======================================================================
+    local playerNames = {}
+    if getgenv().FishmanState.AccountConfigs then
+        for pName, _ in pairs(getgenv().FishmanState.AccountConfigs) do
+            if pName ~= LocalPlayer.Name then
+                table.insert(playerNames, pName)
+            end
+        end
+    end
+    if #playerNames == 0 then table.insert(playerNames, "No other players") end
+
+    local selectedTargetPlayer = nil
+
+    local D_TargetPlayer = getgenv().FishmanState.Tabs.Navigation:AddDropdown("D_TargetPlayer", {
+        Title = "Select Player to Join",
+        Values = playerNames,
+        Multi = false,
+        Default = playerNames[1],
+        Callback = function(Value)
+            selectedTargetPlayer = Value
+        end
+    })
+
+    getgenv().FishmanState.Tabs.Navigation:AddButton({
+        Title = "🚀 Join Player's Server",
+        Description = "Teleports you back to the Lobby and auto-joins the selected player's PS.",
+        Callback = function()
+            if not selectedTargetPlayer or selectedTargetPlayer == "No other players" then
+                getgenv().FishmanState.Fluent:Notify({ Title = "Error", Content = "No valid player selected.", Duration = 3 })
+                return
+            end
+            
+            local config = getgenv().FishmanState.AccountConfigs and getgenv().FishmanState.AccountConfigs[selectedTargetPlayer]
+            if config and config.code and config.dest then
+                local env = getgenv and getgenv() or shared
+                env.FishmanPSCode = config.code
+                env.FishmanDestination = config.dest
+                
+                -- Auto spawn ship on arrival
+                env.FishmanAutoSpawnShip = true
+                
+                if getgenv().FishmanState.UpdateTeleportMemory then
+                    getgenv().FishmanState.UpdateTeleportMemory(true)
+                end
+                getgenv().FishmanState.Fluent:Notify({ Title = "Teleporting", Content = "Routing to " .. selectedTargetPlayer .. " via Lobby...", Duration = 5 })
+                task.wait(1.5)
+                game:GetService("TeleportService"):Teleport(1730877806, LocalPlayer)
+            else
+                getgenv().FishmanState.Fluent:Notify({ Title = "Error", Content = "Configuration for " .. selectedTargetPlayer .. " is invalid.", Duration = 3 })
+            end
+        end
+    })
     
     local flightStatus = getgenv().FishmanState.Tabs.Navigation:AddParagraph({ Title = "Flight Status", Content = "Idle" })
     

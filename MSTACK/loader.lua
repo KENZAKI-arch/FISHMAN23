@@ -56,27 +56,30 @@ end)
 -- ⚙️ ACCOUNT CONFIGURATION
 -- Add your accounts and their corresponding private server codes here.
 local AccountConfigs = {
-    ["ReneButterbones"] = "qj1ttW4JG1",
-    ["BarriacadedAlex"] = "vcvq1Xp6GC",
-    ["pc_Romer900"] = "dmNfaqsjjj",
-    ["LumpiangToge234"] = "MCVwx2gvJv",
-    ["TuronLovers"] = "tirAZ2rx2s",
-    ["SiomaiRice12369"] = "dTuByY1k0O",
-    ["Haswell128"] = "IxM1NarToN",
-    ["KamiSiRene"] = "CnHpO5Kwa9",
-    ["LumpiangChina"] = "gVKAsClzbt",
-    ["BeeswarmTensei"] = "UO4gc2IyTY"
+    ["ReneButterbones"] = { code = "qj1ttW4JG1", dest = "Third Sea" },
+    ["BarriacadedAlex"] = { code = "vcvq1Xp6GC", dest = "Third Sea" },
+    ["pc_Romer900"] = { code = "dmNfaqsjjj", dest = "Third Sea" },
+    ["LumpiangToge234"] = { code = "MCVwx2gvJv", dest = "Third Sea" },
+    ["TuronLovers"] = { code = "tirAZ2rx2s", dest = "Third Sea" },
+    ["SiomaiRice12369"] = { code = "dTuByY1k0O", dest = "Third Sea" },
+    ["Haswell128"] = { code = "IxM1NarToN", dest = "Third Sea" },
+    ["KamiSiRene"] = { code = "CnHpO5Kwa9", dest = "Third Sea" },
+    ["LumpiangChina"] = { code = "gVKAsClzbt", dest = "Third Sea" },
+    ["BeeswarmTensei"] = { code = "UO4gc2IyTY", dest = "Third Sea" }
 }
 
 -- ⚙️ GLOBAL SETTINGS
 local DefaultPSCode = "qj1ttW4JG1"          -- Used if the account is not in AccountConfigs
+local DefaultDestination = "Third Sea"
 
 -- Apply Configuration
 local playerName = LocalPlayer.Name
-local chosenCode = AccountConfigs[playerName] or DefaultPSCode
+local chosenConfig = AccountConfigs[playerName]
+local chosenCode = chosenConfig and chosenConfig.code or DefaultPSCode
+local chosenDest = chosenConfig and chosenConfig.dest or DefaultDestination
 
 getgenv().FishmanDefaultPSCode = chosenCode
-getgenv().FishmanDefaultDestination = "Second Sea"
+getgenv().FishmanDefaultDestination = chosenDest
 -- The loader provides the 'Default' config to act as a starting location.
 
 if not LocalPlayer.Character then
