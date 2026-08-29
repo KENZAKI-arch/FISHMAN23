@@ -101,16 +101,16 @@ getgenv().FishmanState.isLobby = (game.PlaceId == getgenv().FishmanState.targetP
 local GlobalMem = env
 
 getgenv().FishmanState.AccountConfigs = {
-    ["ReneButterbones"] = { code = "qj1ttW4JG1", dest = "Third Sea" },
-    ["BarriacadedAlex"] = { code = "vcvq1Xp6GC", dest = "Third Sea" },
-    ["pc_Romer900"] = { code = "dmNfaqsjjj", dest = "Third Sea" },
-    ["LumpiangToge234"] = { code = "MCVwx2gvJv", dest = "Third Sea" },
-    ["TuronLovers"] = { code = "tirAZ2rx2s", dest = "Third Sea" },
-    ["SiomaiRice12369"] = { code = "dTuByY1k0O", dest = "Third Sea" },
-    ["Haswell128"] = { code = "IxM1NarToN", dest = "Third Sea" },
-    ["KamiSiRene"] = { code = "CnHpO5Kwa9", dest = "Third Sea" },
-    ["LumpiangChina"] = { code = "gVKAsClzbt", dest = "Third Sea" },
-    ["BeeswarmTensei"] = { code = "UO4gc2IyTY", dest = "Third Sea" }
+    ["ReneButterbones"] = { code = "qj1ttW4JG1", dest = "Second Sea" },
+    ["BarriacadedAlex"] = { code = "vcvq1Xp6GC", dest = "Second Sea" },
+    ["pc_Romer900"] = { code = "dmNfaqsjjj", dest = "Second Sea" },
+    ["LumpiangToge234"] = { code = "MCVwx2gvJv", dest = "Second Sea" },
+    ["TuronLovers"] = { code = "tirAZ2rx2s", dest = "Second Sea" },
+    ["SiomaiRice12369"] = { code = "dTuByY1k0O", dest = "Second Sea" },
+    ["Haswell128"] = { code = "IxM1NarToN", dest = "Second Sea" },
+    ["KamiSiRene"] = { code = "CnHpO5Kwa9", dest = "Second Sea" },
+    ["LumpiangChina"] = { code = "gVKAsClzbt", dest = "Second Sea" },
+    ["BeeswarmTensei"] = { code = "UO4gc2IyTY", dest = "Second Sea" }
 }
 
 -- ======================================================================

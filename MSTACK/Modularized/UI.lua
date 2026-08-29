@@ -894,13 +894,13 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
         end
     })
 
-    local selectedTargetSea = "fishHub" -- Default for Main Farming Sea
+    local selectedTargetSea = "Second Sea" -- Default for Main Farming Sea
 
     local D_TargetSea = getgenv().FishmanState.Tabs.Navigation:AddDropdown("D_TargetSea", {
         Title = "Player's Current Sea",
         Values = {"fishHub", "tradeHub", "First Sea", "Second Sea"},
         Multi = false,
-        Default = "fishHub",
+        Default = "Second Sea",
         Callback = function(Value)
             selectedTargetSea = Value
         end
