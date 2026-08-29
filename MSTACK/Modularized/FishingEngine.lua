@@ -35,7 +35,7 @@ local cachedBaitItems = nil
     local loadedAnimations = {}
     getgenv().FishmanState.addConn(LocalPlayer.CharacterAdded:Connect(function() table.clear(loadedAnimations) end))
     
-    -- 📍 LOCATION-BASED RECOVERY SYSTEM (MEG STACK)
+    -- 📍 LOCATION-BASED RECOVERY SYSTEM (AUTO SPAWN SHIP)
     task.spawn(function()
         local timeAtSafezone = 0
         local safezonePos = Vector3.new(-6852, 27, 9233)
@@ -45,19 +45,18 @@ local cachedBaitItems = nil
             debugCounter = debugCounter + 1
             local fluent = getgenv().FishmanState.Fluent
             if fluent and fluent.Options then
-                local wasMegStacking = (fluent.Options.T_MegStack and fluent.Options.T_MegStack.Value) or 
-                                       (fluent.Options.T_MegStackPassive and fluent.Options.T_MegStackPassive.Value)
+                local isAutoSpawnON = fluent.Options.T_AutoSpawnShip and fluent.Options.T_AutoSpawnShip.Value
                                        
-                if wasMegStacking and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                if isAutoSpawnON and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
                     local hrp = LocalPlayer.Character.HumanoidRootPart
                     local dist = (hrp.Position - safezonePos).Magnitude
                     
                     if debugCounter >= 3 then
-                        print(string.format("[Fishman Debug] MegStack: ON | Dist to Safezone: %d | Timer: %d/8", math.floor(dist), timeAtSafezone))
+                        print(string.format("[Fishman Debug] AutoSpawnShip: ON | Dist to Safezone: %d | Timer: %d/8", math.floor(dist), timeAtSafezone))
                         debugCounter = 0
                     end
                     
-                    if dist < 600 then -- Increased radius to 600 just in case!
+                    if dist < 600 then 
                         timeAtSafezone = timeAtSafezone + 1
                         if timeAtSafezone >= 8 then
                             print("[Fishman] Back to safezone player died now retriggering auto spawn ship something")
@@ -80,7 +79,7 @@ local cachedBaitItems = nil
                     end
                 else
                     if debugCounter >= 3 then
-                        print("[Fishman Debug] Location Loop running, but MegStack is OFF or Character is missing.")
+                        print("[Fishman Debug] Location Loop running, but AutoSpawnShip is OFF or Character is missing.")
                         debugCounter = 0
                     end
                     timeAtSafezone = 0
