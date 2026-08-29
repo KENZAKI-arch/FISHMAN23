@@ -35,42 +35,46 @@ local cachedBaitItems = nil
     local loadedAnimations = {}
     getgenv().FishmanState.addConn(LocalPlayer.CharacterAdded:Connect(function() table.clear(loadedAnimations) end))
     
-    -- 💀 DEATH RECOVERY SYSTEM (MEG STACK)
-    getgenv().FishmanState.addConn(LocalPlayer.CharacterAdded:Connect(function(char)
-        task.spawn(function()
-            local hum = char:WaitForChild("Humanoid", 10)
-            if hum then
-                getgenv().FishmanState.addConn(hum.Died:Connect(function()
-                    print("[Fishman] character died!")
-                end))
-            end
-        end)
-        
-        local fluent = getgenv().FishmanState.Fluent
-        if not fluent or not fluent.Options then return end
-
-        local wasMegStacking = (fluent.Options.T_MegStack and fluent.Options.T_MegStack.Value) or 
-                               (fluent.Options.T_MegStackPassive and fluent.Options.T_MegStackPassive.Value)
-
-        if wasMegStacking then
-            print("[Fishman] Death detected during MegStack! Initiating recovery sequence...")
-            fluent:Notify({ Title = "Recovery System", Content = "Death detected during MegStack. Restarting sequence...", Duration = 5 })
-            
-            if fluent.Options.T_MegStack then fluent.Options.T_MegStack:SetValue(false) end
-            if fluent.Options.T_MegStackPassive then fluent.Options.T_MegStackPassive:SetValue(false) end
-            
-            task.spawn(function()
-                task.wait(3)
-                if fluent.Options.T_AutoSpawnShip then
-                    print("[Fishman] Cycling Auto Spawn Ship OFF...")
-                    fluent.Options.T_AutoSpawnShip:SetValue(false)
-                    task.wait(2)
-                    print("[Fishman] Cycling Auto Spawn Ship ON...")
-                    fluent.Options.T_AutoSpawnShip:SetValue(true)
+    -- 📍 LOCATION-BASED RECOVERY SYSTEM (MEG STACK)
+    task.spawn(function()
+        local timeAtSafezone = 0
+        local safezonePos = Vector3.new(-6852, 27, 9233)
+        while getgenv().FishmanState._running do
+            task.wait(1)
+            local fluent = getgenv().FishmanState.Fluent
+            if fluent and fluent.Options then
+                local wasMegStacking = (fluent.Options.T_MegStack and fluent.Options.T_MegStack.Value) or 
+                                       (fluent.Options.T_MegStackPassive and fluent.Options.T_MegStackPassive.Value)
+                                       
+                if wasMegStacking and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                    local hrp = LocalPlayer.Character.HumanoidRootPart
+                    if (hrp.Position - safezonePos).Magnitude < 300 then
+                        timeAtSafezone = timeAtSafezone + 1
+                        if timeAtSafezone >= 8 then
+                            print("[Fishman] Back to safezone player died now retriggering auto spawn ship something")
+                            
+                            if fluent.Options.T_MegStack then fluent.Options.T_MegStack:SetValue(false) end
+                            if fluent.Options.T_MegStackPassive then fluent.Options.T_MegStackPassive:SetValue(false) end
+                            
+                            task.spawn(function()
+                                if fluent.Options.T_AutoSpawnShip then
+                                    fluent.Options.T_AutoSpawnShip:SetValue(false)
+                                    task.wait(2)
+                                    fluent.Options.T_AutoSpawnShip:SetValue(true)
+                                end
+                            end)
+                            
+                            timeAtSafezone = 0 -- Reset counter
+                        end
+                    else
+                        timeAtSafezone = 0
+                    end
+                else
+                    timeAtSafezone = 0
                 end
-            end)
+            end
         end
-    end))
+    end)
     getgenv().FishmanState.isAFKModeActive = false
     getgenv().FishmanState.secondsSinceLastInput = 0
 local craftHeartbeatConn = nil
