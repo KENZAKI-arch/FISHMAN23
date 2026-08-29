@@ -60,6 +60,7 @@ end)
 -- ⚙️ ACCOUNT CONFIGURATION
 -- Add your accounts and their corresponding private server codes here.
 local AccountConfigs = {
+    -- Second Sea Accounts
     ["ReneButterbones"] = { code = "qj1ttW4JG1", dest = "Second Sea" },
     ["BarriacadedAlex"] = { code = "vcvq1Xp6GC", dest = "Second Sea" },
     ["pc_Romer900"] = { code = "dmNfaqsjjj", dest = "Second Sea" },
@@ -69,7 +70,14 @@ local AccountConfigs = {
     ["Haswell128"] = { code = "IxM1NarToN", dest = "Second Sea" },
     ["KamiSiRene"] = { code = "CnHpO5Kwa9", dest = "Second Sea" },
     ["LumpiangChina"] = { code = "gVKAsClzbt", dest = "Second Sea" },
-    ["BeeswarmTensei"] = { code = "UO4gc2IyTY", dest = "Second Sea" }
+    ["BeeswarmTensei"] = { code = "UO4gc2IyTY", dest = "Second Sea" },
+
+    -- First Sea Accounts
+    ["Clarity14563"] = { code = "qj1ttW4JG1", dest = "First Sea" },
+    ["SiomeowMaster12"] = { code = "vcvq1Xp6GC", dest = "First Sea" },
+    ["TemperedGamer123"] = { code = "dmNfaqsjjj", dest = "First Sea" },
+    ["Brainstorm689"] = { code = "MCVwx2gvJv", dest = "First Sea" },
+    ["FourArms00X"] = { code = "tirAZ2rx2s", dest = "First Sea" }
 }
 
 -- ⚙️ GLOBAL SETTINGS
