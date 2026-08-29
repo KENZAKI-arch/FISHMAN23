@@ -59,26 +59,8 @@ getgenv().FishmanState.UpdateTeleportMemory = function(willAutoTeleport)
     GlobalMem.LastTeleportTime = os.time()
     getgenv().FishmanState.SaveConfig()
     
-    if not qot then return end
-    
-    local command = [[
-        pcall(function()
-            getgenv().FishmanPSCode = "]] .. GlobalMem.FishmanPSCode .. [["
-            getgenv().FishmanDestination = "]] .. GlobalMem.FishmanDestination .. [["
-            getgenv().FishmanDefaultPSCode = "]] .. tostring(GlobalMem.FishmanDefaultPSCode or "") .. [["
-            getgenv().FishmanDefaultDestination = "]] .. tostring(GlobalMem.FishmanDefaultDestination or "") .. [["
-            getgenv().FishmanQOT_Active = true
-            getgenv().FishmanAutoTeleport = ]] .. tostring(willAutoTeleport) .. [[
-            
-            task.spawn(function()
-                task.wait(15)
-                if getgenv().FishmanScriptServer ~= game.JobId then
-                    loadstring(game:HttpGet("]] .. myScriptURL .. [["))()
-                end
-            end)
-        end)
-    ]]
-    pcall(function() qot(command) end)
+    -- Legacy queue_on_teleport removed for stability. 
+    -- The script relies entirely on disk-saved state (Config.lua) for teleport persistence.
 end
 
 getgenv().FishmanState.GetCurrentPSCode = function()
