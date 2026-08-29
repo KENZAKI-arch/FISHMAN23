@@ -1965,7 +1965,7 @@ sg.ResetOnSpawn = false
 sg.Parent = CoreGui
 
 local mainFrame = Instance.new("Frame")
-mainFrame.Size = UDim2.new(0, 250, 0, 430)
+mainFrame.Size = UDim2.new(0, 250, 0, 475)
 mainFrame.Position = UDim2.new(0.5, -125, 0.5, -160)
 mainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
 mainFrame.BorderSizePixel = 0
@@ -2115,12 +2115,56 @@ createToggle("T_MegStack", "🦈 Megalodon Stack", 5, function(val)
     end
 end)
 
-createToggle("T_MegStackLoc", "🎣 Auto Refill Meg Stack", 6, function(val)
+createToggle("T_CyborgAuto", "⚔️ Cyborg Autofarm", 6, function(val)
+    if isLobby then 
+        if val then 
+            getgenv().Fluent:Notify({ Title = "Error", Content = "Cannot farm in Lobby!", Duration = 3 }) 
+            if getgenv().Fluent.Options.T_CyborgAuto then getgenv().Fluent.Options.T_CyborgAuto:SetValue(false) end 
+        end 
+        return 
+    end
+
+    if val then
+        if getgenv().Fluent and getgenv().Fluent.Options and getgenv().Fluent.Options.T_AutoStoreFruit then
+            getgenv()._wasAutoStoreFruitOn = getgenv().Fluent.Options.T_AutoStoreFruit.Value
+            if getgenv()._wasAutoStoreFruitOn then
+                getgenv().Fluent.Options.T_AutoStoreFruit:SetValue(false)
+                getgenv().Fluent:Notify({ Title = "System", Content = "Auto Store Fruit paused during Cyborg Autofarm", Duration = 3 })
+            end
+        end
+    else
+        if getgenv()._wasAutoStoreFruitOn and getgenv().Fluent and getgenv().Fluent.Options and getgenv().Fluent.Options.T_AutoStoreFruit then
+            getgenv().Fluent.Options.T_AutoStoreFruit:SetValue(true)
+            getgenv()._wasAutoStoreFruitOn = false
+            getgenv().Fluent:Notify({ Title = "System", Content = "Auto Store Fruit resumed", Duration = 3 })
+        end
+    end
+
+    task.spawn(function()
+        if val then
+            print("triggering title: \"Megalodon Slayer\"")
+            local args = { "Megalodon Slayer" }
+            pcall(function() game:GetService("ReplicatedStorage"):WaitForChild("Events"):WaitForChild("Titles"):InvokeServer(unpack(args)) end)
+        end
+    end)
+
+    if val and not getgenv().ToggleCyborgAutofarm then
+        pcall(function()
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/MSTACK/protov4_nofactory.lua"))()
+        end)
+        task.wait(1)
+    end
+    if getgenv().ToggleCyborgAutofarm then
+        getgenv().ToggleCyborgAutofarm(val)
+    end
+end)
+
+createToggle("T_MegStackLoc", "🎣 Auto Refill Meg Stack", 7, function(val)
     if isLobby then if val then getgenv().Fluent:Notify({ Title = "Error", Content = "Cannot use in Lobby!", Duration = 3 }); getgenv().Fluent.Options.T_MegStackLoc:SetValue(false) end return end
     Model.State.isMegStackLoc = val
 end)
 
-createToggle("T_ManualMegStackLoc", "🎣 Manual Meg Stack", 7, function(val)
+createToggle("T_ManualMegStackLoc", "🎣 Manual Meg Stack", 8, function(val)
     if isLobby then if val then getgenv().Fluent:Notify({ Title = "Error", Content = "Cannot use in Lobby!", Duration = 3 }); getgenv().Fluent.Options.T_ManualMegStackLoc:SetValue(false) end return end
     
     if val then
@@ -2157,7 +2201,7 @@ createToggle("T_ManualMegStackLoc", "🎣 Manual Meg Stack", 7, function(val)
     end
 end)
 
-createToggle("T_AutoSpawnShip", "🛳️ Auto Spawn Ship", 8, function(val)
+createToggle("T_AutoSpawnShip", "🛳️ Auto Spawn Ship", 9, function(val)
     if val then
         if EnsureHoverboardLoaded then EnsureHoverboardLoaded() end
         if getgenv().HoverboardController and getgenv().HoverboardController.AutoSpawn then
@@ -2178,11 +2222,11 @@ createToggle("T_AutoSpawnShip", "🛳️ Auto Spawn Ship", 8, function(val)
     end
 end)
 
-createToggle("T_AntiLag", "⚙️ Disable 3D (Anti-Lag)", 9, function(val)
+createToggle("T_AntiLag", "⚙️ Disable 3D (Anti-Lag)", 10, function(val)
     RunService:Set3dRenderingEnabled(not val)
 end)
 
-createButton("🥔 Potato Graphics", 10, function()
+createButton("🥔 Potato Graphics", 11, function()
     if ActivatePotatoGraphics then ActivatePotatoGraphics() end
 end)
 
@@ -2212,7 +2256,7 @@ minBtn.MouseButton1Click:Connect(function()
         minBtn.BackgroundColor3 = Color3.fromRGB(46, 204, 113)
         minBtn.Text = "+"
     else
-        mainFrame.Size = UDim2.new(0, 250, 0, 430)
+        mainFrame.Size = UDim2.new(0, 250, 0, 475)
         for _, child in pairs(mainFrame:GetChildren()) do
             if child:IsA("TextButton") and child ~= minBtn then
                 child.Visible = true
