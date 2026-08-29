@@ -784,18 +784,27 @@ getgenv().FishmanState.Tabs.Teleport:AddToggle("T_AutoSpawnShip", {
         getgenv().FishmanState.SaveConfig()
         print("[Hub] 'Auto Spawn Ship' toggled " .. tostring(Value))
         if Value then
-            EnsureHoverboardLoaded()
-            if getgenv().HoverboardController and getgenv().HoverboardController.AutoSpawn then
-                print("[Hub] Calling HoverboardController.AutoSpawn()...")
-                getgenv().HoverboardController.AutoSpawn(function()
-                    if getgenv().FishmanState.Fluent and getgenv().FishmanState.Fluent.Options and getgenv().FishmanState.Fluent.Options.T_MegStack then
-                        print("[Hub] Automatically enabling Megalodon Stack after final move...")
-                        getgenv().FishmanState.Fluent.Options.T_MegStack:SetValue(true)
-                    end
-                end)
-            else
-                print("[Hub] ERROR: HoverboardController.AutoSpawn not found!")
-            end
+            task.spawn(function()
+                if not getgenv().FishmanHasWaitedForSpawn then
+                    getgenv().FishmanHasWaitedForSpawn = true
+                    getgenv().FishmanState.Fluent:Notify({ Title = "Delay Active", Content = "Waiting 15 seconds before Auto Spawning...", Duration = 5 })
+                    task.wait(15)
+                end
+                if not GlobalMem.FishmanAutoSpawnShip then return end -- Cancel if user toggled off during the wait
+                
+                EnsureHoverboardLoaded()
+                if getgenv().HoverboardController and getgenv().HoverboardController.AutoSpawn then
+                    print("[Hub] Calling HoverboardController.AutoSpawn()...")
+                    getgenv().HoverboardController.AutoSpawn(function()
+                        if getgenv().FishmanState.Fluent and getgenv().FishmanState.Fluent.Options and getgenv().FishmanState.Fluent.Options.T_MegStack then
+                            print("[Hub] Automatically enabling Megalodon Stack after final move...")
+                            getgenv().FishmanState.Fluent.Options.T_MegStack:SetValue(true)
+                        end
+                    end)
+                else
+                    print("[Hub] ERROR: HoverboardController.AutoSpawn not found!")
+                end
+            end)
         else
             if getgenv().HoverboardController then
                 getgenv().HoverboardController.CancelAutoSpawn = true
