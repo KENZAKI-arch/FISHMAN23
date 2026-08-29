@@ -29,6 +29,11 @@ local TARGET_SEQUENCE = {
 
 local Y_LEVEL_DETECTION_RADIUS = 15 -- Max height difference allowed before breaking the path
 
+local RECOVERY_WAYPOINTS = {
+    Vector3.new(8457, 69, 10513),
+    Vector3.new(8611, 66, 10538),
+    Vector3.new(8805, 66, 11536)
+}
 
 local WAYPOINTS = {
     Vector3.new(8786.2, 72.4, 11626.6),
@@ -188,7 +193,11 @@ Model.State = {
     lastFactoryCheckTime = 0,
     factoryCachedStatus = true,
     botMode = "PATROL", -- Can be "PATROL" or "COMBAT"
-    isFactoryPoolDead = false
+    isFactoryPoolDead = false,
+    isRecovering = false,
+    recoveryIndex = 1,
+    hasReachedSafeSpotForQuest = false,
+    isTakingQuest = false
 }
 
 local flySpeed = 50
@@ -415,6 +424,28 @@ function Model.ApplyNoclip()
     end
 end
 
+local function hasActiveQuest()
+    local pGui = LocalPlayer:FindFirstChild("PlayerGui")
+    if not pGui then return false end
+    local questGui = pGui:FindFirstChild("Quest")
+    if not questGui then return false end
+    local main = questGui:FindFirstChild("Main")
+    if not main or not main.Visible then return false end
+    local info = main:FindFirstChild("Info")
+    if not info then return false end
+    local top = info:FindFirstChild("Top")
+    if not top then return false end
+    local progress = top:FindFirstChild("Progress")
+    if progress and progress.Visible then
+        local text = progress.Text or ""
+        -- Some games leave the UI visible but make the text empty when there's no quest
+        if text ~= "" and text:match("%S") then
+            return true
+        end
+    end
+    return false
+end
+
 function Model.UpdateTracking(deltaTime)
     local character = LocalPlayer.Character
     if not character or not character:FindFirstChild("HumanoidRootPart") or not character:FindFirstChild("Humanoid") then return end
@@ -459,21 +490,113 @@ function Model.UpdateTracking(deltaTime)
     local targetDest = nil
 
     Model.State.isWaitingAtSafeSpot = false
+    
+    local spawnPos = Vector3.new(8457, 69, 10513)
+    
+    if not Model.State.isRecovering and (rootPart.Position - spawnPos).Magnitude < 100 then
+        -- Trigger manual recovery path to the safe spot when near spawn
+        print("[AutoFarm] Spawn point detected. Using manual recovery waypoints to safe spot...")
+        Model.State.recoveryIndex = 1
+        Model.State.isRecovering = true
+    end
 
     local isFactoryClosedOrHighAlert = (not isFactoryOpen()) or isAlertLevelHigh()
 
-    if isFactoryClosedOrHighAlert or Model.State.isFactoryPoolDead then
+    if Model.State.isRecovering then
+        if Model.State.recoveryIndex <= #RECOVERY_WAYPOINTS then
+            targetDest = RECOVERY_WAYPOINTS[Model.State.recoveryIndex]
+            
+            local flatTarget = Vector3.new(targetDest.X, 0, targetDest.Z)
+            local flatCurrent = Vector3.new(rootPart.Position.X, 0, rootPart.Position.Z)
+            
+            if (flatTarget - flatCurrent).Magnitude < 15 then
+                Model.State.recoveryIndex = Model.State.recoveryIndex + 1
+                if Model.State.recoveryIndex > #RECOVERY_WAYPOINTS then
+                    Model.State.isRecovering = false
+                    print("[AutoFarm] Reached the end of recovery path!")
+                else
+                    targetDest = RECOVERY_WAYPOINTS[Model.State.recoveryIndex]
+                end
+            end
+        else
+            Model.State.isRecovering = false
+        end
+    elseif ((Vector3.new(8807, 0, 11522) - Vector3.new(rootPart.Position.X, 0, rootPart.Position.Z)).Magnitude <= 15 or Model.State.isRoutingToQuest) and not hasActiveQuest() then
+        -- We are near the safe spot (or actively flying to quest giver) and have no quest!
+        Model.State.isRoutingToQuest = true
+        local questGiverSpot = Vector3.new(8768, 66, 11555)
+        local flatCurrent = Vector3.new(rootPart.Position.X, 0, rootPart.Position.Z)
+        local flatQuestSpot = Vector3.new(questGiverSpot.X, 0, questGiverSpot.Z)
+        
+        if (flatQuestSpot - flatCurrent).Magnitude < 3 then
+            -- We reached Warren!
+            if not Model.State.isTakingQuest then
+                Model.State.isTakingQuest = true
+                print("[AutoFarm] no quest and near quest detected now running auto quest via AntiGravity")
+                
+                task.spawn(function()
+                    print("[AutoFarm] Taking Quest...")
+                    local questRemote = game:GetService("ReplicatedStorage"):WaitForChild("Events", 9e9):WaitForChild("Quest", 9e9)
+                    
+                    local chatArgs = {[1] = {[1] = "npcChat", [2] = true}}
+                    questRemote:InvokeServer(unpack(chatArgs))
+                    task.wait(0.5)
+                    
+                    local questArgs = {[1] = {[1] = "takequest", [2] = "Help Warren"}}
+                    questRemote:InvokeServer(unpack(questArgs))
+                    task.wait(1)
+                    
+                    Model.State.isTakingQuest = false
+                    Model.State.isRoutingToQuest = false
+                    Model.State.isReturningFromQuest = true
+                end)
+            end
+            
+            -- Wait here while the quest is being taken
+            Model.State.isWaitingAtSafeSpot = true
+            local bv = rootPart:FindFirstChild("AntiGravity")
+            if bv then bv:Destroy() end
+            return
+        else
+            -- We are flying to Warren!
+            targetDest = questGiverSpot
+            currentEnemy = nil
+            isPatrolling = false
+        end
+    elseif Model.State.isReturningFromQuest then
+        local safeSpot = Vector3.new(8807, 66, 11522)
+        local flatCurrent = Vector3.new(rootPart.Position.X, 0, rootPart.Position.Z)
+        local flatSafeSpot = Vector3.new(safeSpot.X, 0, safeSpot.Z)
+        
+        if (flatSafeSpot - flatCurrent).Magnitude < 15 then
+            -- We arrived back at the safe spot!
+            Model.State.isReturningFromQuest = false
+            
+            -- Keep waiting here for a tiny bit before naturally falling through
+            Model.State.isWaitingAtSafeSpot = true
+            local bv = rootPart:FindFirstChild("AntiGravity")
+            if bv then bv:Destroy() end
+            return
+        else
+            -- Fly back to safe spot explicitly before going anywhere else
+            targetDest = safeSpot
+            currentEnemy = nil
+            isPatrolling = false
+        end
+    elseif isFactoryClosedOrHighAlert or Model.State.isFactoryPoolDead then
         if isFactoryClosedOrHighAlert then
             Model.State.isFactoryPoolDead = false
         end
         Model.State.wasWaitingForFactory = true
         Model.State.isGateWaiting = false
         
-        local safeSpot = Vector3.new(8805, 66, 11536)
-        local flatTarget = Vector3.new(safeSpot.X, 0, safeSpot.Z)
-        local flatCurrent = Vector3.new(rootPart.Position.X, 0, rootPart.Position.Z)
+        Model.State.hasReachedSafeSpotForQuest = false
         
-        if (flatTarget - flatCurrent).Magnitude < 15 then
+        local safeSpot = Vector3.new(8807, 66, 11522)
+        local flatCurrent = Vector3.new(rootPart.Position.X, 0, rootPart.Position.Z)
+        local flatSafeSpot = Vector3.new(safeSpot.X, 0, safeSpot.Z)
+
+        if (flatSafeSpot - flatCurrent).Magnitude < 15 then
             Model.State.isWaitingAtSafeSpot = true
             local bv = rootPart:FindFirstChild("AntiGravity")
             if bv then bv:Destroy() end
@@ -686,8 +809,8 @@ function Model.UpdateTracking(deltaTime)
         local isCloseToArrival = (horizontalDistance <= 15)
         
         local targetSpot
-        if isPatrolling then
-            -- CRITICAL: When following macro paths, we MUST fly to their exact Y altitude!
+        if isPatrolling or Model.State.isRecovering then
+            -- CRITICAL: When following macro paths (or recovery waypoints), we MUST fly to their exact Y altitude!
             desiredY = targetDest.Y
             targetSpot = Vector3.new(targetDest.X, desiredY, targetDest.Z)
         elseif currentEnemy and currentEnemy.Name == "FactoryPool" then
