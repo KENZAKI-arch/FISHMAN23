@@ -894,9 +894,21 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
         end
     })
 
+    local selectedTargetSea = "Pirates" -- Default for Third Sea / Current Sea
+
+    local D_TargetSea = getgenv().FishmanState.Tabs.Navigation:AddDropdown("D_TargetSea", {
+        Title = "Player's Current Sea",
+        Values = {"Pirates", "Marines", "Second Sea", "First Sea", "tradeHub", "fishHub"},
+        Multi = false,
+        Default = "Pirates",
+        Callback = function(Value)
+            selectedTargetSea = Value
+        end
+    })
+
     getgenv().FishmanState.Tabs.Navigation:AddButton({
         Title = "🚀 Join Player's Server",
-        Description = "Teleports you back to the Lobby and auto-joins the selected player's PS.",
+        Description = "Teleports you back to the Lobby and auto-joins the selected player's PS and Sea.",
         Callback = function()
             if not selectedTargetPlayer or selectedTargetPlayer == "No other players" then
                 getgenv().FishmanState.Fluent:Notify({ Title = "Error", Content = "No valid player selected.", Duration = 3 })
@@ -904,10 +916,10 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
             end
             
             local config = getgenv().FishmanState.AccountConfigs and getgenv().FishmanState.AccountConfigs[selectedTargetPlayer]
-            if config and config.code and config.dest then
+            if config and config.code then
                 local env = getgenv and getgenv() or shared
                 env.FishmanPSCode = config.code
-                env.FishmanDestination = config.dest
+                env.FishmanDestination = selectedTargetSea
                 
                 -- Auto spawn ship on arrival
                 env.FishmanAutoSpawnShip = true
