@@ -37,6 +37,15 @@ local cachedBaitItems = nil
     
     -- 💀 DEATH RECOVERY SYSTEM (MEG STACK)
     getgenv().FishmanState.addConn(LocalPlayer.CharacterAdded:Connect(function(char)
+        task.spawn(function()
+            local hum = char:WaitForChild("Humanoid", 10)
+            if hum then
+                getgenv().FishmanState.addConn(hum.Died:Connect(function()
+                    print("[Fishman] character died!")
+                end))
+            end
+        end)
+        
         local fluent = getgenv().FishmanState.Fluent
         if not fluent or not fluent.Options then return end
 
