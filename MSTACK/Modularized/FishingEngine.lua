@@ -39,8 +39,10 @@ local cachedBaitItems = nil
     task.spawn(function()
         local timeAtSafezone = 0
         local safezonePos = Vector3.new(-6852, 27, 9233)
+        local debugCounter = 0
         while getgenv().FishmanState._running do
             task.wait(1)
+            debugCounter = debugCounter + 1
             local fluent = getgenv().FishmanState.Fluent
             if fluent and fluent.Options then
                 local wasMegStacking = (fluent.Options.T_MegStack and fluent.Options.T_MegStack.Value) or 
@@ -50,9 +52,13 @@ local cachedBaitItems = nil
                     local hrp = LocalPlayer.Character.HumanoidRootPart
                     local dist = (hrp.Position - safezonePos).Magnitude
                     
-                    if dist < 300 then
+                    if debugCounter >= 3 then
+                        print(string.format("[Fishman Debug] MegStack: ON | Dist to Safezone: %d | Timer: %d/8", math.floor(dist), timeAtSafezone))
+                        debugCounter = 0
+                    end
+                    
+                    if dist < 600 then -- Increased radius to 600 just in case!
                         timeAtSafezone = timeAtSafezone + 1
-                        print("[Fishman Debug] Safezone detected! Distance: " .. math.floor(dist) .. " | Timer: " .. timeAtSafezone .. "/8")
                         if timeAtSafezone >= 8 then
                             print("[Fishman] Back to safezone player died now retriggering auto spawn ship something")
                             
@@ -70,13 +76,13 @@ local cachedBaitItems = nil
                             timeAtSafezone = 0 -- Reset counter
                         end
                     else
-                        -- Only print if they were previously in the safezone and left it
-                        if timeAtSafezone > 0 then
-                            print("[Fishman Debug] Left safezone. Distance: " .. math.floor(dist) .. " (Needs to be < 300)")
-                        end
                         timeAtSafezone = 0
                     end
                 else
+                    if debugCounter >= 3 then
+                        print("[Fishman Debug] Location Loop running, but MegStack is OFF or Character is missing.")
+                        debugCounter = 0
+                    end
                     timeAtSafezone = 0
                 end
             end
