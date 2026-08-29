@@ -34,6 +34,34 @@ local statsFolder, inventoryObj, peliObject
 local cachedBaitItems = nil
     local loadedAnimations = {}
     getgenv().FishmanState.addConn(LocalPlayer.CharacterAdded:Connect(function() table.clear(loadedAnimations) end))
+    
+    -- 💀 DEATH RECOVERY SYSTEM (MEG STACK)
+    getgenv().FishmanState.addConn(LocalPlayer.CharacterAdded:Connect(function(char)
+        local fluent = getgenv().FishmanState.Fluent
+        if not fluent or not fluent.Options then return end
+
+        local wasMegStacking = (fluent.Options.T_MegStack and fluent.Options.T_MegStack.Value) or 
+                               (fluent.Options.T_MegStackPassive and fluent.Options.T_MegStackPassive.Value)
+
+        if wasMegStacking then
+            print("[Fishman] Death detected during MegStack! Initiating recovery sequence...")
+            fluent:Notify({ Title = "Recovery System", Content = "Death detected during MegStack. Restarting sequence...", Duration = 5 })
+            
+            if fluent.Options.T_MegStack then fluent.Options.T_MegStack:SetValue(false) end
+            if fluent.Options.T_MegStackPassive then fluent.Options.T_MegStackPassive:SetValue(false) end
+            
+            task.spawn(function()
+                task.wait(3)
+                if fluent.Options.T_AutoSpawnShip then
+                    print("[Fishman] Cycling Auto Spawn Ship OFF...")
+                    fluent.Options.T_AutoSpawnShip:SetValue(false)
+                    task.wait(2)
+                    print("[Fishman] Cycling Auto Spawn Ship ON...")
+                    fluent.Options.T_AutoSpawnShip:SetValue(true)
+                end
+            end)
+        end
+    end))
     getgenv().FishmanState.isAFKModeActive = false
     getgenv().FishmanState.secondsSinceLastInput = 0
 local craftHeartbeatConn = nil
