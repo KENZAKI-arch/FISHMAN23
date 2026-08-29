@@ -11,6 +11,19 @@ end
 if env.Fishman_DestroyUI then
     pcall(env.Fishman_DestroyUI)
 end
+pcall(function()
+    for _, v in pairs(game:GetService("CoreGui"):GetChildren()) do
+        if v.Name == "FishmanHubCustom" then v:Destroy() end
+    end
+    if game.Players.LocalPlayer then
+        local pGui = game.Players.LocalPlayer:FindFirstChild("PlayerGui")
+        if pGui then
+            for _, v in pairs(pGui:GetChildren()) do
+                if v.Name == "FishmanHubCustom" then v:Destroy() end
+            end
+        end
+    end
+end)
 
 env.FishmanScriptServer = game.JobId
 
