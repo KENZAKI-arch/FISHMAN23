@@ -48,8 +48,11 @@ local cachedBaitItems = nil
                                        
                 if wasMegStacking and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
                     local hrp = LocalPlayer.Character.HumanoidRootPart
-                    if (hrp.Position - safezonePos).Magnitude < 300 then
+                    local dist = (hrp.Position - safezonePos).Magnitude
+                    
+                    if dist < 300 then
                         timeAtSafezone = timeAtSafezone + 1
+                        print("[Fishman Debug] Safezone detected! Distance: " .. math.floor(dist) .. " | Timer: " .. timeAtSafezone .. "/8")
                         if timeAtSafezone >= 8 then
                             print("[Fishman] Back to safezone player died now retriggering auto spawn ship something")
                             
@@ -67,6 +70,10 @@ local cachedBaitItems = nil
                             timeAtSafezone = 0 -- Reset counter
                         end
                     else
+                        -- Only print if they were previously in the safezone and left it
+                        if timeAtSafezone > 0 then
+                            print("[Fishman Debug] Left safezone. Distance: " .. math.floor(dist) .. " (Needs to be < 300)")
+                        end
                         timeAtSafezone = 0
                     end
                 else
