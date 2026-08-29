@@ -1196,6 +1196,9 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
                         if getgenv().FishmanState.Fluent.Options.T_DeepSea.Value == true then
                             getgenv().FishmanState.Fluent.Options.T_DeepSea:SetValue(false)
                         end
+                        if getgenv().FishmanState.Fluent.Options.T_Fish.Value == true then
+                            getgenv().FishmanState.Fluent.Options.T_Fish:SetValue(false)
+                        end
                         
                         if getgenv().FishmanState.Fluent.Options.T_CyborgAuto then
                             getgenv().FishmanState.Fluent.Options.T_CyborgAuto:SetValue(true)
@@ -1715,7 +1718,7 @@ getgenv().FishmanState.Tabs.Autofarm:AddToggle("T_CyborgAuto", {
             pcall(function()
                 loadstring(game:HttpGet("https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/MSTACK/protov4_nofactory.lua"))()
             end)
-            task.wait(1)
+            task.wait(0.5)
         end
         if getgenv().ToggleCyborgAutofarm then
             getgenv().ToggleCyborgAutofarm(Value)
