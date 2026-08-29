@@ -1936,13 +1936,14 @@ for k, v in pairs(getgenv().Fluent.Options) do
     v.SetValue = function(self, val)
         self.Value = val
         if getgenv().CustomUIToggles and getgenv().CustomUIToggles[k] then
-            local btn = getgenv().CustomUIToggles[k]
+            local data = getgenv().CustomUIToggles[k]
+            local btn = data.Button
             if val then
                 btn.BackgroundColor3 = Color3.fromRGB(46, 204, 113)
-                btn.Text = btn.CustomName .. " [ON]"
+                btn.Text = data.CustomName .. " [ON]"
             else
                 btn.BackgroundColor3 = Color3.fromRGB(231, 76, 60)
-                btn.Text = btn.CustomName .. " [OFF]"
+                btn.Text = data.CustomName .. " [OFF]"
             end
         end
     end
@@ -1997,14 +1998,14 @@ local function createToggle(id, name, order, callback)
     btn.Font = Enum.Font.GothamSemibold
     btn.TextSize = 14
     btn.LayoutOrder = order
-    btn.CustomName = name
+    -- btn.CustomName = name
     btn.Parent = mainFrame
     
     local c2 = Instance.new("UICorner")
     c2.CornerRadius = UDim.new(0, 6)
     c2.Parent = btn
     
-    getgenv().CustomUIToggles[id] = btn
+    getgenv().CustomUIToggles[id] = { Button = btn, CustomName = name }
     
     btn.MouseButton1Click:Connect(function()
         local opt = getgenv().Fluent.Options[id]
