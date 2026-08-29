@@ -1,5 +1,5 @@
 -- ==========================================
--- Fishman Hub Multi-Account Loader
+-- Fishman Hub Multi-Account Loader (First Sea)
 -- ==========================================
 if getgenv().FishmanLoaderExecuted then
     warn("[Fishman Loader] Reloading script with updated version...")
@@ -56,16 +56,11 @@ end)
 -- ⚙️ ACCOUNT CONFIGURATION
 -- Add your accounts and their corresponding private server codes here.
 local AccountConfigs = {
-    ["ReneButterbones"] = "qj1ttW4JG1",
-    ["BarriacadedAlex"] = "vcvq1Xp6GC",
-    ["pc_Romer900"] = "dmNfaqsjjj",
-    ["LumpiangToge234"] = "MCVwx2gvJv",
-    ["TuronLovers"] = "tirAZ2rx2s",
-    ["SiomaiRice12369"] = "dTuByY1k0O",
-    ["Haswell128"] = "IxM1NarToN",
-    ["KamiSiRene"] = "CnHpO5Kwa9",
-    ["LumpiangChina"] = "gVKAsClzbt",
-    ["BeeswarmTensei"] = "UO4gc2IyTY"
+    ["Clarity14563"] = "qj1ttW4JG1",
+    ["SiomeowMaster12"] = "vcvq1Xp6GC",
+    ["TemperedGamer123"] = "dmNfaqsjjj",
+    ["Brainstorm689"] = "MCVwx2gvJv",
+    ["FourArms00X"] = "tirAZ2rx2s"
 }
 
 -- ⚙️ GLOBAL SETTINGS
@@ -76,7 +71,7 @@ local playerName = LocalPlayer.Name
 local chosenCode = AccountConfigs[playerName] or DefaultPSCode
 
 getgenv().FishmanDefaultPSCode = chosenCode
-getgenv().FishmanDefaultDestination = "Second Sea"
+getgenv().FishmanDefaultDestination = "First Sea"
 -- The loader provides the 'Default' config to act as a starting location.
 
 if not LocalPlayer.Character then
