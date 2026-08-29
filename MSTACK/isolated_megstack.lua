@@ -2087,6 +2087,7 @@ createToggle("T_MegStack", "🦈 Megalodon Stack", 4, function(val)
                 if megCount >= 10 and not Model.State.isBuying and not Model.State.isAutoTraveling and not Model.State.isRefillingMegBait and not Model.State.isManualTraveling then
                     print("🔥 [MegStack] 10 Megalodons reached! Disabling fishing and automatically toggling Cyborg Autofarm ON...")
                     if getgenv().Fluent.Options.T_DeepSea.Value == true then getgenv().Fluent.Options.T_DeepSea:SetValue(false) end
+                    if getgenv().Fluent.Options.T_Fish and getgenv().Fluent.Options.T_Fish.Value == true then getgenv().Fluent.Options.T_Fish:SetValue(false) end
                     if getgenv().Fluent.Options.T_CyborgAuto then getgenv().Fluent.Options.T_CyborgAuto:SetValue(true) end
                     
                     local waitTime = 0
@@ -2103,7 +2104,10 @@ createToggle("T_MegStack", "🦈 Megalodon Stack", 4, function(val)
                     
                     print("✅ [MegStack] Stack cleared! Toggling Cyborg Autofarm OFF and resuming fishing...")
                     if getgenv().Fluent.Options.T_CyborgAuto then getgenv().Fluent.Options.T_CyborgAuto:SetValue(false) end
-                    if Model.State.isMegStacking then getgenv().Fluent.Options.T_DeepSea:SetValue(true) end
+                    if Model.State.isMegStacking then 
+                        getgenv().Fluent.Options.T_DeepSea:SetValue(true) 
+                        if getgenv().Fluent.Options.T_Fish then getgenv().Fluent.Options.T_Fish:SetValue(true) end
+                    end
                 end
                 task.wait(1)
             end
