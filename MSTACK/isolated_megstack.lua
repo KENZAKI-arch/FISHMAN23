@@ -1940,7 +1940,10 @@ getgenv().Fluent = {
 
 for k, v in pairs(getgenv().Fluent.Options) do
     v.SetValue = function(self, val)
+        -- Only trigger callback if the value actually changed
+        local changed = (self.Value ~= val)
         self.Value = val
+        
         if getgenv().CustomUIToggles and getgenv().CustomUIToggles[k] then
             local data = getgenv().CustomUIToggles[k]
             local btn = data.Button
@@ -1950,6 +1953,10 @@ for k, v in pairs(getgenv().Fluent.Options) do
             else
                 btn.BackgroundColor3 = Color3.fromRGB(231, 76, 60)
                 btn.Text = data.CustomName .. " [OFF]"
+            end
+            
+            if changed and data.Callback then
+                task.spawn(data.Callback, val)
             end
         end
     end
@@ -2011,16 +2018,14 @@ local function createToggle(id, name, order, callback)
     c2.CornerRadius = UDim.new(0, 6)
     c2.Parent = btn
     
-    getgenv().CustomUIToggles[id] = { Button = btn, CustomName = name }
+    getgenv().CustomUIToggles[id] = { Button = btn, CustomName = name, Callback = callback }
     
     btn.MouseButton1Click:Connect(function()
         local opt = getgenv().Fluent.Options[id]
         opt:SetValue(not opt.Value)
-        if callback then
-            task.spawn(callback, opt.Value)
-        end
     end)
     
+    -- Sync initial value (this triggers the callback once during setup)
     getgenv().Fluent.Options[id]:SetValue(getgenv().Fluent.Options[id].Value)
     return btn
 end
