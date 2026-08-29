@@ -444,7 +444,7 @@ function Fluent:CreateWindow(options)
 end
 
 local Window = getgenv().FishmanState.Fluent:CreateWindow({
-    Title = "🐟 Fishman Hub | " .. game.Players.LocalPlayer.Name,
+    Title = "🐟 Fishman Hub",
     SubTitle = "Unified Auto-Fisher 1.0.3 v3.9",
     MinimizeKey = Enum.KeyCode.RightShift
 })
