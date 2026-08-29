@@ -135,8 +135,14 @@ pcall(function()
 end)
 
 if isWholeCake and isInCorrectPS then
-    getgenv().FishmanAutoSpawnShip = true
-    print("[Fishman Loader] Whole Cake Island & Correct PS detected! Auto Spawn Ship enabled.")
+    print("[Fishman Loader] Whole Cake Island & Correct PS detected! Auto Spawn Ship will enable in 15 seconds.")
+    task.spawn(function()
+        task.wait(15)
+        getgenv().FishmanAutoSpawnShip = true
+        if getgenv().FishmanState and getgenv().FishmanState.Fluent and getgenv().FishmanState.Fluent.Options and getgenv().FishmanState.Fluent.Options.T_AutoSpawnShip then
+            getgenv().FishmanState.Fluent.Options.T_AutoSpawnShip:SetValue(true)
+        end
+    end)
 else
     getgenv().FishmanAutoSpawnShip = false
     if game.PlaceId == 7369873099 then
