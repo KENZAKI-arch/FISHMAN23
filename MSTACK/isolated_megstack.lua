@@ -1908,370 +1908,253 @@ end
 
 
 -- ======================================================================
--- 🎨 FLUENT UI INTEGRATION
+-- 🎨 CUSTOM LIGHTWEIGHT UI INTEGRATION
 -- ======================================================================
-local OrionLib
-local orionPath = "OrionLib_Fishman.lua"
+getgenv().Fluent = {
+    Options = {
+        T_MegStackLoc = { Value = false },
+        T_ManualMegStackLoc = { Value = false },
+        T_AutoSpawnShip = { Value = false },
+        T_AutoReconnect = { Value = GlobalMem.FishmanAutoReconnect or false },
+        T_AntiLag = { Value = false },
+        S_FPSCap = { Value = 35 },
+        T_AutoReturn = { Value = false },
+        T_MegStack = { Value = false }
+    },
+    Notify = function(self, args)
+        pcall(function()
+            game:GetService("StarterGui"):SetCore("SendNotification", {
+                Title = args.Title or "Notification",
+                Text = args.Content or "",
+                Duration = args.Duration or 5
+            })
+        end)
+    end
+}
 
-if isfile and readfile and isfile(orionPath) then
-    local success, result = pcall(function()
-        return loadstring(readfile(orionPath))()
-    end)
-    if success and type(result) == "table" then
-        OrionLib = result
+for k, v in pairs(getgenv().Fluent.Options) do
+    v.SetValue = function(self, val)
+        self.Value = val
+        if getgenv().CustomUIToggles and getgenv().CustomUIToggles[k] then
+            local btn = getgenv().CustomUIToggles[k]
+            if val then
+                btn.BackgroundColor3 = Color3.fromRGB(46, 204, 113)
+                btn.Text = btn.CustomName .. " [ON]"
+            else
+                btn.BackgroundColor3 = Color3.fromRGB(231, 76, 60)
+                btn.Text = btn.CustomName .. " [OFF]"
+            end
+        end
     end
 end
 
-if not OrionLib then
-    local success, result = pcall(function()
-        local code = game:HttpGet('https://raw.githubusercontent.com/shlexware/Orion/main/source')
-        if writefile then
-            pcall(writefile, orionPath, code)
+local CoreGui = game:GetService("CoreGui")
+local uiName = "FishmanCustomUI"
+if CoreGui:FindFirstChild(uiName) then CoreGui[uiName]:Destroy() end
+
+local sg = Instance.new("ScreenGui")
+sg.Name = uiName
+sg.ResetOnSpawn = false
+sg.Parent = CoreGui
+
+local mainFrame = Instance.new("Frame")
+mainFrame.Size = UDim2.new(0, 250, 0, 255)
+mainFrame.Position = UDim2.new(0.5, -125, 0.5, -160)
+mainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+mainFrame.BorderSizePixel = 0
+mainFrame.Active = true
+mainFrame.Draggable = true
+mainFrame.Parent = sg
+
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 8)
+corner.Parent = mainFrame
+
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, 0, 0, 40)
+title.BackgroundTransparency = 1
+title.Text = "🐟 Fishman Meg Stack"
+title.TextColor3 = Color3.new(1, 1, 1)
+title.Font = Enum.Font.GothamBold
+title.TextSize = 18
+title.LayoutOrder = 1
+title.Parent = mainFrame
+
+local listLayout = Instance.new("UIListLayout")
+listLayout.SortOrder = Enum.SortOrder.LayoutOrder
+listLayout.Padding = UDim.new(0, 8)
+listLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+listLayout.Parent = mainFrame
+
+getgenv().CustomUIToggles = {}
+
+local function createToggle(id, name, order, callback)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(0, 230, 0, 35)
+    btn.BackgroundColor3 = Color3.fromRGB(231, 76, 60)
+    btn.Text = name .. " [OFF]"
+    btn.TextColor3 = Color3.new(1, 1, 1)
+    btn.Font = Enum.Font.GothamSemibold
+    btn.TextSize = 14
+    btn.LayoutOrder = order
+    btn.CustomName = name
+    btn.Parent = mainFrame
+    
+    local c2 = Instance.new("UICorner")
+    c2.CornerRadius = UDim.new(0, 6)
+    c2.Parent = btn
+    
+    getgenv().CustomUIToggles[id] = btn
+    
+    btn.MouseButton1Click:Connect(function()
+        local opt = getgenv().Fluent.Options[id]
+        opt:SetValue(not opt.Value)
+        if callback then
+            task.spawn(callback, opt.Value)
         end
-        return loadstring(code)()
     end)
     
-    if not success or type(result) ~= "table" then
-        warn("Failed to load Orion UI! GitHub might be rate-limiting you, or your executor failed the request. Wait a minute and try again.")
-        return
-    end
-    OrionLib = result
+    getgenv().Fluent.Options[id]:SetValue(getgenv().Fluent.Options[id].Value)
+    return btn
 end
 
-Fluent = {
-    Options = {},
-    Notify = function(self, args)
-        OrionLib:MakeNotification({
-            Name = args.Title or "Notification",
-            Content = args.Content or "",
-            Image = "rbxassetid://4483345998",
-            Time = args.Duration or 5
-        })
-    end,
-    CreateWindow = function(self, args)
-        local Window = OrionLib:MakeWindow({
-            Name = args.Title .. (args.SubTitle and (" - " .. args.SubTitle) or ""),
-            HidePremium = true,
-            SaveConfig = false,
-            IntroText = args.Title
-        })
-        
-        local FakeWindow = {}
-        function FakeWindow:SelectTab(idx) end
-        function FakeWindow:AddTab(tabArgs)
-            local Tab = Window:MakeTab({
-                Name = tabArgs.Title,
-                Icon = "rbxassetid://4483345998",
-                PremiumOnly = false
-            })
-            
-            local FakeTab = {}
-            function FakeTab:AddToggle(id, toggleArgs)
-                local isTable = type(id) == "table"
-                if isTable then toggleArgs = id; id = nil end
-                
-                local toggleVal = toggleArgs.Default or false
-                local FakeToggle = {
-                    Value = toggleVal
-                }
-                
-                local ToggleObj = Tab:AddToggle({
-                    Name = toggleArgs.Title,
-                    Default = toggleVal,
-                    Callback = function(val)
-                        FakeToggle.Value = val
-                        if toggleArgs.Callback then toggleArgs.Callback(val) end
-                    end
-                })
-                
-                FakeToggle.SetValue = function(self, val)
-                    self.Value = val
-                    ToggleObj:Set(val)
-                end
-                
-                if not isTable and id then
-                    Fluent.Options[id] = FakeToggle
-                end
-                return FakeToggle
-            end
-            
-            function FakeTab:AddButton(btnArgs)
-                Tab:AddButton({
-                    Name = btnArgs.Title,
-                    Callback = btnArgs.Callback
-                })
-            end
-            
-            function FakeTab:AddDropdown(id, dropArgs)
-                local isTable = type(id) == "table"
-                if isTable then dropArgs = id; id = nil end
-                
-                local FakeDropdown = {
-                    Value = dropArgs.Default
-                }
-                
-                local DropdownObj = Tab:AddDropdown({
-                    Name = dropArgs.Title,
-                    Default = dropArgs.Default,
-                    Options = dropArgs.Values or {},
-                    Callback = function(val)
-                        FakeDropdown.Value = val
-                        if dropArgs.Callback then dropArgs.Callback(val) end
-                    end
-                })
-                
-                FakeDropdown.SetValue = function(self, val)
-                    self.Value = val
-                    DropdownObj:Set(val)
-                end
-                FakeDropdown.SetValues = function(self, vals)
-                    DropdownObj:Refresh(vals, true)
-                end
-                
-                if not isTable and id then
-                    Fluent.Options[id] = FakeDropdown
-                end
-                return FakeDropdown
-            end
-            
-            function FakeTab:AddInput(id, inputArgs)
-                local isTable = type(id) == "table"
-                if isTable then inputArgs = id; id = nil end
-                
-                local FakeInput = {
-                    Value = inputArgs.Default or ""
-                }
-                
-                local InputObj = Tab:AddTextbox({
-                    Name = inputArgs.Title,
-                    Default = inputArgs.Default or "",
-                    TextDisappear = false,
-                    Callback = function(val)
-                        FakeInput.Value = val
-                        if inputArgs.Callback then inputArgs.Callback(val) end
-                    end
-                })
-                
-                FakeInput.SetValue = function(self, val)
-                    self.Value = val
-                end
-                
-                if not isTable and id then
-                    Fluent.Options[id] = FakeInput
-                end
-                return FakeInput
-            end
-            
-            function FakeTab:AddSlider(id, sliderArgs)
-                local isTable = type(id) == "table"
-                if isTable then sliderArgs = id; id = nil end
-                
-                local FakeSlider = {
-                    Value = sliderArgs.Default or 0
-                }
-                
-                local SliderObj = Tab:AddSlider({
-                    Name = sliderArgs.Title,
-                    Min = sliderArgs.Min or 0,
-                    Max = sliderArgs.Max or 100,
-                    Default = sliderArgs.Default or 0,
-                    Color = Color3.fromRGB(255,255,255),
-                    Increment = 1,
-                    ValueName = "",
-                    Callback = function(val)
-                        FakeSlider.Value = val
-                        if sliderArgs.Callback then sliderArgs.Callback(val) end
-                    end
-                })
-                
-                FakeSlider.SetValue = function(self, val)
-                    self.Value = val
-                    SliderObj:Set(val)
-                end
-                
-                if not isTable and id then
-                    Fluent.Options[id] = FakeSlider
-                end
-                return FakeSlider
-            end
-            
-            function FakeTab:AddParagraph(id, pArgs)
-                local isTable = type(id) == "table"
-                if isTable then pArgs = id; id = nil end
-                
-                local ParaObj = Tab:AddParagraph(pArgs.Title, pArgs.Content or "")
-                
-                local FakePara = {
-                    SetDesc = function(self, desc)
-                        ParaObj:Set(pArgs.Title, desc)
-                    end
-                }
-                
-                if not isTable and id then
-                    Fluent.Options[id] = FakePara
-                end
-                return FakePara
-            end
-            
-            return FakeTab
+local function createButton(name, order, callback)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(0, 230, 0, 35)
+    btn.BackgroundColor3 = Color3.fromRGB(52, 152, 219)
+    btn.Text = name
+    btn.TextColor3 = Color3.new(1, 1, 1)
+    btn.Font = Enum.Font.GothamSemibold
+    btn.TextSize = 14
+    btn.LayoutOrder = order
+    btn.Parent = mainFrame
+    
+    local c2 = Instance.new("UICorner")
+    c2.CornerRadius = UDim.new(0, 6)
+    c2.Parent = btn
+    
+    btn.MouseButton1Click:Connect(function()
+        if callback then
+            task.spawn(callback)
         end
-        
-        return FakeWindow
-    end
-}
-
-local Window = Fluent:CreateWindow({
-    Title = "🐟 Fishman Hub",
-    SubTitle = "Unified Auto-Fisher 1.0.3 v3.8",
-    TabWidth = 160,
-    Size = UDim2.fromOffset(500, 350),
-    Theme = "Darker",
-    MinimizeKey = Enum.KeyCode.RightShift
-})
-
-env.Fishman_DestroyUI = function()
-    pcall(function()
-        if OrionLib then OrionLib:Destroy() end
     end)
+    return btn
 end
 
--- Prevent game from detecting UI actions or internal UI errors (Anti-Cheat bypass)
-pcall(function()
-    if getconnections then
-        for _, conn in pairs(getconnections(game:GetService("UserInputService").WindowFocusReleased)) do
-            conn:Disable()
-        end
-        for _, conn in pairs(getconnections(game:GetService("LogService").MessageOut)) do
-            conn:Disable()
-        end
-        for _, conn in pairs(getconnections(game:GetService("ScriptContext").Error)) do
-            conn:Disable()
-        end
-    end
-    game:GetService("ContextActionService"):UnbindAction("FluentMinimize")
+createToggle("T_MegStackLoc", "🎣 Auto Refill Meg Stack", 2, function(val)
+    if isLobby then if val then getgenv().Fluent:Notify({ Title = "Error", Content = "Cannot use in Lobby!", Duration = 3 }); getgenv().Fluent.Options.T_MegStackLoc:SetValue(false) end return end
+    Model.State.isMegStackLoc = val
 end)
 
-Tabs = {
-    Teleport = Window:AddTab({ Title = "Teleport", Icon = "plane" }),
-    Fishing = Window:AddTab({ Title = "Fishing", Icon = "anchor" }),
-    Settings = Window:AddTab({ Title = "Settings", Icon = "settings" })
-}
+createToggle("T_ManualMegStackLoc", "🎣 Manual Meg Stack", 3, function(val)
+    if isLobby then if val then getgenv().Fluent:Notify({ Title = "Error", Content = "Cannot use in Lobby!", Duration = 3 }); getgenv().Fluent.Options.T_ManualMegStackLoc:SetValue(false) end return end
+    
+    if val then
+        if getgenv().Fluent and getgenv().Fluent.Options and getgenv().Fluent.Options.T_AutoReturn and getgenv().Fluent.Options.T_AutoReturn.Value then
+            getgenv().Fluent.Options.T_AutoReturn:SetValue(false)
+            getgenv().Fluent:Notify({ Title = "System", Content = "Auto Return Hoverboard turned OFF for Manual Travel", Duration = 3 })
+        end
 
--- ======================================================================
--- 🗺️ TELEPORT TAB UI
--- ======================================================================
-Tabs.Teleport:AddToggle("T_AutoSpawnShip", {
-    Title = "🛳️ Auto Spawn Ship",
-    Description = "Flies to spawn, spawns hoverboard, and sets flight height.",
-    Default = false,
-    Callback = function(Value)
-        print("[Hub] 'Auto Spawn Ship' toggled " .. tostring(Value))
-        if Value then
-            EnsureHoverboardLoaded()
-            if getgenv().HoverboardController and getgenv().HoverboardController.AutoSpawn then
-                print("[Hub] Calling HoverboardController.AutoSpawn()...")
-                getgenv().HoverboardController.AutoSpawn(function()
-                    if Fluent and Fluent.Options and Fluent.Options.T_MegStack then
-                        print("[Hub] Automatically enabling Megalodon Stack after final move...")
-                        Fluent.Options.T_MegStack:SetValue(true)
-                    end
-                end)
-            else
-                print("[Hub] ERROR: HoverboardController.AutoSpawn not found!")
+        manualTravelInitialized = true
+        task.spawn(function()
+            local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+            if hrp then getgenv().CachedOriginalPos = hrp.Position end
+            
+            Model.State.isAutoTraveling = false
+            if Model.DisableFlight then Model.DisableFlight() end
+            if Model.UnequipRod then Model.UnequipRod() end
+            task.wait(1)
+            
+            if not getgenv().Fluent.Options.T_ManualMegStackLoc.Value then return end
+            
+            Model.State.isManualTraveling = true
+            if Model.EnableFlight then Model.EnableFlight() end
+            getgenv().Fluent:Notify({ Title = "Manual Travel", Content = "Flying to Meg Stack Island...", Duration = 3 })
+            if Model.CraftFlyPath then Model.CraftFlyPath({ Vector3.new(-6760, 27, 9191) }) end
+            
+            if Model.State.isManualTraveling then
+                Model.State.isManualTraveling = false
+                if Model.DisableFlight then Model.DisableFlight() end
+                getgenv().Fluent:Notify({ Title = "Manual Travel", Content = "Arrived at Meg Stack Island!", Duration = 3 })
             end
-        else
-            if getgenv().HoverboardController then
-                getgenv().HoverboardController.CancelAutoSpawn = true
-            end
-            if Model and Model.DisableFlight then
-                pcall(Model.DisableFlight)
-            end
-            if getgenv().HoverboardController and getgenv().HoverboardController.Reset then
-                print("[Hub] Calling HoverboardController.Reset() to drop...")
-                getgenv().HoverboardController.Reset()
-            end
+        end)
+    else
+        Model.State.isManualTraveling = false
+    end
+end)
+
+createToggle("T_AutoSpawnShip", "🛳️ Auto Spawn Ship", 4, function(val)
+    if val then
+        if EnsureHoverboardLoaded then EnsureHoverboardLoaded() end
+        if getgenv().HoverboardController and getgenv().HoverboardController.AutoSpawn then
+            getgenv().HoverboardController.AutoSpawn(function()
+                if getgenv().Fluent and getgenv().Fluent.Options and getgenv().Fluent.Options.T_MegStack then
+                    getgenv().Fluent.Options.T_MegStack:SetValue(true)
+                end
+            end)
+        end
+    else
+        if getgenv().HoverboardController then
+            getgenv().HoverboardController.CancelAutoSpawn = true
+        end
+        if Model and Model.DisableFlight then pcall(Model.DisableFlight) end
+        if getgenv().HoverboardController and getgenv().HoverboardController.Reset then
+            getgenv().HoverboardController.Reset()
         end
     end
-})
+end)
 
--- ======================================================================
--- 🎣 FISHING TAB UI
--- ======================================================================
-Tabs.Fishing:AddToggle("T_MegStackLoc", { Title = "Meg Stack Location (Auto Refill)", Default = false, Callback = function(Value) 
-        if isLobby then if Value then Fluent:Notify({ Title = "Error", Content = "Cannot use in Lobby!", Duration = 3 }); Fluent.Options.T_MegStackLoc:SetValue(false) end return end
-        Model.State.isMegStackLoc = Value 
-    end })
+createToggle("T_AntiLag", "⚙️ Disable 3D (Anti-Lag)", 5, function(val)
+    RunService:Set3dRenderingEnabled(not val)
+end)
 
+createButton("🥔 Potato Graphics", 6, function()
+    if ActivatePotatoGraphics then ActivatePotatoGraphics() end
+end)
 
+local minBtn = Instance.new("TextButton")
+minBtn.Size = UDim2.new(0, 30, 0, 30)
+minBtn.Position = UDim2.new(1, -35, 0, 5)
+minBtn.BackgroundColor3 = Color3.fromRGB(231, 76, 60)
+minBtn.Text = "X"
+minBtn.TextColor3 = Color3.new(1, 1, 1)
+minBtn.Font = Enum.Font.GothamBold
+minBtn.Parent = mainFrame
 
--- ======================================================================
--- ⚙️ SETTINGS TAB UI
--- ======================================================================
-Tabs.Settings:AddToggle("T_AutoReconnect", { 
-    Title = "Auto Reconnect on Disconnect", 
-    Default = GlobalMem.FishmanAutoReconnect, 
-    Callback = function(Value)
-        GlobalMem.FishmanAutoReconnect = Value
-        SaveConfig()
-    end 
-})
+local minc = Instance.new("UICorner")
+minc.CornerRadius = UDim.new(0, 15)
+minc.Parent = minBtn
 
-Tabs.Settings:AddToggle("T_AntiLag", { 
-    Title = "Disable 3D Rendering (Anti-Lag)", 
-    Default = false, 
-    Callback = function(Value)
-        RunService:Set3dRenderingEnabled(not Value)
-    end 
-})
-
-Tabs.Settings:AddSlider("S_FPSCap", {
-    Title = "FPS Cap",
-    Description = "Limits your FPS to reduce CPU/GPU usage when AFKing.",
-    Default = 35,
-    Min = 5,
-    Max = 240,
-    Rounding = 0,
-    Callback = function(Value)
-        if setfpscap then pcall(setfpscap, Value) end
-    end
-})
-
-Tabs.Settings:AddButton({
-    Title = "🥔 Potato Graphics",
-    Description = "Reduces all game graphics to the absolute minimum for maximum FPS.",
-    Callback = function()
-        ActivatePotatoGraphics()
-    end
-})
-
-Tabs.Settings:AddButton({
-    Title = "🔄 Update / Load Latest Version",
-    Description = "Destroys the current UI and executes the latest joinersystem from GitHub.",
-    Callback = function()
-        Fluent:Notify({ Title = "Updating", Content = "Fetching latest script from GitHub...", Duration = 3 })
-        ShutdownEverything()
-        if Window and Window.Destroy then
-            Window:Destroy()
+local minimized = false
+minBtn.MouseButton1Click:Connect(function()
+    minimized = not minimized
+    if minimized then
+        mainFrame.Size = UDim2.new(0, 250, 0, 40)
+        for _, child in pairs(mainFrame:GetChildren()) do
+            if child:IsA("TextButton") and child ~= minBtn then
+                child.Visible = false
+            end
         end
-        task.wait(1)
-        loadstring(game:HttpGet("https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/main/MSTACK/joinersystem.lua?t="..tostring(tick())))()
-    end
-})
-
-Tabs.Settings:AddButton({
-    Title = "Destroy UI & Shutdown",
-    Description = "Cleans up all loops, unloads the UI, and stops the script safely.",
-    Callback = function()
-        ShutdownEverything()
-        if Window and Window.Destroy then
-            Window:Destroy()
+        minBtn.BackgroundColor3 = Color3.fromRGB(46, 204, 113)
+        minBtn.Text = "+"
+    else
+        mainFrame.Size = UDim2.new(0, 250, 0, 255)
+        for _, child in pairs(mainFrame:GetChildren()) do
+            if child:IsA("TextButton") and child ~= minBtn then
+                child.Visible = true
+            end
         end
+        minBtn.BackgroundColor3 = Color3.fromRGB(231, 76, 60)
+        minBtn.Text = "X"
     end
-})
+end)
 
-Window:SelectTab(isLobby and 1 or 2)
-Fluent:Notify({ Title = "Fishman Unified", Content = "Script loaded successfully!", Duration = 5 })
+getgenv().Fishman_DestroyUI = function()
+    if sg then sg:Destroy() end
+    pcall(function() RunService:Set3dRenderingEnabled(true) end)
+end
 
+getgenv().Fluent:Notify({ Title = "Fishman Custom UI", Content = "Loaded Lightweight UI!", Duration = 5 })
 local isPaused = false
 local savedState = {}
 
