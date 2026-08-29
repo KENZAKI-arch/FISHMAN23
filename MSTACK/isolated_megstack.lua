@@ -1965,7 +1965,7 @@ sg.ResetOnSpawn = false
 sg.Parent = CoreGui
 
 local mainFrame = Instance.new("Frame")
-mainFrame.Size = UDim2.new(0, 250, 0, 475)
+mainFrame.Size = UDim2.new(0, 250, 0, 432)
 mainFrame.Position = UDim2.new(0.5, -125, 0.5, -160)
 mainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
 mainFrame.BorderSizePixel = 0
@@ -2053,12 +2053,7 @@ createToggle("T_Fish", "🎣 Auto Fish", 2, function(val)
     Model.State.isFishing = val 
 end)
 
-createToggle("T_AFK", "⏰ AFK Mode (Auto-start 10s)", 3, function(val)
-    if isLobby then if val then getgenv().Fluent:Notify({ Title = "Error", Content = "AFK Mode requires Fishing server!", Duration = 3 }); getgenv().Fluent.Options.T_AFK:SetValue(false) end return end
-    isAFKModeActive = val; secondsSinceLastInput = 0 
-end)
-
-createToggle("T_DeepSea", "🐙 Deep Sea Catcher (Beasts)", 4, function(val)
+createToggle("T_DeepSea", "🐙 Deep Sea Catcher (Beasts)", 3, function(val)
     if isLobby then if val then getgenv().Fluent:Notify({ Title = "Error", Content = "Cannot fish in Lobby!", Duration = 3 }); getgenv().Fluent.Options.T_DeepSea:SetValue(false) end return end
     task.spawn(function()
         if val then
@@ -2070,11 +2065,12 @@ createToggle("T_DeepSea", "🐙 Deep Sea Catcher (Beasts)", 4, function(val)
     Model.State.isDeepSeaCatcher = val 
 end)
 
-createToggle("T_MegStack", "🦈 Megalodon Stack", 5, function(val)
+createToggle("T_MegStack", "🦈 Megalodon Stack", 4, function(val)
     if isLobby then if val then getgenv().Fluent:Notify({ Title = "Error", Content = "Cannot stack in Lobby!", Duration = 3 }); getgenv().Fluent.Options.T_MegStack:SetValue(false) end return end
     Model.State.isMegStacking = val
     if val then
         if getgenv().Fluent.Options.T_DeepSea then getgenv().Fluent.Options.T_DeepSea:SetValue(true) end
+        if getgenv().Fluent.Options.T_Fish then getgenv().Fluent.Options.T_Fish:SetValue(true) end
         if getgenv().Fluent.Options.T_Buy then getgenv().Fluent.Options.T_Buy:SetValue(true) end
         if getgenv().Fluent.Options.T_MegStackLoc then getgenv().Fluent.Options.T_MegStackLoc:SetValue(true) end
         if getgenv().Fluent.Options.T_AutoStoreFruit then getgenv().Fluent.Options.T_AutoStoreFruit:SetValue(true) end
@@ -2110,12 +2106,13 @@ createToggle("T_MegStack", "🦈 Megalodon Stack", 5, function(val)
     else
         print("🛑 [MegStack] Stacking aborted. Shutting down deep sea catcher.")
         if getgenv().Fluent.Options.T_DeepSea and getgenv().Fluent.Options.T_DeepSea.Value == true then getgenv().Fluent.Options.T_DeepSea:SetValue(false) end
+        if getgenv().Fluent.Options.T_Fish and getgenv().Fluent.Options.T_Fish.Value == true then getgenv().Fluent.Options.T_Fish:SetValue(false) end
         if getgenv().Fluent.Options.T_AutoStoreFruit and getgenv().Fluent.Options.T_AutoStoreFruit.Value == true then getgenv().Fluent.Options.T_AutoStoreFruit:SetValue(false) end
         if getgenv().Fluent.Options.T_AutoReturn and getgenv().Fluent.Options.T_AutoReturn.Value == true then getgenv().Fluent.Options.T_AutoReturn:SetValue(false) end
     end
 end)
 
-createToggle("T_CyborgAuto", "⚔️ Cyborg Autofarm", 6, function(val)
+createToggle("T_CyborgAuto", "⚔️ Cyborg Autofarm", 5, function(val)
     if isLobby then 
         if val then 
             getgenv().Fluent:Notify({ Title = "Error", Content = "Cannot farm in Lobby!", Duration = 3 }) 
@@ -2159,12 +2156,12 @@ createToggle("T_CyborgAuto", "⚔️ Cyborg Autofarm", 6, function(val)
     end
 end)
 
-createToggle("T_MegStackLoc", "🎣 Auto Refill Meg Stack", 7, function(val)
+createToggle("T_MegStackLoc", "🎣 Auto Refill Meg Stack", 6, function(val)
     if isLobby then if val then getgenv().Fluent:Notify({ Title = "Error", Content = "Cannot use in Lobby!", Duration = 3 }); getgenv().Fluent.Options.T_MegStackLoc:SetValue(false) end return end
     Model.State.isMegStackLoc = val
 end)
 
-createToggle("T_ManualMegStackLoc", "🎣 Manual Meg Stack", 8, function(val)
+createToggle("T_ManualMegStackLoc", "🎣 Manual Meg Stack", 7, function(val)
     if isLobby then if val then getgenv().Fluent:Notify({ Title = "Error", Content = "Cannot use in Lobby!", Duration = 3 }); getgenv().Fluent.Options.T_ManualMegStackLoc:SetValue(false) end return end
     
     if val then
@@ -2201,7 +2198,7 @@ createToggle("T_ManualMegStackLoc", "🎣 Manual Meg Stack", 8, function(val)
     end
 end)
 
-createToggle("T_AutoSpawnShip", "🛳️ Auto Spawn Ship", 9, function(val)
+createToggle("T_AutoSpawnShip", "🛳️ Auto Spawn Ship", 8, function(val)
     if val then
         if EnsureHoverboardLoaded then EnsureHoverboardLoaded() end
         if getgenv().HoverboardController and getgenv().HoverboardController.AutoSpawn then
@@ -2222,11 +2219,11 @@ createToggle("T_AutoSpawnShip", "🛳️ Auto Spawn Ship", 9, function(val)
     end
 end)
 
-createToggle("T_AntiLag", "⚙️ Disable 3D (Anti-Lag)", 10, function(val)
+createToggle("T_AntiLag", "⚙️ Disable 3D (Anti-Lag)", 9, function(val)
     RunService:Set3dRenderingEnabled(not val)
 end)
 
-createButton("🥔 Potato Graphics", 11, function()
+createButton("🥔 Potato Graphics", 10, function()
     if ActivatePotatoGraphics then ActivatePotatoGraphics() end
 end)
 
@@ -2256,7 +2253,7 @@ minBtn.MouseButton1Click:Connect(function()
         minBtn.BackgroundColor3 = Color3.fromRGB(46, 204, 113)
         minBtn.Text = "+"
     else
-        mainFrame.Size = UDim2.new(0, 250, 0, 475)
+        mainFrame.Size = UDim2.new(0, 250, 0, 432)
         for _, child in pairs(mainFrame:GetChildren()) do
             if child:IsA("TextButton") and child ~= minBtn then
                 child.Visible = true
