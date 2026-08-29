@@ -1,4 +1,4 @@
--- Version 3.9
+-- Version 3.8
 -- ======================================================================
 -- 🛑 GLOBAL SETUP & DUPLICATE PREVENTION
 -- ======================================================================
@@ -48,81 +48,14 @@ while not LocalPlayer do
     LocalPlayer = Players.LocalPlayer 
 end
 
-local function TriggerSafeguardShutdown(reason)
-    warn("[Fishman] WIFI SAFEGUARD TRIGGERED: " .. tostring(reason))
-    _running = false
-    disconnectAll()
-    if env.Fishman_DestroyUI then pcall(env.Fishman_DestroyUI) end
-end
-
--- Robust network/weak wifi safeguard: wait for essential player instances to fully replicate
-print("[Fishman] Waiting for weak connection safeguard (Character & PlayerGui)...")
-local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-if not character:FindFirstChild("HumanoidRootPart") then
-    local hrp = character:WaitForChild("HumanoidRootPart", 60)
-    if not hrp then
-        TriggerSafeguardShutdown("HumanoidRootPart failed to load within 60 seconds.")
-        return -- Exit main thread
-    end
-end
-if not LocalPlayer:FindFirstChild("PlayerGui") then
-    local gui = LocalPlayer:WaitForChild("PlayerGui", 60)
-    if not gui then
-        TriggerSafeguardShutdown("PlayerGui failed to load within 60 seconds.")
-        return -- Exit main thread
-    end
-end
-task.wait(2) -- Additional buffer to ensure client is fully responsive
-print("[Fishman] Game fully loaded!")
-
--- Active Ping Monitor (Shuts down script if wifi drops mid-game)
-task.spawn(function()
-    local Stats = game:GetService("Stats")
-    local consecutiveHighPing = 0
-    while _running and task.wait(5) do
-        pcall(function()
-            local pingStr = Stats.Network.ServerStatsItem["Data Ping"]:GetValueString()
-            local pingVal = tonumber(string.match(pingStr, "%d+%.?%d*"))
-            if pingVal and pingVal > 4000 then -- 4 seconds behind
-                consecutiveHighPing = consecutiveHighPing + 1
-                if consecutiveHighPing >= 6 then -- 30 seconds of pure 4000+ ping
-                    TriggerSafeguardShutdown("Ping exceeded 4000ms for 30s. Connection lost.")
-                end
-            else
-                consecutiveHighPing = 0
-            end
-        end)
-    end
-end)
-
 local targetPlaceId = 1730877806
-local isLobby = (game.PlaceId == targetPlaceId)
+local isLobby = (game.PlaceId == targetPlaceId and game.PrivateServerId == "")
 local GlobalMem = env
 
 -- ======================================================================
 -- ⚙️ CONFIGURATION SYSTEM
 -- ======================================================================
 local configFileName = "FishmanConfig_" .. tostring(LocalPlayer.UserId) .. ".json"
-
-local isFreshStart = true
-pcall(function()
-    if isfile and readfile and isfile(configFileName) then
-        local data = HttpService:JSONDecode(readfile(configFileName))
-        if data and data.LastTeleportTime then
-            if os.time() - data.LastTeleportTime < 180 then -- 3 minutes
-                isFreshStart = false
-            end
-        end
-    end
-end)
-if getgenv().FishmanQOT_Active then isFreshStart = false end
-
-if isFreshStart then
-    if getgenv().FishmanDefaultPSCode then GlobalMem.FishmanPSCode = getgenv().FishmanDefaultPSCode end
-    if getgenv().FishmanDefaultDestination then GlobalMem.FishmanDestination = getgenv().FishmanDefaultDestination end
-    if getgenv().FishmanAutoSpawnShip ~= nil then GlobalMem.FishmanAutoSpawnShip = getgenv().FishmanAutoSpawnShip end
-    GlobalMem.FishmanAutoRouteLobby = true
-end
 
 pcall(function()
     if isfile and readfile and isfile(configFileName) then
@@ -135,20 +68,19 @@ pcall(function()
             if GlobalMem.FishmanAutoJoin == nil then GlobalMem.FishmanAutoJoin = data.FishmanAutoJoin end
             if GlobalMem.FishmanAutoReconnect == nil then GlobalMem.FishmanAutoReconnect = data.FishmanAutoReconnect end
             if GlobalMem.FishmanAutoRouteLobby == nil then GlobalMem.FishmanAutoRouteLobby = data.FishmanAutoRouteLobby end
-            if GlobalMem.FishmanAutoSpawnShip == nil then GlobalMem.FishmanAutoSpawnShip = data.FishmanAutoSpawnShip end
             print("[Fishman] Loaded Config from file.")
         end
     end
 end)
 
-GlobalMem.FishmanPSCode = GlobalMem.FishmanPSCode or GlobalMem.FishmanDefaultPSCode or "qj1ttW4JG1"
+GlobalMem.FishmanPSCode = GlobalMem.FishmanPSCode or "qj1ttW4JG1"
 if type(GlobalMem.FishmanPSCodeHistory) ~= "table" or #GlobalMem.FishmanPSCodeHistory == 0 then
     GlobalMem.FishmanPSCodeHistory = {GlobalMem.FishmanPSCode}
 end
 if not table.find(GlobalMem.FishmanPSCodeHistory, GlobalMem.FishmanPSCode) and GlobalMem.FishmanPSCode ~= "" then
     table.insert(GlobalMem.FishmanPSCodeHistory, 1, GlobalMem.FishmanPSCode)
 end
-GlobalMem.FishmanDestination = GlobalMem.FishmanDestination or GlobalMem.FishmanDefaultDestination or "tradeHub" 
+GlobalMem.FishmanDestination = GlobalMem.FishmanDestination or "tradeHub" 
 GlobalMem.FishmanAutoTeleport = GlobalMem.FishmanAutoTeleport or false 
 GlobalMem.FishmanAutoJoin = GlobalMem.FishmanAutoJoin or false
 if GlobalMem.FishmanAutoReconnect == nil then GlobalMem.FishmanAutoReconnect = true end
@@ -164,8 +96,7 @@ local function SaveConfig()
                 FishmanAutoTeleport = GlobalMem.FishmanAutoTeleport,
                 FishmanAutoJoin = GlobalMem.FishmanAutoJoin,
                 FishmanAutoReconnect = GlobalMem.FishmanAutoReconnect,
-                FishmanAutoRouteLobby = GlobalMem.FishmanAutoRouteLobby,
-                FishmanAutoSpawnShip = GlobalMem.FishmanAutoSpawnShip
+                FishmanAutoRouteLobby = GlobalMem.FishmanAutoRouteLobby
             }
             writefile(configFileName, HttpService:JSONEncode(data))
         end
@@ -173,27 +104,13 @@ local function SaveConfig()
 end
 
 -- ======================================================================
--- 🚀 TELEPORT MEMORY INJECTION
--- ======================================================================
-local myScriptURL = "https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/MSTACK/joinersystem.lua"
-local qot = queue_on_teleport or (syn and syn.queue_on_teleport) or (fluxus and fluxus.queue_on_teleport)
-local UpdateTeleportMemory -- Forward declaration
-
--- ======================================================================
 -- 🔄 AUTO RECONNECT ENGINE
 -- ======================================================================
 addConn(GuiService.ErrorMessageChanged:Connect(function()
     if GlobalMem.FishmanAutoReconnect then
         task.spawn(function()
-            -- It's a disconnect! Reroute to configured Default PS and Destination!
-            if GlobalMem.FishmanDefaultPSCode then GlobalMem.FishmanPSCode = GlobalMem.FishmanDefaultPSCode end
-            if GlobalMem.FishmanDefaultDestination then GlobalMem.FishmanDestination = GlobalMem.FishmanDefaultDestination end
-            GlobalMem.FishmanAutoTeleport = true
-            SaveConfig()
-            
             while _running and task.wait(5) do
                 pcall(function()
-                    if UpdateTeleportMemory then UpdateTeleportMemory(true) end
                     TeleportService:Teleport(targetPlaceId, LocalPlayer)
                 end)
             end
@@ -201,9 +118,14 @@ addConn(GuiService.ErrorMessageChanged:Connect(function()
     end
 end))
 
-function UpdateTeleportMemory(willAutoTeleport)
+-- ======================================================================
+-- 🚀 TELEPORT MEMORY INJECTION
+-- ======================================================================
+local myScriptURL = "https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/MSTACK/joinersystem.lua"
+local qot = queue_on_teleport or (syn and syn.queue_on_teleport) or (fluxus and fluxus.queue_on_teleport)
+
+local function UpdateTeleportMemory(willAutoTeleport)
     GlobalMem.FishmanAutoTeleport = willAutoTeleport
-    GlobalMem.LastTeleportTime = os.time()
     SaveConfig()
     
     if not qot then return end
@@ -212,9 +134,6 @@ function UpdateTeleportMemory(willAutoTeleport)
         pcall(function()
             getgenv().FishmanPSCode = "]] .. GlobalMem.FishmanPSCode .. [["
             getgenv().FishmanDestination = "]] .. GlobalMem.FishmanDestination .. [["
-            getgenv().FishmanDefaultPSCode = "]] .. tostring(GlobalMem.FishmanDefaultPSCode or "") .. [["
-            getgenv().FishmanDefaultDestination = "]] .. tostring(GlobalMem.FishmanDefaultDestination or "") .. [["
-            getgenv().FishmanQOT_Active = true
             getgenv().FishmanAutoTeleport = ]] .. tostring(willAutoTeleport) .. [[
             
             task.spawn(function()
@@ -312,10 +231,9 @@ local Model = { State = {} }
 local shopEvent, buyableItems, sellEvent, questEvent, craftingRemote, Remote
 local statsFolder, inventoryObj, peliObject
 local cachedBaitItems = nil
-    local loadedAnimations = {}
-    addConn(LocalPlayer.CharacterAdded:Connect(function() table.clear(loadedAnimations) end))
-    local isAFKModeActive = false
-    local secondsSinceLastInput = 0
+local loadedAnimations = {}
+local isAFKModeActive = false
+local secondsSinceLastInput = 0
 local craftHeartbeatConn = nil
 local craftFlyTarget = nil
 
@@ -579,34 +497,16 @@ if not isLobby then
             return result
         end
 
-        local cachedParts = {}
-        for _, part in ipairs(object:GetDescendants()) do
-            if part:IsA("BasePart") then table.insert(cachedParts, part) end
-        end
-        local descAdded = object.DescendantAdded:Connect(function(part)
-            if part:IsA("BasePart") then table.insert(cachedParts, part) end
-        end)
-
         noclipConnection = RunService.Stepped:Connect(function()
-            if not _running then 
-                if descAdded then descAdded:Disconnect() end
-                navigator:Cancel() 
-                return 
-            end
             if not navigator._isNavigating or navigator._isPaused then return end
-            for _, part in ipairs(cachedParts) do
-                if part.CanCollide then part.CanCollide = false end
+            if object then
+                for _, part in ipairs(object:GetDescendants()) do
+                    if part:IsA("BasePart") then part.CanCollide = false end
+                end
             end
         end)
-        
-        local originalCancel = navigator.Cancel
-        function navigator:Cancel()
-            if descAdded then descAdded:Disconnect() end
-            originalCancel(self)
-        end
 
         connection = RunService.Heartbeat:Connect(function(deltaTime)
-            if not _running then navigator:Cancel() return end
             if not navigator._isNavigating then
                 navigator:Cancel()
                 return
@@ -757,9 +657,6 @@ if not isLobby then
         return navigator
     end
     
-    local cachedTravelParams = RaycastParams.new()
-    cachedTravelParams.FilterType = Enum.RaycastFilterType.Exclude
-
     function Model.HandleMovement(deltaTime)
         local rootPart = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
         if not rootPart then return end
@@ -807,14 +704,16 @@ if not isLobby then
 
         local newY = cur.Y
         if Model.State.travelStage > 1 and not goingUp then
-            cachedTravelParams.FilterDescendantsInstances = {LocalPlayer.Character}
+            local params = RaycastParams.new()
+            params.FilterDescendantsInstances = {LocalPlayer.Character}
+            params.FilterType = Enum.RaycastFilterType.Exclude
 
             local floorY = tgtY
             local rayStart = Vector3.new(newX, cur.Y + 10, newZ)
             local remainingDist = 500
             
             while remainingDist > 0 do
-                local res = workspace:Raycast(rayStart, Vector3.new(0, -remainingDist, 0), cachedTravelParams)
+                local res = workspace:Raycast(rayStart, Vector3.new(0, -remainingDist, 0), params)
                 if res then
                     if res.Instance.CanCollide and res.Instance.Anchored then
                         floorY = math.max(tgtY, res.Position.Y + 3.5)
@@ -1408,15 +1307,15 @@ if not isLobby then
                             end
                             
                             -- Listen for when the game clones the sound from ReplicatedStorage!
-                            addConn(workspace.DescendantAdded:Connect(onNewSound))
-                            addConn(game:GetService("SoundService").DescendantAdded:Connect(onNewSound))
+                            workspace.DescendantAdded:Connect(onNewSound)
+                            game:GetService("SoundService").DescendantAdded:Connect(onNewSound)
                             
                             if LocalPlayer.Character then
-                                addConn(LocalPlayer.Character.DescendantAdded:Connect(onNewSound))
+                                LocalPlayer.Character.DescendantAdded:Connect(onNewSound)
                             end
-                            addConn(LocalPlayer.CharacterAdded:Connect(function(char)
-                                addConn(char.DescendantAdded:Connect(onNewSound))
-                            end))
+                            LocalPlayer.CharacterAdded:Connect(function(char)
+                                char.DescendantAdded:Connect(onNewSound)
+                            end)
                             
                             -- Grab any that might already exist right now (just once, instantly)
                             local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
@@ -1635,11 +1534,7 @@ if not isLobby then
                 if character ~= lastCharacter then
                     lastCharacter = character
                     table.clear(noclipCache)
-                    if descAddedConn then
-                        descAddedConn:Disconnect()
-                        local idx = table.find(_connections, descAddedConn)
-                        if idx then table.remove(_connections, idx) end
-                    end
+                    if descAddedConn then descAddedConn:Disconnect() end
                     for _, part in ipairs(character:GetDescendants()) do
                         if part:IsA("BasePart") then table.insert(noclipCache, part) end
                     end
@@ -1664,7 +1559,6 @@ local function ShutdownEverything()
     if not isLobby then
         Model.DisableFlight()
     end
-    if getgenv().DSC_SoundCache then getgenv().DSC_SoundCache = nil end
     if getgenv().StopAutofarm then
         pcall(getgenv().StopAutofarm)
     end
@@ -2014,427 +1908,232 @@ end
 
 
 -- ======================================================================
--- 🎨 CUSTOM LIGHTWEIGHT UI INTEGRATION
+-- 🎨 FLUENT UI INTEGRATION
 -- ======================================================================
-Fluent = { Options = {} }
+local OrionLib
+local orionPath = "OrionLib_Fishman.lua"
 
-function Fluent:Notify(options)
-    task.spawn(function()
-        local sg = Instance.new("ScreenGui")
-        sg.Name = "FishmanNotify"
-        sg.Parent = game:GetService("CoreGui")
-        
-        local frame = Instance.new("Frame")
-        frame.Size = UDim2.new(0, 200, 0, 50)
-        frame.Position = UDim2.new(1, -210, 1, -60)
-        frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-        frame.BorderSizePixel = 1
-        frame.BorderColor3 = Color3.fromRGB(60, 60, 60)
-        frame.Parent = sg
-        
-        local txt = Instance.new("TextLabel")
-        txt.Size = UDim2.new(1, -10, 1, -10)
-        txt.Position = UDim2.new(0, 5, 0, 5)
-        txt.BackgroundTransparency = 1
-        txt.Text = (options.Title or "") .. "\n" .. (options.Content or "")
-        txt.TextColor3 = Color3.fromRGB(255, 255, 255)
-        txt.TextXAlignment = Enum.TextXAlignment.Left
-        txt.TextYAlignment = Enum.TextYAlignment.Top
-        txt.Font = Enum.Font.Code
-        txt.TextSize = 12
-        txt.TextWrapped = true
-        txt.Parent = frame
-        
-        task.wait(options.Duration or 3)
-        sg:Destroy()
+if isfile and readfile and isfile(orionPath) then
+    local success, result = pcall(function()
+        return loadstring(readfile(orionPath))()
     end)
+    if success and type(result) == "table" then
+        OrionLib = result
+    end
 end
 
-function Fluent:CreateWindow(options)
-    local FakeWindow = {}
-    
-    local sg = Instance.new("ScreenGui")
-    sg.Name = "FishmanHubCustom"
-    sg.Parent = game:GetService("CoreGui")
-    
-    FakeWindow.Destroy = function(self) sg:Destroy() end
-    env.Fishman_DestroyUI = function() pcall(function() FakeWindow:Destroy() end) end
-    
-    local mainFrame = Instance.new("Frame")
-    mainFrame.Size = UDim2.new(0, 500, 0, 350)
-    mainFrame.Position = UDim2.new(0.5, -250, 0.5, -175)
-    mainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-    mainFrame.BorderSizePixel = 1
-    mainFrame.BorderColor3 = Color3.fromRGB(50, 50, 50)
-    mainFrame.Active = true
-    mainFrame.Parent = sg
-    
-    local topBar = Instance.new("Frame")
-    topBar.Size = UDim2.new(1, 0, 0, 25)
-    topBar.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-    topBar.BorderSizePixel = 0
-    topBar.Parent = mainFrame
-    
-    local titleLabel = Instance.new("TextLabel")
-    titleLabel.Size = UDim2.new(1, -60, 1, 0)
-    titleLabel.Position = UDim2.new(0, 5, 0, 0)
-    titleLabel.BackgroundTransparency = 1
-    titleLabel.Text = (options.Title or "Hub") .. " | " .. (options.SubTitle or "")
-    titleLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-    titleLabel.TextXAlignment = Enum.TextXAlignment.Left
-    titleLabel.Font = Enum.Font.Code
-    titleLabel.TextSize = 12
-    titleLabel.Parent = topBar
-    
-    local minBtn = Instance.new("TextButton")
-    minBtn.Size = UDim2.new(0, 25, 0, 25)
-    minBtn.Position = UDim2.new(1, -50, 0, 0)
-    minBtn.BackgroundTransparency = 1
-    minBtn.Text = "-"
-    minBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
-    minBtn.Font = Enum.Font.Code
-    minBtn.TextSize = 14
-    minBtn.Parent = topBar
-    
-    local closeBtn = Instance.new("TextButton")
-    closeBtn.Size = UDim2.new(0, 25, 0, 25)
-    closeBtn.Position = UDim2.new(1, -25, 0, 0)
-    closeBtn.BackgroundTransparency = 1
-    closeBtn.Text = "X"
-    closeBtn.TextColor3 = Color3.fromRGB(200, 100, 100)
-    closeBtn.Font = Enum.Font.Code
-    closeBtn.TextSize = 14
-    closeBtn.Parent = topBar
-    
-    local isMinimized = false
-    local function toggleMinimize()
-        isMinimized = not isMinimized
-        mainFrame.Size = UDim2.new(0, 500, 0, isMinimized and 25 or 350)
-        for _, c in ipairs(mainFrame:GetChildren()) do
-            if c ~= topBar and c.Name ~= "UICorner" then c.Visible = not isMinimized end
+if not OrionLib then
+    local success, result = pcall(function()
+        local code = game:HttpGet('https://raw.githubusercontent.com/shlexware/Orion/main/source')
+        if writefile then
+            pcall(writefile, orionPath, code)
         end
-    end
-    minBtn.MouseButton1Click:Connect(toggleMinimize)
-    closeBtn.MouseButton1Click:Connect(function() FakeWindow:Destroy() end)
-    
-    if options.MinimizeKey then
-        game:GetService("UserInputService").InputBegan:Connect(function(input, processed)
-            if not processed and input.KeyCode == options.MinimizeKey then
-                toggleMinimize()
-            end
-        end)
-    end
-    
-    local dragging, dragStart, startPos
-    topBar.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            dragging = true; dragStart = input.Position; startPos = mainFrame.Position
-            input.Changed:Connect(function() if input.UserInputState == Enum.UserInputState.End then dragging = false end end)
-        end
+        return loadstring(code)()
     end)
-    game:GetService("UserInputService").InputChanged:Connect(function(input)
-        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-            local delta = input.Position - dragStart
-            mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-        end
-    end)
+    
+    if not success or type(result) ~= "table" then
+        warn("Failed to load Orion UI! GitHub might be rate-limiting you, or your executor failed the request. Wait a minute and try again.")
+        return
+    end
+    OrionLib = result
+end
 
-    local tabContainer = Instance.new("ScrollingFrame")
-    tabContainer.Size = UDim2.new(0, 120, 1, -25)
-    tabContainer.Position = UDim2.new(0, 0, 0, 25)
-    tabContainer.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-    tabContainer.BorderSizePixel = 0
-    tabContainer.ScrollBarThickness = 2
-    tabContainer.Parent = mainFrame
-    local tabLayout = Instance.new("UIListLayout", tabContainer)
-    tabLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function() tabContainer.CanvasSize = UDim2.new(0,0,0,tabLayout.AbsoluteContentSize.Y) end)
-
-    local contentContainer = Instance.new("Frame")
-    contentContainer.Size = UDim2.new(1, -120, 1, -25)
-    contentContainer.Position = UDim2.new(0, 120, 0, 25)
-    contentContainer.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-    contentContainer.BorderSizePixel = 0
-    contentContainer.Parent = mainFrame
-
-    local tabsList = {}
-    local activeTabBtn, activeContent = nil, nil
-
-    function FakeWindow:AddTab(tabArgs)
-        local tabBtn = Instance.new("TextButton")
-        tabBtn.Size = UDim2.new(1, 0, 0, 25)
-        tabBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-        tabBtn.BorderSizePixel = 1
-        tabBtn.BorderColor3 = Color3.fromRGB(40, 40, 40)
-        tabBtn.Text = tabArgs.Title
-        tabBtn.TextColor3 = Color3.fromRGB(150, 150, 150)
-        tabBtn.Font = Enum.Font.Code
-        tabBtn.TextSize = 12
-        tabBtn.Parent = tabContainer
+Fluent = {
+    Options = {},
+    Notify = function(self, args)
+        OrionLib:MakeNotification({
+            Name = args.Title or "Notification",
+            Content = args.Content or "",
+            Image = "rbxassetid://4483345998",
+            Time = args.Duration or 5
+        })
+    end,
+    CreateWindow = function(self, args)
+        local Window = OrionLib:MakeWindow({
+            Name = args.Title .. (args.SubTitle and (" - " .. args.SubTitle) or ""),
+            HidePremium = true,
+            SaveConfig = false,
+            IntroText = args.Title
+        })
         
-        local contentScroll = Instance.new("ScrollingFrame")
-        contentScroll.Size = UDim2.new(1, -10, 1, -10)
-        contentScroll.Position = UDim2.new(0, 5, 0, 5)
-        contentScroll.BackgroundTransparency = 1
-        contentScroll.BorderSizePixel = 0
-        contentScroll.ScrollBarThickness = 2
-        contentScroll.Visible = false
-        contentScroll.Parent = contentContainer
-        local contentLayout = Instance.new("UIListLayout", contentScroll)
-        contentLayout.Padding = UDim.new(0, 2)
-        contentLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function() contentScroll.CanvasSize = UDim2.new(0,0,0,contentLayout.AbsoluteContentSize.Y) end)
-        
-        tabBtn.MouseButton1Click:Connect(function()
-            if activeTabBtn then activeTabBtn.TextColor3 = Color3.fromRGB(150, 150, 150); activeContent.Visible = false end
-            activeTabBtn = tabBtn; activeContent = contentScroll
-            tabBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-            contentScroll.Visible = true
-        end)
-        if not activeTabBtn then tabBtn.TextColor3 = Color3.fromRGB(255, 255, 255); activeTabBtn = tabBtn; activeContent = contentScroll; contentScroll.Visible = true end
-        
-        local FakeTab = {}
-        table.insert(tabsList, { Btn = tabBtn, Content = contentScroll })
-        
-        function FakeTab:AddToggle(id, tArgs)
-            local isTable = type(id) == "table"; if isTable then tArgs = id; id = nil end
-            local btn = Instance.new("TextButton")
-            btn.Size = UDim2.new(1, 0, 0, 22)
-            btn.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-            btn.BorderSizePixel = 0
-            btn.TextXAlignment = Enum.TextXAlignment.Left
-            btn.Font = Enum.Font.Code
-            btn.TextSize = 12
-            btn.Parent = contentScroll
+        local FakeWindow = {}
+        function FakeWindow:SelectTab(idx) end
+        function FakeWindow:AddTab(tabArgs)
+            local Tab = Window:MakeTab({
+                Name = tabArgs.Title,
+                Icon = "rbxassetid://4483345998",
+                PremiumOnly = false
+            })
             
-            local FakeToggle = { Value = tArgs.Default or false }
-            local function update()
-                btn.Text = " " .. (FakeToggle.Value and "[ON] " or "[OFF] ") .. tArgs.Title
-                btn.TextColor3 = FakeToggle.Value and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(200, 100, 100)
-                if tArgs.Callback then task.spawn(tArgs.Callback, FakeToggle.Value) end
-            end
-            btn.MouseButton1Click:Connect(function() FakeToggle.Value = not FakeToggle.Value; update() end)
-            FakeToggle.SetValue = function(self, val) self.Value = val; update() end
-            if not isTable and id then Fluent.Options[id] = FakeToggle end
-            update(); return FakeToggle
-        end
-        
-        function FakeTab:AddButton(bArgs)
-            local btn = Instance.new("TextButton")
-            btn.Size = UDim2.new(1, 0, 0, 22)
-            btn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-            btn.BorderSizePixel = 0
-            btn.Text = " > " .. bArgs.Title
-            btn.TextColor3 = Color3.fromRGB(200, 200, 200)
-            btn.TextXAlignment = Enum.TextXAlignment.Left
-            btn.Font = Enum.Font.Code
-            btn.TextSize = 12
-            btn.Parent = contentScroll
-            btn.MouseButton1Click:Connect(function() if bArgs.Callback then task.spawn(bArgs.Callback) end end)
-        end
-        
-        function FakeTab:AddSlider(id, sArgs)
-            local isTable = type(id) == "table"; if isTable then sArgs = id; id = nil end
-            local frame = Instance.new("Frame")
-            frame.Size = UDim2.new(1, 0, 0, 32)
-            frame.BackgroundTransparency = 1
-            frame.Parent = contentScroll
-            local lbl = Instance.new("TextLabel")
-            lbl.Size = UDim2.new(1, -5, 0, 16)
-            lbl.BackgroundTransparency = 1
-            lbl.TextColor3 = Color3.fromRGB(200, 200, 200)
-            lbl.TextXAlignment = Enum.TextXAlignment.Left
-            lbl.Font = Enum.Font.Code
-            lbl.TextSize = 12
-            lbl.Parent = frame
-            local bg = Instance.new("TextButton")
-            bg.Size = UDim2.new(1, -10, 0, 10)
-            bg.Position = UDim2.new(0, 5, 0, 18)
-            bg.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-            bg.Text = ""; bg.AutoButtonColor = false
-            bg.Parent = frame
-            local fill = Instance.new("Frame")
-            fill.Size = UDim2.new(0, 0, 1, 0)
-            fill.BackgroundColor3 = Color3.fromRGB(100, 150, 255)
-            fill.BorderSizePixel = 0
-            fill.Parent = bg
-            
-            local FakeSlider = { Value = sArgs.Default or sArgs.Min }
-            local function update(val)
-                val = math.clamp(val, sArgs.Min, sArgs.Max)
-                FakeSlider.Value = val
-                lbl.Text = " " .. sArgs.Title .. ": " .. tostring(val)
-                fill.Size = UDim2.new((val - sArgs.Min) / (sArgs.Max - sArgs.Min), 0, 1, 0)
-                if sArgs.Callback then task.spawn(sArgs.Callback, val) end
-            end
-            local dragging = false
-            bg.InputBegan:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then dragging = true end end)
-            game:GetService("UserInputService").InputEnded:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then dragging = false end end)
-            game:GetService("UserInputService").InputChanged:Connect(function(input)
-                if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-                    local pct = math.clamp(input.Position.X - bg.AbsolutePosition.X, 0, bg.AbsoluteSize.X) / bg.AbsoluteSize.X
-                    local step = sArgs.Rounding and (10 ^ -sArgs.Rounding) or 1
-                    update(math.floor((sArgs.Min + (sArgs.Max - sArgs.Min) * pct) / step + 0.5) * step)
-                end
-            end)
-            FakeSlider.SetValue = function(self, val) update(val) end
-            if not isTable and id then Fluent.Options[id] = FakeSlider end
-            update(FakeSlider.Value); return FakeSlider
-        end
-        
-        function FakeTab:AddDropdown(id, dArgs)
-            local isTable = type(id) == "table"; if isTable then dArgs = id; id = nil end
-            local frame = Instance.new("Frame")
-            frame.Size = UDim2.new(1, 0, 0, 22)
-            frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-            frame.BorderSizePixel = 0
-            frame.ClipsDescendants = true
-            frame.Parent = contentScroll
-            local btn = Instance.new("TextButton")
-            btn.Size = UDim2.new(1, 0, 0, 22)
-            btn.BackgroundTransparency = 1
-            btn.TextColor3 = Color3.fromRGB(200, 200, 200)
-            btn.TextXAlignment = Enum.TextXAlignment.Left
-            btn.Font = Enum.Font.Code
-            btn.TextSize = 12
-            btn.Parent = frame
-            local list = Instance.new("ScrollingFrame")
-            list.Size = UDim2.new(1, 0, 0, 80)
-            list.Position = UDim2.new(0, 0, 0, 22)
-            list.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-            list.BorderSizePixel = 0
-            list.ScrollBarThickness = 2
-            list.Parent = frame
-            local listLayout = Instance.new("UIListLayout", list)
-            
-            local isOpen = false
-            btn.MouseButton1Click:Connect(function() isOpen = not isOpen; frame.Size = UDim2.new(1, 0, 0, isOpen and 102 or 22) end)
-            
-            local initVal = dArgs.Default
-            if type(initVal) == "number" and not dArgs.Multi and dArgs.Values and dArgs.Values[initVal] then
-                initVal = dArgs.Values[initVal]
-            end
-            local FakeDrop = { Value = initVal or (dArgs.Multi and {} or "") }
-            local function populate(vals)
-                for _, c in ipairs(list:GetChildren()) do if c:IsA("TextButton") then c:Destroy() end end
-                for _, v in ipairs(vals) do
-                    local opt = Instance.new("TextButton")
-                    opt.Size = UDim2.new(1, 0, 0, 20)
-                    opt.BackgroundTransparency = 1
-                    opt.Text = "  " .. tostring(v)
-                    opt.TextColor3 = Color3.fromRGB(150, 150, 150)
-                    opt.TextXAlignment = Enum.TextXAlignment.Left
-                    opt.Font = Enum.Font.Code
-                    opt.TextSize = 11
-                    opt.Parent = list
-                    local function updateVis()
-                        if dArgs.Multi then
-                            local f = false; for _, sv in ipairs(FakeDrop.Value) do if sv == v then f = true break end end
-                            opt.TextColor3 = f and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(150, 150, 150)
-                        else
-                            opt.TextColor3 = (FakeDrop.Value == v) and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(150, 150, 150)
-                        end
+            local FakeTab = {}
+            function FakeTab:AddToggle(id, toggleArgs)
+                local isTable = type(id) == "table"
+                if isTable then toggleArgs = id; id = nil end
+                
+                local toggleVal = toggleArgs.Default or false
+                local FakeToggle = {
+                    Value = toggleVal
+                }
+                
+                local ToggleObj = Tab:AddToggle({
+                    Name = toggleArgs.Title,
+                    Default = toggleVal,
+                    Callback = function(val)
+                        FakeToggle.Value = val
+                        if toggleArgs.Callback then toggleArgs.Callback(val) end
                     end
-                    opt.MouseButton1Click:Connect(function()
-                        if dArgs.Multi then
-                            local fIdx = nil; for i, sv in ipairs(FakeDrop.Value) do if sv == v then fIdx = i break end end
-                            if fIdx then table.remove(FakeDrop.Value, fIdx) else table.insert(FakeDrop.Value, v) end
-                        else
-                            FakeDrop.Value = v; isOpen = false; frame.Size = UDim2.new(1, 0, 0, 22)
-                        end
-                        btn.Text = " ▼ " .. dArgs.Title .. ": " .. (dArgs.Multi and #FakeDrop.Value .. " selected" or tostring(FakeDrop.Value))
-                        for _, c in ipairs(list:GetChildren()) do if c:IsA("TextButton") then c.TextColor3 = Color3.fromRGB(150, 150, 150) end end
-                        updateVis()
-                        if dArgs.Callback then task.spawn(dArgs.Callback, FakeDrop.Value) end
-                    end)
-                    updateVis()
+                })
+                
+                FakeToggle.SetValue = function(self, val)
+                    self.Value = val
+                    ToggleObj:Set(val)
                 end
-                list.CanvasSize = UDim2.new(0, 0, 0, listLayout.AbsoluteContentSize.Y)
+                
+                if not isTable and id then
+                    Fluent.Options[id] = FakeToggle
+                end
+                return FakeToggle
             end
-            FakeDrop.SetValues = function(self, vals) populate(vals) end
-            FakeDrop.SetValue = function(self, val)
-                self.Value = val
-                btn.Text = " ▼ " .. dArgs.Title .. ": " .. (dArgs.Multi and type(self.Value) == "table" and #self.Value .. " selected" or tostring(self.Value))
-                if dArgs.Callback then task.spawn(dArgs.Callback, self.Value) end
-            end
-            if not isTable and id then Fluent.Options[id] = FakeDrop end
-            populate(dArgs.Values or {})
-            btn.Text = " ▼ " .. dArgs.Title .. ": " .. (dArgs.Multi and type(FakeDrop.Value) == "table" and #FakeDrop.Value .. " selected" or tostring(FakeDrop.Value))
-            if initVal and dArgs.Callback then task.spawn(dArgs.Callback, initVal) end
-            return FakeDrop
-        end
-        
-        function FakeTab:AddParagraph(id, pArgs)
-            local isTable = type(id) == "table"; if isTable then pArgs = id; id = nil end
-            local lbl = Instance.new("TextLabel")
-            lbl.Size = UDim2.new(1, 0, 0, 30)
-            lbl.BackgroundTransparency = 1
-            lbl.Text = " " .. (pArgs.Title or "") .. "\n " .. (pArgs.Content or "")
-            lbl.TextColor3 = Color3.fromRGB(180, 180, 180)
-            lbl.TextXAlignment = Enum.TextXAlignment.Left
-            lbl.TextYAlignment = Enum.TextYAlignment.Top
-            lbl.Font = Enum.Font.Code
-            lbl.TextSize = 11
-            lbl.TextWrapped = true
-            lbl.Parent = contentScroll
-            local FakePara = {}
-            function FakePara:SetDesc(txt) lbl.Text = " " .. (pArgs.Title or "") .. "\n " .. txt end
-            return FakePara
-        end
-        
-        function FakeTab:AddInput(id, iArgs)
-            local isTable = type(id) == "table"; if isTable then iArgs = id; id = nil end
-            local frame = Instance.new("Frame")
-            frame.Size = UDim2.new(1, 0, 0, 22)
-            frame.BackgroundTransparency = 1
-            frame.Parent = contentScroll
-            local lbl = Instance.new("TextLabel")
-            lbl.Size = UDim2.new(0.5, 0, 1, 0)
-            lbl.BackgroundTransparency = 1
-            lbl.Text = " " .. iArgs.Title
-            lbl.TextColor3 = Color3.fromRGB(200, 200, 200)
-            lbl.TextXAlignment = Enum.TextXAlignment.Left
-            lbl.Font = Enum.Font.Code
-            lbl.TextSize = 12
-            lbl.Parent = frame
-            local box = Instance.new("TextBox")
-            box.Size = UDim2.new(0.5, -5, 1, 0)
-            box.Position = UDim2.new(0.5, 0, 0, 0)
-            box.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-            box.BorderSizePixel = 1
-            box.BorderColor3 = Color3.fromRGB(50, 50, 50)
-            box.Text = iArgs.Default or ""
-            box.TextColor3 = Color3.fromRGB(255, 255, 255)
-            box.Font = Enum.Font.Code
-            box.TextSize = 12
-            box.Parent = frame
             
-            local FakeInput = { Value = iArgs.Default or "" }
-            box.FocusLost:Connect(function() FakeInput.Value = box.Text; if iArgs.Callback then task.spawn(iArgs.Callback, box.Text) end end)
-            FakeInput.SetValue = function(self, val) self.Value = val; box.Text = val; if iArgs.Callback then task.spawn(iArgs.Callback, val) end end
-            if not isTable and id then Fluent.Options[id] = FakeInput end
-            return FakeInput
+            function FakeTab:AddButton(btnArgs)
+                Tab:AddButton({
+                    Name = btnArgs.Title,
+                    Callback = btnArgs.Callback
+                })
+            end
+            
+            function FakeTab:AddDropdown(id, dropArgs)
+                local isTable = type(id) == "table"
+                if isTable then dropArgs = id; id = nil end
+                
+                local FakeDropdown = {
+                    Value = dropArgs.Default
+                }
+                
+                local DropdownObj = Tab:AddDropdown({
+                    Name = dropArgs.Title,
+                    Default = dropArgs.Default,
+                    Options = dropArgs.Values or {},
+                    Callback = function(val)
+                        FakeDropdown.Value = val
+                        if dropArgs.Callback then dropArgs.Callback(val) end
+                    end
+                })
+                
+                FakeDropdown.SetValue = function(self, val)
+                    self.Value = val
+                    DropdownObj:Set(val)
+                end
+                FakeDropdown.SetValues = function(self, vals)
+                    DropdownObj:Refresh(vals, true)
+                end
+                
+                if not isTable and id then
+                    Fluent.Options[id] = FakeDropdown
+                end
+                return FakeDropdown
+            end
+            
+            function FakeTab:AddInput(id, inputArgs)
+                local isTable = type(id) == "table"
+                if isTable then inputArgs = id; id = nil end
+                
+                local FakeInput = {
+                    Value = inputArgs.Default or ""
+                }
+                
+                local InputObj = Tab:AddTextbox({
+                    Name = inputArgs.Title,
+                    Default = inputArgs.Default or "",
+                    TextDisappear = false,
+                    Callback = function(val)
+                        FakeInput.Value = val
+                        if inputArgs.Callback then inputArgs.Callback(val) end
+                    end
+                })
+                
+                FakeInput.SetValue = function(self, val)
+                    self.Value = val
+                end
+                
+                if not isTable and id then
+                    Fluent.Options[id] = FakeInput
+                end
+                return FakeInput
+            end
+            
+            function FakeTab:AddSlider(id, sliderArgs)
+                local isTable = type(id) == "table"
+                if isTable then sliderArgs = id; id = nil end
+                
+                local FakeSlider = {
+                    Value = sliderArgs.Default or 0
+                }
+                
+                local SliderObj = Tab:AddSlider({
+                    Name = sliderArgs.Title,
+                    Min = sliderArgs.Min or 0,
+                    Max = sliderArgs.Max or 100,
+                    Default = sliderArgs.Default or 0,
+                    Color = Color3.fromRGB(255,255,255),
+                    Increment = 1,
+                    ValueName = "",
+                    Callback = function(val)
+                        FakeSlider.Value = val
+                        if sliderArgs.Callback then sliderArgs.Callback(val) end
+                    end
+                })
+                
+                FakeSlider.SetValue = function(self, val)
+                    self.Value = val
+                    SliderObj:Set(val)
+                end
+                
+                if not isTable and id then
+                    Fluent.Options[id] = FakeSlider
+                end
+                return FakeSlider
+            end
+            
+            function FakeTab:AddParagraph(id, pArgs)
+                local isTable = type(id) == "table"
+                if isTable then pArgs = id; id = nil end
+                
+                local ParaObj = Tab:AddParagraph(pArgs.Title, pArgs.Content or "")
+                
+                local FakePara = {
+                    SetDesc = function(self, desc)
+                        ParaObj:Set(pArgs.Title, desc)
+                    end
+                }
+                
+                if not isTable and id then
+                    Fluent.Options[id] = FakePara
+                end
+                return FakePara
+            end
+            
+            return FakeTab
         end
         
-        return FakeTab
+        return FakeWindow
     end
-    
-    function FakeWindow:SelectTab(idx)
-        local target = tabsList[idx]
-        if target then
-            if activeTabBtn then activeTabBtn.TextColor3 = Color3.fromRGB(150, 150, 150); activeContent.Visible = false end
-            activeTabBtn = target.Btn; activeContent = target.Content
-            activeTabBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-            activeContent.Visible = true
-        end
-    end
-    
-    return FakeWindow
-end
+}
 
 local Window = Fluent:CreateWindow({
     Title = "🐟 Fishman Hub",
-    SubTitle = "Unified Auto-Fisher 1.0.3 v3.9",
+    SubTitle = "Unified Auto-Fisher 1.0.3 v3.8",
+    TabWidth = 160,
+    Size = UDim2.fromOffset(500, 350),
+    Theme = "Darker",
     MinimizeKey = Enum.KeyCode.RightShift
 })
+
+env.Fishman_DestroyUI = function()
+    pcall(function()
+        if OrionLib then OrionLib:Destroy() end
+    end)
+end
 
 -- Prevent game from detecting UI actions or internal UI errors (Anti-Cheat bypass)
 pcall(function()
@@ -2464,10 +2163,8 @@ Tabs = {
 Tabs.Teleport:AddToggle("T_AutoSpawnShip", {
     Title = "🛳️ Auto Spawn Ship",
     Description = "Flies to spawn, spawns hoverboard, and sets flight height.",
-    Default = (GlobalMem.FishmanAutoSpawnShip == true),
+    Default = false,
     Callback = function(Value)
-        GlobalMem.FishmanAutoSpawnShip = Value
-        SaveConfig()
         print("[Hub] 'Auto Spawn Ship' toggled " .. tostring(Value))
         if Value then
             EnsureHoverboardLoaded()
@@ -2501,10 +2198,11 @@ Tabs.Teleport:AddToggle("T_AutoSpawnShip", {
 -- 🎣 FISHING TAB UI
 -- ======================================================================
 Tabs.Fishing:AddToggle("T_MegStackLoc", { Title = "Meg Stack Location (Auto Refill)", Default = false, Callback = function(Value) 
-        if isLobby then if Value then Fluent:Notify({ Title = "Error", Content = "Cannot use in Lobby!", Duration = 3 })
+        if isLobby then if Value then Fluent:Notify({ Title = "Error", Content = "Cannot use in Lobby!", Duration = 3 }); Fluent.Options.T_MegStackLoc:SetValue(false) end return end
+        Model.State.isMegStackLoc = Value 
+    end })
 
-Tabs.Fishing:AddToggle("T_ManualMegStackLoc", { Title = "Manual Meg Stack Island", Default = false, Callback = function(Value) 
-        if isLobby then if Value then Fluent:Notify({ Title = "Error", Content = "Cannot use in Lobby!", Duration = 3 })
+
 
 -- ======================================================================
 -- ⚙️ SETTINGS TAB UI
@@ -2677,3 +2375,5 @@ addConn(UserInputService.InputBegan:Connect(function(input, gameProcessed)
     end
 end))
 addConn(UserInputService.InputChanged:Connect(function() secondsSinceLastInput = 0 end))
+
+if OrionLib then OrionLib:Init() end
