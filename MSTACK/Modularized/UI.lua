@@ -1527,8 +1527,30 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
     })
     
     local autoStoreEnabled = false
+    local backpackConn = nil
+    local charConn = nil
+
+    local function setupFruitListener()
+        if backpackConn then backpackConn:Disconnect(); backpackConn = nil end
+        local backpack = LocalPlayer:FindFirstChild("Backpack")
+        if backpack then
+            backpackConn = backpack.ChildAdded:Connect(function(child)
+                if autoStoreEnabled and child:IsA("Tool") then
+                    -- Slight delay to ensure tool attributes load
+                    task.delay(0.5, function()
+                        if autoStoreEnabled then
+                            getgenv()._cancelStoreFruits = false
+                            getgenv().FishmanState.storeFruits(getgenv().FishmanState.targetFruits)
+                        end
+                    end)
+                end
+            end)
+            getgenv().FishmanState.addConn(backpackConn)
+        end
+    end
+
     getgenv().FishmanState.Tabs.Fishing:AddToggle("T_AutoStoreFruit", { 
-        Title = "Auto Store Fruit (10 Minutes)", 
+        Title = "Auto Store Fruit (Instantly)", 
         Default = false, 
         Callback = function(Value)
             autoStoreEnabled = Value
@@ -1538,13 +1560,27 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
                     task.spawn(function() getgenv().FishmanState.Fluent.Options.T_AutoStoreFruit:SetValue(false) end)
                     return
                 end
+                
+                -- Check immediately upon turning it on
                 task.spawn(function()
-                    while getgenv().FishmanState._running and autoStoreEnabled do
-                        getgenv()._cancelStoreFruits = false
-                        getgenv().FishmanState.storeFruits(getgenv().FishmanState.targetFruits)
-                        task.wait(600)
-                    end
+                    getgenv()._cancelStoreFruits = false
+                    getgenv().FishmanState.storeFruits(getgenv().FishmanState.targetFruits)
                 end)
+                
+                -- Setup listeners for future fruits
+                setupFruitListener()
+                if not charConn then
+                    charConn = LocalPlayer.CharacterAdded:Connect(function()
+                        task.wait(1)
+                        setupFruitListener()
+                    end)
+                    getgenv().FishmanState.addConn(charConn)
+                end
+            else
+                if backpackConn then 
+                    backpackConn:Disconnect()
+                    backpackConn = nil 
+                end
             end
         end 
     })
