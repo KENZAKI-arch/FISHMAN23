@@ -11,7 +11,7 @@ local modules = {
 
 for _, mod in ipairs(modules) do
     local success, err = pcall(function()
-        loadstring(game:HttpGet(repoURL .. mod))()
+        loadstring(game:HttpGet(repoURL .. mod .. "?t=" .. tostring(tick())))()
     end)
     if not success then
         warn("[Fishman] Failed to load module " .. mod .. ": " .. tostring(err))
