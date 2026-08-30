@@ -1198,9 +1198,12 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
                     local char = game:GetService("Players").LocalPlayer.Character
                     local hrp = char and char:FindFirstChild("HumanoidRootPart")
                     if hrp and (hrp:FindFirstChild("AntiGravity") or hrp:FindFirstChildOfClass("BodyVelocity")) and not getgenv().FishmanState.Model.State.isRefillingMegBait and not getgenv().FishmanState.Model.State.isAutoTraveling then
-                        print("⚠️ [MegStack] Safeguard triggered: In Air / AntiGravity detected. Disabling MegStack!")
-                        if getgenv().FishmanState.Fluent.Options.T_MegStack then getgenv().FishmanState.Fluent.Options.T_MegStack:SetValue(false) end
-                        break
+                        task.wait(1)
+                        if hrp and (hrp:FindFirstChild("AntiGravity") or hrp:FindFirstChildOfClass("BodyVelocity")) and not getgenv().FishmanState.Model.State.isRefillingMegBait and not getgenv().FishmanState.Model.State.isAutoTraveling then
+                            print("⚠️ [MegStack] Safeguard triggered: In Air / AntiGravity detected. Disabling MegStack!")
+                            if getgenv().FishmanState.Fluent.Options.T_MegStack then getgenv().FishmanState.Fluent.Options.T_MegStack:SetValue(false) end
+                            break
+                        end
                     end
                     local megCount = getgenv().FishmanState.Model.countMegalodons()
                     if megCount >= 10 and not getgenv().FishmanState.Model.State.isBuying and not getgenv().FishmanState.Model.State.isAutoTraveling and not getgenv().FishmanState.Model.State.isRefillingMegBait and not getgenv().FishmanState.Model.State.isManualTraveling then
@@ -1761,9 +1764,11 @@ getgenv().FishmanState.Tabs.Autofarm:AddToggle("T_CyborgAuto", {
         task.spawn(function()
             if Value then
                 print("triggering title: \"Megalodon Slayer\"")
-                local args = {
-                    "Megalodon Slayer"
-                }
+                local args = { "Megalodon Slayer" }
+                game:GetService("ReplicatedStorage"):WaitForChild("Events"):WaitForChild("Titles"):InvokeServer(unpack(args))
+            else
+                print("reverting title: \"Skilled Fisherman\"")
+                local args = { "Skilled Fisherman" }
                 game:GetService("ReplicatedStorage"):WaitForChild("Events"):WaitForChild("Titles"):InvokeServer(unpack(args))
             end
         end)
