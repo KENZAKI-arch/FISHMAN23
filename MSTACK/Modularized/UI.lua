@@ -1234,11 +1234,10 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
                             getgenv().FishmanState.Fluent.Options.T_CyborgAuto:SetValue(false)
                         end
                         
-                        if getgenv().FishmanState.Model.State.isMegStacking then
-                            getgenv().FishmanState.Fluent.Options.T_DeepSea:SetValue(true)
-                            if getgenv().FishmanState.Fluent.Options.T_Fish then
-                                getgenv().FishmanState.Fluent.Options.T_Fish:SetValue(true)
-                            end
+                        if getgenv().FishmanState.Fluent.Options.T_MegStack then
+                            getgenv().FishmanState.Fluent.Options.T_MegStack:SetValue(false)
+                            task.wait(0.5)
+                            getgenv().FishmanState.Fluent.Options.T_MegStack:SetValue(true)
                         end
                     end
                     task.wait(1)
