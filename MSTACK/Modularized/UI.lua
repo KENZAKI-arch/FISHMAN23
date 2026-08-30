@@ -1746,6 +1746,26 @@ getgenv().FishmanState.Tabs.Autofarm:AddToggle("T_CyborgAuto", {
                     getgenv().FishmanState.Fluent.Options.T_MegStack:SetValue(false)
                 end
                 
+                -- Monitor kills if triggered by MegStack, turn off automatically when dead
+                if getgenv()._CyborgPausedMegStack then
+                    task.spawn(function()
+                        local waitTime = 0
+                        local lastCount = getgenv().FishmanState.Model.countMegalodons()
+                        while getgenv().FishmanState._running and getgenv().FishmanState.Fluent.Options.T_CyborgAuto.Value == true and getgenv().FishmanState.Model.countMegalodons() > 0 and waitTime < 180 do
+                            task.wait(1)
+                            waitTime = waitTime + 1
+                            local curCount = getgenv().FishmanState.Model.countMegalodons()
+                            if curCount < lastCount then
+                                waitTime = 0
+                                lastCount = curCount
+                            end
+                        end
+                        if getgenv().FishmanState.Fluent.Options.T_CyborgAuto.Value == true then
+                            getgenv().FishmanState.Fluent.Options.T_CyborgAuto:SetValue(false)
+                        end
+                    end)
+                end
+                
             else
                 print("reverting title: \"Skilled Fisherman\"")
                 local args = { "Skilled Fisherman" }
