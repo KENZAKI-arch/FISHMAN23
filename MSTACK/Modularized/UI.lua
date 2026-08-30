@@ -1236,6 +1236,9 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
                         
                         if getgenv().FishmanState.Model.State.isMegStacking then
                             getgenv().FishmanState.Fluent.Options.T_DeepSea:SetValue(true)
+                            if getgenv().FishmanState.Fluent.Options.T_Fish then
+                                getgenv().FishmanState.Fluent.Options.T_Fish:SetValue(true)
+                            end
                         end
                     end
                     task.wait(1)
