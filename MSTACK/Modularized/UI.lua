@@ -445,7 +445,7 @@ end
 
 local Window = getgenv().FishmanState.Fluent:CreateWindow({
     Title = "🐟 Fishman Hub",
-    SubTitle = "Unified Auto-Fisher 1.0.3 v3.9",
+    SubTitle = "Unified Auto-Fisher 1.0.3 v3.8",
     MinimizeKey = Enum.KeyCode.RightShift
 })
 
