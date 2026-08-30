@@ -1707,12 +1707,46 @@ getgenv().FishmanState.Tabs.Autofarm:AddToggle("T_CyborgAuto", {
                     getgenv().FishmanState.Fluent:Notify({ Title = "System", Content = "Auto Store Fruit paused during Cyborg Autofarm", Duration = 3 })
                 end
             end
+            
+            -- Unequip Fishing Rod and Equip Cyborg Weapon so skills can fire instantly!
+            local char = game:GetService("Players").LocalPlayer.Character
+            if char and char:FindFirstChild("Humanoid") then
+                local tool = char:FindFirstChildOfClass("Tool")
+                if tool and tool.Name ~= "Cyborg" then
+                    getgenv()._previousWeapon = tool.Name
+                end
+                char.Humanoid:UnequipTools()
+                task.wait(0.2)
+                local backpack = game:GetService("Players").LocalPlayer:FindFirstChild("Backpack")
+                if backpack then
+                    local cyborgWeapon = backpack:FindFirstChild("Cyborg")
+                    if cyborgWeapon then
+                        char.Humanoid:EquipTool(cyborgWeapon)
+                    end
+                end
+            end
         else
             -- Restore auto store fruit if it was previously on
             if getgenv()._wasAutoStoreFruitOn and getgenv().FishmanState.Fluent and getgenv().FishmanState.Fluent.Options and getgenv().FishmanState.Fluent.Options.T_AutoStoreFruit then
                 getgenv().FishmanState.Fluent.Options.T_AutoStoreFruit:SetValue(true)
                 getgenv()._wasAutoStoreFruitOn = false
                 getgenv().FishmanState.Fluent:Notify({ Title = "System", Content = "Auto Store Fruit resumed", Duration = 3 })
+            end
+            
+            -- Re-equip the previous weapon if we saved one
+            local char = game:GetService("Players").LocalPlayer.Character
+            if char and getgenv()._previousWeapon then
+                char.Humanoid:UnequipTools()
+                task.wait(0.2)
+                local backpack = game:GetService("Players").LocalPlayer:FindFirstChild("Backpack")
+                if backpack then
+                    local prevWeapon = backpack:FindFirstChild(getgenv()._previousWeapon)
+                    if prevWeapon then
+                        char.Humanoid:EquipTool(prevWeapon)
+                        print("✅ [Cyborg Autofarm] Re-equipped previous weapon: " .. getgenv()._previousWeapon)
+                    end
+                end
+                getgenv()._previousWeapon = nil
             end
         end
 
