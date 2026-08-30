@@ -1211,11 +1211,18 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
                         if getgenv().FishmanState.Fluent.Options.T_Fish.Value == true then
                             getgenv().FishmanState.Fluent.Options.T_Fish:SetValue(false)
                         end
-                        -- Force unseat so player can use skills!
+                        -- Unequip Fishing Rod and Equip Cyborg Weapon so skills can fire instantly!
                         local char = game:GetService("Players").LocalPlayer.Character
                         if char and char:FindFirstChild("Humanoid") then
-                            char.Humanoid.Sit = false
-                            char.Humanoid.Jump = true
+                            char.Humanoid:UnequipTools()
+                            task.wait(0.2)
+                            local backpack = game:GetService("Players").LocalPlayer:FindFirstChild("Backpack")
+                            if backpack then
+                                local cyborgWeapon = backpack:FindFirstChild("Cyborg")
+                                if cyborgWeapon then
+                                    char.Humanoid:EquipTool(cyborgWeapon)
+                                end
+                            end
                         end
                         task.wait(0.5)
                         
