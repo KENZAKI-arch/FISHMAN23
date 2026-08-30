@@ -1234,11 +1234,6 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
                             getgenv().FishmanState.Fluent.Options.T_CyborgAuto:SetValue(false)
                         end
                         
-                        if getgenv().FishmanState.Fluent.Options.T_MegStack then
-                            getgenv().FishmanState.Fluent.Options.T_MegStack:SetValue(false)
-                            task.wait(0.5)
-                            getgenv().FishmanState.Fluent.Options.T_MegStack:SetValue(true)
-                        end
                     end
                     task.wait(1)
                 end
@@ -1749,6 +1744,17 @@ getgenv().FishmanState.Tabs.Autofarm:AddToggle("T_CyborgAuto", {
                     end
                 end
                 getgenv()._previousWeapon = nil
+            end
+            
+            -- If Megalodon Stack is active, trigger a clean restart to resume the stacker
+            if getgenv().FishmanState.Model and getgenv().FishmanState.Model.State and getgenv().FishmanState.Model.State.isMegStacking then
+                task.spawn(function()
+                    if getgenv().FishmanState.Fluent.Options.T_MegStack then
+                        getgenv().FishmanState.Fluent.Options.T_MegStack:SetValue(false)
+                        task.wait(0.5)
+                        getgenv().FishmanState.Fluent.Options.T_MegStack:SetValue(true)
+                    end
+                end)
             end
         end
 
