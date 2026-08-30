@@ -1217,33 +1217,9 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
                             getgenv().FishmanState.Fluent.Options.T_Fish:SetValue(false)
                         end
                         
+                        -- The Cyborg Autofarm will take over monitoring from here!
                         if getgenv().FishmanState.Fluent.Options.T_CyborgAuto then
                             getgenv().FishmanState.Fluent.Options.T_CyborgAuto:SetValue(true)
-                        end
-                        
-                        local waitTime = 0
-                        local lastCount = getgenv().FishmanState.Model.countMegalodons()
-                        while getgenv().FishmanState._running and getgenv().FishmanState.Model.countMegalodons() > 0 and getgenv().FishmanState.Model.State.isMegStacking and waitTime < 180 do
-                            task.wait(1)
-                            waitTime = waitTime + 1
-                            local curCount = getgenv().FishmanState.Model.countMegalodons()
-                            if curCount < lastCount then
-                                waitTime = 0
-                                lastCount = curCount
-                            end
-                        end
-                        
-                        print("✅ [MegStack] Stack cleared! Turning off Cyborg Autofarm...")
-                        
-                        if getgenv().FishmanState.Fluent.Options.T_CyborgAuto then
-                            getgenv().FishmanState.Fluent.Options.T_CyborgAuto:SetValue(false)
-                        end
-                        
-                        -- Seamlessly resume by re-enabling Deep Sea (do not touch T_Fish)
-                        if getgenv().FishmanState.Model.State.isMegStacking then
-                            if getgenv().FishmanState.Fluent.Options.T_DeepSea then
-                                getgenv().FishmanState.Fluent.Options.T_DeepSea:SetValue(true)
-                            end
                         end
                     end
                     task.wait(1)
@@ -1763,10 +1739,45 @@ getgenv().FishmanState.Tabs.Autofarm:AddToggle("T_CyborgAuto", {
                 print("triggering title: \"Megalodon Slayer\"")
                 local args = { "Megalodon Slayer" }
                 game:GetService("ReplicatedStorage"):WaitForChild("Events"):WaitForChild("Titles"):InvokeServer(unpack(args))
+                
+                -- Megalodon Stack seamless toggle logic
+                if getgenv().FishmanState.Fluent.Options.T_MegStack and getgenv().FishmanState.Fluent.Options.T_MegStack.Value == true then
+                    getgenv()._CyborgPausedMegStack = true
+                    getgenv().FishmanState.Fluent.Options.T_MegStack:SetValue(false)
+                end
+                
+                -- Monitor kills if triggered by MegStack
+                if getgenv()._CyborgPausedMegStack then
+                    task.spawn(function()
+                        local waitTime = 0
+                        local lastCount = getgenv().FishmanState.Model.countMegalodons()
+                        while getgenv().FishmanState._running and getgenv().FishmanState.Fluent.Options.T_CyborgAuto.Value == true and getgenv().FishmanState.Model.countMegalodons() > 0 and waitTime < 180 do
+                            task.wait(1)
+                            waitTime = waitTime + 1
+                            local curCount = getgenv().FishmanState.Model.countMegalodons()
+                            if curCount < lastCount then
+                                waitTime = 0
+                                lastCount = curCount
+                            end
+                        end
+                        if getgenv().FishmanState.Fluent.Options.T_CyborgAuto.Value == true then
+                            getgenv().FishmanState.Fluent.Options.T_CyborgAuto:SetValue(false)
+                        end
+                    end)
+                end
+                
             else
                 print("reverting title: \"Skilled Fisherman\"")
                 local args = { "Skilled Fisherman" }
                 game:GetService("ReplicatedStorage"):WaitForChild("Events"):WaitForChild("Titles"):InvokeServer(unpack(args))
+                
+                -- Restore Megalodon Stack if it was paused by Cyborg Autofarm
+                if getgenv()._CyborgPausedMegStack then
+                    getgenv()._CyborgPausedMegStack = false
+                    if getgenv().FishmanState.Fluent.Options.T_MegStack then
+                        getgenv().FishmanState.Fluent.Options.T_MegStack:SetValue(true)
+                    end
+                end
             end
         end)
 
