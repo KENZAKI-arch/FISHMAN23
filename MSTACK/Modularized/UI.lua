@@ -1231,12 +1231,18 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
                             end
                         end
                         
-                        print("✅ [MegStack] Stack cleared! Toggling Cyborg Autofarm OFF and resuming fishing...")
+                        print("✅ [MegStack] Stack cleared! Turning off Cyborg Autofarm...")
                         
                         if getgenv().FishmanState.Fluent.Options.T_CyborgAuto then
                             getgenv().FishmanState.Fluent.Options.T_CyborgAuto:SetValue(false)
                         end
                         
+                        -- Seamlessly resume by re-enabling Deep Sea (do not touch T_Fish)
+                        if getgenv().FishmanState.Model.State.isMegStacking then
+                            if getgenv().FishmanState.Fluent.Options.T_DeepSea then
+                                getgenv().FishmanState.Fluent.Options.T_DeepSea:SetValue(true)
+                            end
+                        end
                     end
                     task.wait(1)
                 end
@@ -1747,17 +1753,6 @@ getgenv().FishmanState.Tabs.Autofarm:AddToggle("T_CyborgAuto", {
                     end
                 end
                 getgenv()._previousWeapon = nil
-            end
-            
-            -- If Megalodon Stack is active, trigger a clean restart to resume the stacker
-            if getgenv().FishmanState.Model and getgenv().FishmanState.Model.State and getgenv().FishmanState.Model.State.isMegStacking then
-                task.spawn(function()
-                    if getgenv().FishmanState.Fluent.Options.T_MegStack then
-                        getgenv().FishmanState.Fluent.Options.T_MegStack:SetValue(false)
-                        task.wait(0.5)
-                        getgenv().FishmanState.Fluent.Options.T_MegStack:SetValue(true)
-                    end
-                end)
             end
         end
 
