@@ -1197,9 +1197,11 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
                 while getgenv().FishmanState._running and getgenv().FishmanState.Model.State.isMegStacking do
                     local char = game:GetService("Players").LocalPlayer.Character
                     local hrp = char and char:FindFirstChild("HumanoidRootPart")
-                    if hrp and (hrp:FindFirstChild("AntiGravity") or hrp:FindFirstChildOfClass("BodyVelocity")) and not getgenv().FishmanState.Model.State.isRefillingMegBait and not getgenv().FishmanState.Model.State.isAutoTraveling then
+                    local isCyborgRunning = getgenv().FishmanState.Model and getgenv().FishmanState.Model.State and getgenv().FishmanState.Model.State.isAutoFarming
+                    if hrp and (hrp:FindFirstChild("AntiGravity") or hrp:FindFirstChildOfClass("BodyVelocity")) and not getgenv().FishmanState.Model.State.isRefillingMegBait and not getgenv().FishmanState.Model.State.isAutoTraveling and not isCyborgRunning then
                         task.wait(1)
-                        if hrp and (hrp:FindFirstChild("AntiGravity") or hrp:FindFirstChildOfClass("BodyVelocity")) and not getgenv().FishmanState.Model.State.isRefillingMegBait and not getgenv().FishmanState.Model.State.isAutoTraveling then
+                        isCyborgRunning = getgenv().FishmanState.Model and getgenv().FishmanState.Model.State and getgenv().FishmanState.Model.State.isAutoFarming
+                        if hrp and (hrp:FindFirstChild("AntiGravity") or hrp:FindFirstChildOfClass("BodyVelocity")) and not getgenv().FishmanState.Model.State.isRefillingMegBait and not getgenv().FishmanState.Model.State.isAutoTraveling and not isCyborgRunning then
                             print("⚠️ [MegStack] Safeguard triggered: In Air / AntiGravity detected. Disabling MegStack!")
                             if getgenv().FishmanState.Fluent.Options.T_MegStack then getgenv().FishmanState.Fluent.Options.T_MegStack:SetValue(false) end
                             break
