@@ -1525,7 +1525,7 @@ getgenv().FishmanState.storeFruits = function(fruitList)
     -- Check if we even have any target fruits before pausing
     local hasFruits = false
     for _, tool in pairs(backpack:GetChildren()) do
-        if tool:IsA("Tool") then
+        if tool:IsA("Tool") and not tool:GetAttribute("StoreFailed") then
             local toolName = string.lower(tool.Name)
             for _, fruitName in ipairs(fruitList) do
                 if string.find(toolName, string.lower(fruitName)) then
@@ -1589,7 +1589,7 @@ getgenv().FishmanState.storeFruits = function(fruitList)
     
     for _, tool in pairs(backpack:GetChildren()) do
         if getgenv()._cancelStoreFruits then break end
-        if tool:IsA("Tool") then
+        if tool:IsA("Tool") and not tool:GetAttribute("StoreFailed") then
             local toolName = string.lower(tool.Name)
             local isTargetFruit = false
             local matchedFruitName = nil
@@ -1627,6 +1627,7 @@ getgenv().FishmanState.storeFruits = function(fruitList)
                 
                 if tool.Parent == character or tool.Parent == backpack then
                     humanoid:UnequipTools()
+                    tool:SetAttribute("StoreFailed", true)
                     if getgenv().FishmanState.Fluent then getgenv().FishmanState.Fluent:Notify({ Title = "Storage Full", Content = "Couldn't store: " .. tool.Name .. " (kept in inventory)", Duration = 3 }) end
                 else
                     if getgenv().FishmanState.Fluent then getgenv().FishmanState.Fluent:Notify({ Title = "Fruit Stored", Content = "Successfully stored: " .. tool.Name, Duration = 3 }) end
