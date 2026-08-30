@@ -2432,7 +2432,7 @@ end
 
 local Window = Fluent:CreateWindow({
     Title = "🐟 Fishman Hub",
-    SubTitle = "Unified Auto-Fisher 1.0.3 v4.05",
+    SubTitle = "Unified Auto-Fisher 1.0.3 v4.1",
     TabWidth = 160,
     MinimizeKey = Enum.KeyCode.RightShift
 })
