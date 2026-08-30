@@ -1211,6 +1211,13 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
                         if getgenv().FishmanState.Fluent.Options.T_Fish.Value == true then
                             getgenv().FishmanState.Fluent.Options.T_Fish:SetValue(false)
                         end
+                        -- Force unseat so player can use skills!
+                        local char = game:GetService("Players").LocalPlayer.Character
+                        if char and char:FindFirstChild("Humanoid") then
+                            char.Humanoid.Sit = false
+                            char.Humanoid.Jump = true
+                        end
+                        task.wait(0.5)
                         
                         if getgenv().FishmanState.Fluent.Options.T_CyborgAuto then
                             getgenv().FishmanState.Fluent.Options.T_CyborgAuto:SetValue(true)
