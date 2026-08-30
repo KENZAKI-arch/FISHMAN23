@@ -1227,7 +1227,9 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
                         task.wait(0.5)
                         
                         if getgenv().FishmanState.Fluent.Options.T_CyborgAuto then
+                            getgenv()._MegStackTriggeredCyborg = true
                             getgenv().FishmanState.Fluent.Options.T_CyborgAuto:SetValue(true)
+                            getgenv()._MegStackTriggeredCyborg = false
                         end
                         
                         local waitTime = 0
@@ -1719,6 +1721,16 @@ getgenv().FishmanState.Tabs.Autofarm:AddToggle("T_CyborgAuto", {
                 if getgenv()._wasAutoStoreFruitOn then
                     getgenv().FishmanState.Fluent.Options.T_AutoStoreFruit:SetValue(false)
                     getgenv().FishmanState.Fluent:Notify({ Title = "System", Content = "Auto Store Fruit paused during Cyborg Autofarm", Duration = 3 })
+                end
+            end
+            
+            -- Turn off Meg Stack if turned on manually (not by Meg Stack itself)
+            if not getgenv()._MegStackTriggeredCyborg then
+                if getgenv().FishmanState.Fluent and getgenv().FishmanState.Fluent.Options and getgenv().FishmanState.Fluent.Options.T_MegStack then
+                    if getgenv().FishmanState.Fluent.Options.T_MegStack.Value == true then
+                        getgenv().FishmanState.Fluent.Options.T_MegStack:SetValue(false)
+                        getgenv().FishmanState.Fluent:Notify({ Title = "System", Content = "Meg Stack turned off (manual override)", Duration = 3 })
+                    end
                 end
             end
         else
