@@ -573,7 +573,7 @@ View.Build(function(isFarming)
                             if currentEnemy.Name == "Megalodon" and getgenv().CachedHoverboard and getgenv().CachedHoverboard.Parent then
                                 -- If we're anchored to the hoverboard, just check if we're in range!
                                 local dist = (rootPart.Position - targetRoot.Position).Magnitude
-                                if dist < 250 then
+                                if dist < 2500 then
                                     isAtHoverSpot = true
                                     print("🎯 [DEBUG] Shooting from Hoverboard! Distance to Megalodon:", dist)
                                 end

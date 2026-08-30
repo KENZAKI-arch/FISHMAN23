@@ -1728,7 +1728,7 @@ getgenv().FishmanState.Tabs.Autofarm:AddToggle("T_CyborgAuto", {
 
         if Value and not getgenv().ToggleCyborgAutofarm then
             pcall(function()
-                loadstring(game:HttpGet("https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/MSTACK/protov4_nofactory.lua"))()
+                loadstring(game:HttpGet("https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/MSTACK/protov4_nofactory.lua?t="..tostring(tick())))()
             end)
             task.wait(0.5)
         end
