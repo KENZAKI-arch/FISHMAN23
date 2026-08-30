@@ -332,7 +332,7 @@ local craftFlyTarget = nil
         isAutoTraveling       = false,
         travelStage           = 1,
         waypoint1             = Vector3.new(406.69, 48.32, -32.21),
-        waypoint2             = Vector3.new(174.10, 10.32, -48.09),
+        waypoint2             = Vector3.new(174.20, 10.32, -48.09),
         finalTarget           = Vector3.new(101.53, 9.31, -55.77),
         travelMessage         = "",
         autoCraft             = false,
@@ -2432,7 +2432,7 @@ end
 
 local Window = Fluent:CreateWindow({
     Title = "🐟 Fishman Hub",
-    SubTitle = "Unified Auto-Fisher 1.0.3 v4.1",
+    SubTitle = "Unified Auto-Fisher 1.0.3 v4.2",
     TabWidth = 160,
     MinimizeKey = Enum.KeyCode.RightShift
 })
