@@ -568,8 +568,7 @@ View.Build(function(isFarming)
                         
                         local targetSpot = rootPart.Position
                         local isAtHoverSpot = false
-                        
-                        if targetRoot then
+                                        if targetRoot then
                             if currentEnemy.Name == "Megalodon" and getgenv().CachedHoverboard and getgenv().CachedHoverboard.Parent then
                                 -- If we're anchored to the hoverboard, just check if we're in range!
                                 local dist = (rootPart.Position - targetRoot.Position).Magnitude
