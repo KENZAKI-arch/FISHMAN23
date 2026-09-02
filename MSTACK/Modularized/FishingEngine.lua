@@ -1228,7 +1228,11 @@ local function DoFishingCycle()
     local fishBitten = false
     
     while waited < maxWait do
-        if not (getgenv().FishmanState.Model.State.isFishing or getgenv().FishmanState.Model.State.isDeepSeaCatcher) then return end
+        if not (getgenv().FishmanState.Model.State.isFishing or getgenv().FishmanState.Model.State.isDeepSeaCatcher) then
+            pcall(function() actionRemote:InvokeServer({ Action = "Cancel", SessionKey = sessionKey, ActionKey = actionKey }) end)
+            if hook then hook:Destroy() end
+            return true
+        end
         
         if hook:GetAttribute("Caught") == true or hook:FindFirstChild("ReelLoop") then
             fishBitten = true
@@ -1265,6 +1269,11 @@ local function DoFishingCycle()
             end
             
             while getgenv().FishmanState._running and hook.Parent do
+                if not (getgenv().FishmanState.Model.State.isFishing or getgenv().FishmanState.Model.State.isDeepSeaCatcher) then
+                    pcall(function() actionRemote:InvokeServer({ Action = "Cancel", SessionKey = sessionKey, ActionKey = actionKey }) end)
+                    if hook then hook:Destroy() end
+                    return true
+                end
                 local beastSounds = {}
                 for i = #getgenv().DSC_SoundCache, 1, -1 do
                     local s = getgenv().DSC_SoundCache[i]
@@ -1305,7 +1314,16 @@ local function DoFishingCycle()
         end
         
         if isBeast then
-            task.wait(7.5)
+            local w = 0
+            while w < 7.5 do
+                if not (getgenv().FishmanState.Model.State.isFishing or getgenv().FishmanState.Model.State.isDeepSeaCatcher) then
+                    pcall(function() actionRemote:InvokeServer({ Action = "Cancel", SessionKey = sessionKey, ActionKey = actionKey }) end)
+                    if hook then hook:Destroy() end
+                    return true
+                end
+                task.wait(0.1)
+                w += 0.1
+            end
             
             local reelSuccess, reelResponse = pcall(function()
                 return actionRemote:InvokeServer({
@@ -1378,11 +1396,7 @@ task.spawn(function()
     print("Auto-Fisher started without UI.")
     while getgenv().FishmanState._running do
         if getgenv().FishmanState.Model.State.isFishing or getgenv().FishmanState.Model.State.isDeepSeaCatcher then
-            local keepGoing = DoFishingCycle()
-            if not keepGoing then
-                print("Auto-fisher stopped.")
-                break
-            end
+            DoFishingCycle()
         end
         task.wait() -- Delay between casts
     end
