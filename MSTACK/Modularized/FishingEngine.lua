@@ -1136,237 +1136,258 @@ if not isLobby then
         return count
     end
     
-    getgenv().FishmanState.Model.DoFishingCycle = function()
-        -- LOCAL EquipRod implementation as requested by user
-        local function EquipRod()
-            local char = LocalPlayer.Character
-            local backpack = LocalPlayer:WaitForChild("Backpack")
-            local humanoid = char and char:FindFirstChildOfClass("Humanoid")
-            if not humanoid then return false end
-            
-            for _, tool in ipairs(char:GetChildren()) do
-                if tool:IsA("Tool") and tool.Name:match("Rod") then return true end
-            end
-            for _, tool in ipairs(backpack:GetChildren()) do
-                if tool:IsA("Tool") and tool.Name:match("Rod") then
-                    humanoid:EquipTool(tool)
-                    task.wait() 
-                    return true
-                end
-            end
-            return false
-        end
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
 
-        if not EquipRod() then
-            warn("No Fishing Rod equipped! Stopping auto-fish.")
-            return false 
-        end
-        
-        local throwGoal = Vector3.new(104.38, -7.99, -72.01)
-        
-        local success, throwResponse = pcall(function()
-            return Remote:InvokeServer({ 
-                Bait = "Common Fish Bait", 
-                Action = "Throw", 
-                Goal = throwGoal 
-            })
-        end)
-        
-        if not success or type(throwResponse) ~= "table" or not throwResponse.Accepted then
-            pcall(function() Remote:InvokeServer({ Action = "Cancel" }) end)
-            return true 
-        end
-        
-        local sessionKey = throwResponse.SessionKey
-        local actionKey = throwResponse.ActionKey
+local LocalPlayer = Players.LocalPlayer
+local actionRemote = ReplicatedStorage:WaitForChild("Fishing", 9e9):WaitForChild("Remotes", 9e9):WaitForChild("Action", 9e9)
 
-        local hookName = LocalPlayer.Name .. "'s hook"
-        local hook = workspace.Effects:WaitForChild(hookName, 3)
-        
-        if not hook then return true end
-        
-        task.wait()
-        
-        local falls = workspace:FindFirstChild("Env") and workspace.Env:FindFirstChild("WaterStuff") and workspace.Env.WaterStuff:FindFirstChild("Falls")
-        local waterLevelY = falls and falls.Position.Y or -7.99
-        local surfacePosition = Vector3.new(throwGoal.X, waterLevelY, throwGoal.Z)
-        
-        hook:PivotTo(CFrame.new(surfacePosition))
-        hook.AssemblyLinearVelocity = Vector3.zero
-        
-        local bp = Instance.new("BodyPosition")
-        bp.MaxForce = Vector3.new(0, 2000000000, 0)
-        bp.Position = surfacePosition
-        bp.Parent = hook
-        
-        task.wait()
-        
-        local landSuccess, landedResponse = pcall(function()
-            return Remote:InvokeServer({
-                Action = "Landed",
-                SessionKey = sessionKey,
-                ActionKey = actionKey
-            })
-        end)
-        
-        if not landSuccess or type(landedResponse) ~= "table" or not landedResponse.Accepted then
+-- === FISHING LOGIC ===
+local function EquipRod()
+    local char = LocalPlayer.Character
+    local backpack = LocalPlayer:WaitForChild("Backpack")
+    local humanoid = char and char:FindFirstChildOfClass("Humanoid")
+    if not humanoid then return false end
+    
+    for _, tool in ipairs(char:GetChildren()) do
+        if tool:IsA("Tool") and tool.Name:match("Rod") then return true end
+    end
+    for _, tool in ipairs(backpack:GetChildren()) do
+        if tool:IsA("Tool") and tool.Name:match("Rod") then
+            humanoid:EquipTool(tool)
+            task.wait() 
             return true
         end
-        
-        if landedResponse.ActionKey then
-            actionKey = landedResponse.ActionKey
-        end
-        
-        local maxWait = 30 
-        local waited = 0
-        local fishBitten = false
-        
-        while waited < maxWait do
-            if not (getgenv().FishmanState.Model.State.isFishing or getgenv().FishmanState.Model.State.isDeepSeaCatcher) then return end
-            
-            if hook:GetAttribute("Caught") == true or hook:FindFirstChild("ReelLoop") then
-                fishBitten = true
-                break
-            end
-            task.wait(0.1)
-            waited = waited + 0.1
-        end
-        
-        if fishBitten then
-            local isBeast = true
-            if getgenv().FishmanState.Model.State.isDeepSeaCatcher then
-                local beastDetected = false
-                local bWaited = 0
-                local initialSoundTime = nil
-                local rootPart = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-                
-                if not getgenv().DSC_SoundCache then
-                    getgenv().DSC_SoundCache = {}
-                    local function onNewSound(child)
-                        if child:IsA("Sound") and string.find(child.Name, "DeepSea") then
-                            table.insert(getgenv().DSC_SoundCache, child)
-                        end
-                    end
-                    getgenv().FishmanState.addConn(workspace.DescendantAdded:Connect(onNewSound))
-                    getgenv().FishmanState.addConn(game:GetService("SoundService").DescendantAdded:Connect(onNewSound))
-                    if LocalPlayer.Character then getgenv().FishmanState.addConn(LocalPlayer.Character.DescendantAdded:Connect(onNewSound)) end
-                    getgenv().FishmanState.addConn(LocalPlayer.CharacterAdded:Connect(function(char)
-                        getgenv().FishmanState.addConn(char.DescendantAdded:Connect(onNewSound))
-                    end))
-                    if rootPart then
-                        for _, child in ipairs(rootPart:GetChildren()) do onNewSound(child) end
-                    end
-                end
-                
-                while getgenv().FishmanState._running and hook.Parent do
-                    local beastSounds = {}
-                    for i = #getgenv().DSC_SoundCache, 1, -1 do
-                        local s = getgenv().DSC_SoundCache[i]
-                        if s.Parent then table.insert(beastSounds, s) else table.remove(getgenv().DSC_SoundCache, i) end
-                    end
-                    if rootPart then
-                        for _, child in ipairs(rootPart:GetChildren()) do
-                            if child:IsA("Sound") and child.Playing then
-                                if not initialSoundTime and (child.Name == "Small" or child.Name == "Medium" or child.Name == "Large" or child.Name == "Giant") then
-                                    print("🐟 Initial sound detected:", child.Name, "- Waiting 0.3s for possible Beast sound...")
-                                    initialSoundTime = bWaited
-                                end
-                            end
-                        end
-                    end
-                    for _, s in ipairs(beastSounds) do
-                        if s.Playing and s.TimePosition < 3.0 then
-                            print("🔥 BEAST SOUND DETECTED! Name:", s.Name)
-                            beastDetected = true
-                            break
-                        end
-                    end
-                    
-                    if beastDetected then break end
-                    if initialSoundTime and (bWaited - initialSoundTime >= 0.3) then break end
-                    if bWaited >= 5.0 then break end
-                    
-                    task.wait(0.1)
-                    bWaited += 0.1
-                end
-                
-                if not beastDetected then
-                    print("❌ No Megalodon detected. Cancelling normal fish.")
-                    isBeast = false
-                else
-                    print("🔥 REELING IN THE BEAST! 🔥")
-                end
-            end
-            
-            if isBeast then
-                task.wait(7.5)
-                
-                local reelSuccess, reelResponse = pcall(function()
-                    return Remote:InvokeServer({
-                        Action = "Reel",
-                        SessionKey = sessionKey,
-                        ActionKey = actionKey 
-                    })
-                end)
-                
-                if reelSuccess and type(reelResponse) == "table" and reelResponse.ActionKey then
-                    actionKey = reelResponse.ActionKey
-                end
-                
-                local retSuccess, retResponse = pcall(function()
-                    return Remote:InvokeServer({
-                        Action = "HookReturning",
-                        SessionKey = sessionKey,
-                        ActionKey = actionKey
-                    })
-                end)
-                
-                if retSuccess and type(retResponse) == "table" and retResponse.ActionKey then
-                    actionKey = retResponse.ActionKey
-                end
-                
-                -- PHYSICALLY PULL THE HOOK BACK TO YOU (INSTANT)
-                local char = LocalPlayer.Character
-                if char and char.PrimaryPart and hook and hook.Parent then
-                    local targetPos = char.PrimaryPart.Position
-                    
-                    local existingBp = hook:FindFirstChildOfClass("BodyPosition")
-                    if existingBp then existingBp:Destroy() end
-                    hook.Anchored = true
-                    
-                    -- Instantly teleport the hook to your character
-                    hook:PivotTo(CFrame.new(targetPos))
-                    
-                    -- Wait just 1/10th of a second for the fish reward script to catch up
-                    task.wait(0.1)
-                end
-            else
-                pcall(function()
-                    Remote:InvokeServer({ Action = "Reel", SessionKey = sessionKey, ActionKey = actionKey })
-                end)
-                task.wait()
-                pcall(function()
-                    Remote:InvokeServer({ Action = "Cancel", SessionKey = sessionKey, ActionKey = actionKey })
-                end)
-                if hook then hook:Destroy() end
-                return true
-            end
-        end
-        
-        if hook then hook:Destroy() end
-        task.wait()
-        
-        pcall(function()
-            Remote:InvokeServer({
-                Action = "Cancel",
-                SessionKey = sessionKey,
-                ActionKey = actionKey
-            })
-        end)
-        
+    end
+    return false
+end
+
+local function DoFishingCycle()
+    if not EquipRod() then
+        warn("No Fishing Rod equipped! Stopping auto-fish.")
+        return false 
+    end
+    
+    local throwGoal = Vector3.new(104.38, -7.99, -72.01)
+    
+    local success, throwResponse = pcall(function()
+        return actionRemote:InvokeServer({ 
+            Bait = "Common Fish Bait", 
+            Action = "Throw", 
+            Goal = throwGoal 
+        })
+    end)
+    
+    if not success or type(throwResponse) ~= "table" or not throwResponse.Accepted then
+        pcall(function() actionRemote:InvokeServer({ Action = "Cancel" }) end)
+        return true 
+    end
+    
+    local sessionKey = throwResponse.SessionKey
+    local actionKey = throwResponse.ActionKey
+
+    local hookName = LocalPlayer.Name .. "'s hook"
+    local hook = workspace.Effects:WaitForChild(hookName, 3)
+    
+    if not hook then return true end
+    
+    task.wait()
+    
+    local falls = workspace:FindFirstChild("Env") and workspace.Env:FindFirstChild("WaterStuff") and workspace.Env.WaterStuff:FindFirstChild("Falls")
+    local waterLevelY = falls and falls.Position.Y or -7.99
+    local surfacePosition = Vector3.new(throwGoal.X, waterLevelY, throwGoal.Z)
+    
+    hook:PivotTo(CFrame.new(surfacePosition))
+    hook.AssemblyLinearVelocity = Vector3.zero
+    
+    local bp = Instance.new("BodyPosition")
+    bp.MaxForce = Vector3.new(0, 2000000000, 0)
+    bp.Position = surfacePosition
+    bp.Parent = hook
+    
+    task.wait()
+    
+    local landSuccess, landedResponse = pcall(function()
+        return actionRemote:InvokeServer({
+            Action = "Landed",
+            SessionKey = sessionKey,
+            ActionKey = actionKey
+        })
+    end)
+    
+    if not landSuccess or type(landedResponse) ~= "table" or not landedResponse.Accepted then
         return true
     end
     
+    if landedResponse.ActionKey then
+        actionKey = landedResponse.ActionKey
+    end
+    
+    local maxWait = 30 
+    local waited = 0
+    local fishBitten = false
+    
+    while waited < maxWait do
+        if not (getgenv().FishmanState.Model.State.isFishing or getgenv().FishmanState.Model.State.isDeepSeaCatcher) then return end
+        
+        if hook:GetAttribute("Caught") == true or hook:FindFirstChild("ReelLoop") then
+            fishBitten = true
+            break
+        end
+        task.wait(0.1)
+        waited = waited + 0.1
+    end
+    
+    if fishBitten then
+        local isBeast = true
+        if getgenv().FishmanState.Model.State.isDeepSeaCatcher then
+            local beastDetected = false
+            local bWaited = 0
+            local initialSoundTime = nil
+            local rootPart = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+            
+            if not getgenv().DSC_SoundCache then
+                getgenv().DSC_SoundCache = {}
+                local function onNewSound(child)
+                    if child:IsA("Sound") and string.find(child.Name, "DeepSea") then
+                        table.insert(getgenv().DSC_SoundCache, child)
+                    end
+                end
+                getgenv().FishmanState.addConn(workspace.DescendantAdded:Connect(onNewSound))
+                getgenv().FishmanState.addConn(game:GetService("SoundService").DescendantAdded:Connect(onNewSound))
+                if LocalPlayer.Character then getgenv().FishmanState.addConn(LocalPlayer.Character.DescendantAdded:Connect(onNewSound)) end
+                getgenv().FishmanState.addConn(LocalPlayer.CharacterAdded:Connect(function(char)
+                    getgenv().FishmanState.addConn(char.DescendantAdded:Connect(onNewSound))
+                end))
+                if rootPart then
+                    for _, child in ipairs(rootPart:GetChildren()) do onNewSound(child) end
+                end
+            end
+            
+            while getgenv().FishmanState._running and hook.Parent do
+                local beastSounds = {}
+                for i = #getgenv().DSC_SoundCache, 1, -1 do
+                    local s = getgenv().DSC_SoundCache[i]
+                    if s.Parent then table.insert(beastSounds, s) else table.remove(getgenv().DSC_SoundCache, i) end
+                end
+                if rootPart then
+                    for _, child in ipairs(rootPart:GetChildren()) do
+                        if child:IsA("Sound") and child.Playing then
+                            if not initialSoundTime and (child.Name == "Small" or child.Name == "Medium" or child.Name == "Large" or child.Name == "Giant") then
+                                print("🐟 Initial sound detected:", child.Name, "- Waiting 0.3s for possible Beast sound...")
+                                initialSoundTime = bWaited
+                            end
+                        end
+                    end
+                end
+                for _, s in ipairs(beastSounds) do
+                    if s.Playing and s.TimePosition < 3.0 then
+                        print("🔥 BEAST SOUND DETECTED! Name:", s.Name)
+                        beastDetected = true
+                        break
+                    end
+                end
+                
+                if beastDetected then break end
+                if initialSoundTime and (bWaited - initialSoundTime >= 0.3) then break end
+                if bWaited >= 5.0 then break end
+                
+                task.wait(0.1)
+                bWaited += 0.1
+            end
+            
+            if not beastDetected then
+                print("❌ No Megalodon detected. Cancelling normal fish.")
+                isBeast = false
+            else
+                print("🔥 REELING IN THE BEAST! 🔥")
+            end
+        end
+        
+        if isBeast then
+            task.wait(7.5)
+            
+            local reelSuccess, reelResponse = pcall(function()
+                return actionRemote:InvokeServer({
+                    Action = "Reel",
+                    SessionKey = sessionKey,
+                    ActionKey = actionKey 
+                })
+            end)
+            
+            if reelSuccess and type(reelResponse) == "table" and reelResponse.ActionKey then
+                actionKey = reelResponse.ActionKey
+            end
+            
+            local retSuccess, retResponse = pcall(function()
+                return actionRemote:InvokeServer({
+                    Action = "HookReturning",
+                    SessionKey = sessionKey,
+                    ActionKey = actionKey
+                })
+            end)
+            
+            if retSuccess and type(retResponse) == "table" and retResponse.ActionKey then
+                actionKey = retResponse.ActionKey
+            end
+            
+            -- PHYSICALLY PULL THE HOOK BACK TO YOU (INSTANT)
+            local char = LocalPlayer.Character
+            if char and char.PrimaryPart and hook and hook.Parent then
+                local targetPos = char.PrimaryPart.Position
+                
+                local existingBp = hook:FindFirstChildOfClass("BodyPosition")
+                if existingBp then existingBp:Destroy() end
+                hook.Anchored = true
+                
+                -- Instantly teleport the hook to your character
+                hook:PivotTo(CFrame.new(targetPos))
+                
+                -- Wait just 1/10th of a second for the fish reward script to catch up
+                task.wait(0.1)
+            end
+        else
+            pcall(function()
+                actionRemote:InvokeServer({ Action = "Reel", SessionKey = sessionKey, ActionKey = actionKey })
+            end)
+            task.wait()
+            pcall(function()
+                actionRemote:InvokeServer({ Action = "Cancel", SessionKey = sessionKey, ActionKey = actionKey })
+            end)
+            if hook then hook:Destroy() end
+            return true
+        end
+    end
+    
+    if hook then hook:Destroy() end
+    task.wait()
+    
+    pcall(function()
+        actionRemote:InvokeServer({
+            Action = "Cancel",
+            SessionKey = sessionKey,
+            ActionKey = actionKey
+        })
+    end)
+    
+    return true
+end
+
+-- === MAIN LOOP ===
+task.spawn(function()
+    print("Auto-Fisher started without UI.")
+    while getgenv().FishmanState._running do
+        if getgenv().FishmanState.Model.State.isFishing or getgenv().FishmanState.Model.State.isDeepSeaCatcher then
+            local keepGoing = DoFishingCycle()
+            if not keepGoing then
+                print("Auto-fisher stopped.")
+                break
+            end
+        end
+        task.wait() -- Delay between casts
+    end
+end)
+\n    
     -- ======================================================================
     -- ⏱️ BACKGROUND LOOPS
     -- ======================================================================
@@ -1421,7 +1442,6 @@ if not isLobby then
     end)
 
     task.spawn(function() while getgenv().FishmanState._running and task.wait(2) do if getgenv().FishmanState.Model.State.autoBuy or getgenv().FishmanState.Model.State.isMegStackLoc or getgenv().FishmanState.Model.State.autoSell then getgenv().FishmanState.Model.CheckInventory() end end end)
-    task.spawn(function() while getgenv().FishmanState._running and task.wait() do if (getgenv().FishmanState.Model.State.isFishing or getgenv().FishmanState.Model.State.isDeepSeaCatcher) and not getgenv().FishmanState.Model.State.isBuying and not getgenv().FishmanState.Model.State.isAutoTraveling and not getgenv().FishmanState.Model.State.isRefillingMegBait and not getgenv().FishmanState.Model.State.isManualTraveling then getgenv().FishmanState.Model.DoFishingCycle() end end end)
 
     -- Auto-track hoverboard position to memory every 3 seconds to prevent StreamingEnabled drop-off
     task.spawn(function()
