@@ -1240,7 +1240,7 @@ local function DoFishingCycle()
     
     if fishBitten then
         local isBeast = true
-        if getgenv().FishmanState.Model.State.isDeepSeaCatcher then
+        if getgenv().FishmanState.Model.State.isDeepSeaCatcher and not getgenv().FishmanState.Model.State.isFishing then
             local beastDetected = false
             local bWaited = 0
             local initialSoundTime = nil
