@@ -254,6 +254,9 @@ local function startTravelSequence()
     
     if travelHeartbeatConnection then travelHeartbeatConnection:Disconnect() end
     
+    local phase = 1
+    local roboPos = nil
+    
     travelHeartbeatConnection = RunService.Heartbeat:Connect(function(deltaTime)
         if not isActionActive or not isTraveling then
             if travelHeartbeatConnection then
@@ -270,15 +273,64 @@ local function startTravelSequence()
         local currentPos = rootPart.Position
         local nextPoint
         
-        -- Sequential movement: X -> Z -> Y
-        if math.abs(currentPos.X - targetX) > 1 then
-            nextPoint = Vector3.new(targetX, currentPos.Y, currentPos.Z)
-        elseif math.abs(currentPos.Z - targetZ) > 1 then
-            nextPoint = Vector3.new(targetX, currentPos.Y, targetZ)
-        elseif math.abs(currentPos.Y - targetY) > 1 then
-            nextPoint = Vector3.new(targetX, targetY, targetZ)
-        else
-            -- Arrived at target!
+        if phase == 1 then
+            if math.abs(currentPos.X - targetX) > 1 then
+                nextPoint = Vector3.new(targetX, currentPos.Y, currentPos.Z)
+            else
+                phase = 2
+            end
+        end
+        
+        if phase == 2 then
+            if math.abs(currentPos.Z - targetZ) > 1 then
+                nextPoint = Vector3.new(targetX, currentPos.Y, targetZ)
+            else
+                phase = 3
+            end
+        end
+        
+        if phase == 3 then
+            if math.abs(currentPos.Y - targetY) > 1 then
+                nextPoint = Vector3.new(targetX, targetY, targetZ)
+            else
+                -- Arrived at island! Now find Robo to set checkpoint.
+                local npcs = Workspace:FindFirstChild("NPCs")
+                local robo = npcs and npcs:FindFirstChild("Robo")
+                local roboRoot = robo and robo:FindFirstChild("HumanoidRootPart")
+                if roboRoot then
+                    roboPos = roboRoot.Position
+                    phase = 4
+                    toggleBtn.Text = "CHECKPOINTING..."
+                else
+                    phase = 6
+                end
+            end
+        end
+        
+        if phase == 4 then
+            -- Fly to Robo
+            if roboPos and (currentPos - roboPos).Magnitude > 5 then
+                nextPoint = roboPos
+            else
+                -- At Robo, save spawn
+                saveSpawnPoint()
+                phase = 5
+                toggleBtn.Text = "HEADING TO ENEMIES..."
+                return -- Yield 1 frame to let spawn process
+            end
+        end
+        
+        if phase == 5 then
+            -- Fly back to original target (enemies)
+            if (currentPos - finalTarget).Magnitude > 5 then
+                nextPoint = finalTarget
+            else
+                phase = 6
+            end
+        end
+        
+        if phase == 6 then
+            -- Finished all travel
             isTraveling = false
             if travelHeartbeatConnection then
                 travelHeartbeatConnection:Disconnect()
@@ -286,21 +338,26 @@ local function startTravelSequence()
             end
             
             disableFlight(character)
-            saveSpawnPoint()
             
-            -- Seamlessly transition into combat
-            task.wait(0.5)
-            if isActionActive and isRunning then
-                startCombatFarming()
-            end
+            if not roboPos then saveSpawnPoint() end
+            
+            task.spawn(function()
+                task.wait(0.5)
+                if isActionActive and isRunning then
+                    startCombatFarming()
+                end
+            end)
             return
         end
         
-        local distance = (currentPos - nextPoint).Magnitude
-        if distance > 0 then
-            local alpha = math.clamp((travelSpeed * deltaTime) / distance, 0, 1)
-            rootPart.CFrame = rootPart.CFrame:Lerp(CFrame.new(nextPoint), alpha)
+        if nextPoint then
+            local distance = (currentPos - nextPoint).Magnitude
+            if distance > 0 then
+                local alpha = math.clamp((travelSpeed * deltaTime) / distance, 0, 1)
+                rootPart.CFrame = rootPart.CFrame:Lerp(CFrame.new(nextPoint), alpha)
+            end
         end
+        
         rootPart.Velocity = Vector3.new(0, 0, 0)
         rootPart.RotVelocity = Vector3.new(0, 0, 0)
     end)
