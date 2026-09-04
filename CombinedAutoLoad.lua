@@ -14,16 +14,17 @@ local UserInputService = game:GetService("UserInputService")
 local CoreGui = game:GetService("CoreGui")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
+local PathfindingService = game:GetService("PathfindingService")
 
 local LocalPlayer = Players.LocalPlayer
 
 -- Fetch Model module
 local Model = loadstring(game:HttpGet("https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/Model.lua"))()
 
--- Target Coordinates (Fishman Island - Robo Location)
-local targetX = 7978
-local targetY = -2153
-local targetZ = -17074
+-- Target Coordinates (Enemies Location)
+local targetX = 7976.704
+local targetY = -2152.832
+local targetZ = -17074.277
 local finalTarget = Vector3.new(targetX, targetY, targetZ)
 local travelSpeed = 90
 
@@ -247,7 +248,7 @@ local function startTravelSequence()
     isTraveling = true
     Model.State.isAutoFarming = false
     
-    toggleBtn.Text = "TRAVELING TO ISLAND..."
+    toggleBtn.Text = "TRAVELING TO ROBO..."
     toggleBtn.BackgroundColor3 = Color3.fromRGB(255, 170, 0)
     
     enableFlight(LocalPlayer.Character)
@@ -255,6 +256,9 @@ local function startTravelSequence()
     if travelHeartbeatConnection then travelHeartbeatConnection:Disconnect() end
     
     local phase = 1
+    local roboPos = Vector3.new(7978, -2153, -17074)
+    local walkPath = nil
+    local walkWaypointIndex = 2
     
     travelHeartbeatConnection = RunService.Heartbeat:Connect(function(deltaTime)
         if not isActionActive or not isTraveling then
@@ -273,24 +277,24 @@ local function startTravelSequence()
         local nextPoint
         
         if phase == 1 then
-            if math.abs(currentPos.X - targetX) > 1 then
-                nextPoint = Vector3.new(targetX, currentPos.Y, currentPos.Z)
+            if math.abs(currentPos.X - roboPos.X) > 1 then
+                nextPoint = Vector3.new(roboPos.X, currentPos.Y, currentPos.Z)
             else
                 phase = 2
             end
         end
         
         if phase == 2 then
-            if math.abs(currentPos.Z - targetZ) > 1 then
-                nextPoint = Vector3.new(targetX, currentPos.Y, targetZ)
+            if math.abs(currentPos.Z - roboPos.Z) > 1 then
+                nextPoint = Vector3.new(roboPos.X, currentPos.Y, roboPos.Z)
             else
                 phase = 3
             end
         end
         
         if phase == 3 then
-            if math.abs(currentPos.Y - targetY) > 1 then
-                nextPoint = Vector3.new(targetX, targetY, targetZ)
+            if math.abs(currentPos.Y - roboPos.Y) > 1 then
+                nextPoint = roboPos
             else
                 -- Arrived at Robo location
                 saveSpawnPoint()
@@ -301,15 +305,53 @@ local function startTravelSequence()
         end
         
         if phase == 4 then
-            -- Keep hovering at Robo until time is up
             if tick() >= getgenv().roboWaitTime then
                 phase = 5
+                toggleBtn.Text = "PATHFINDING TO ENEMIES..."
+                disableFlight(character)
             else
-                nextPoint = finalTarget
+                nextPoint = roboPos
             end
         end
         
         if phase == 5 then
+            -- Use Pathfinding to walk to finalTarget
+            if not walkPath then
+                local path = PathfindingService:CreatePath({
+                    AgentRadius = 3,
+                    AgentHeight = 5,
+                    AgentCanJump = true,
+                    WaypointSpacing = 4,
+                })
+                path:ComputeAsync(currentPos, finalTarget)
+                if path.Status == Enum.PathStatus.Success then
+                    walkPath = path:GetWaypoints()
+                else
+                    phase = 6
+                end
+            end
+            
+            if walkPath and walkWaypointIndex <= #walkPath then
+                local wp = walkPath[walkWaypointIndex]
+                local humanoid = character:FindFirstChild("Humanoid")
+                if humanoid then
+                    humanoid:MoveTo(wp.Position)
+                    if wp.Action == Enum.PathWaypointAction.Jump then
+                        humanoid.Jump = true
+                    end
+                    local flatDist = Vector3.new(currentPos.X - wp.Position.X, 0, currentPos.Z - wp.Position.Z).Magnitude
+                    if flatDist < 4 then
+                        walkWaypointIndex = walkWaypointIndex + 1
+                    end
+                end
+                -- Prevent CFrame lerping since we are walking
+                return 
+            else
+                phase = 6
+            end
+        end
+        
+        if phase == 6 then
             -- Finished all travel
             isTraveling = false
             if travelHeartbeatConnection then
@@ -317,9 +359,6 @@ local function startTravelSequence()
                 travelHeartbeatConnection = nil
             end
             
-            disableFlight(character)
-            
-            -- We let startCombatFarming trigger pathfinding from here
             task.spawn(function()
                 task.wait(0.5)
                 if isActionActive and isRunning then
@@ -329,6 +368,7 @@ local function startTravelSequence()
             return
         end
         
+        -- Only execute this if we are flying (Phases 1-4)
         if nextPoint then
             local distance = (currentPos - nextPoint).Magnitude
             if distance > 0 then
