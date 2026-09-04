@@ -380,10 +380,11 @@ task.spawn(function()
                 local args = { [1] = "getNPCQuestLocations" }
                 local questData = ReplicatedStorage:WaitForChild("Events", 9e9):WaitForChild("Quest", 9e9):InvokeServer(unpack(args))
                 
-                -- If it returns an active quest table (not empty), or any truthy value other than an empty table
+                -- If it returns an active quest table (not empty)
                 if type(questData) == "table" and next(questData) ~= nil then
                     hasQuest = true
-                elseif questData and type(questData) ~= "table" then
+                elseif questData ~= nil and questData ~= "" and questData ~= false and type(questData) ~= "table" then
+                    -- If it returns a string/value, ensure it's not empty
                     hasQuest = true
                 end
             end)
