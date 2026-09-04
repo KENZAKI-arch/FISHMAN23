@@ -400,28 +400,42 @@ function Fluent:CreateWindow(options)
             frame.BackgroundTransparency = 1
             frame.Parent = contentScroll
             local lbl = Instance.new("TextLabel")
-            lbl.Size = UDim2.new(0.5, 0, 1, 0)
+            lbl.Size = UDim2.new(0.45, 0, 1, 0)
             lbl.BackgroundTransparency = 1
-            lbl.Text = " " .. iArgs.Title
+            lbl.Text = " " .. (iArgs.Title or "")
             lbl.TextColor3 = Color3.fromRGB(200, 200, 200)
             lbl.TextXAlignment = Enum.TextXAlignment.Left
             lbl.Font = Enum.Font.Code
             lbl.TextSize = 12
             lbl.Parent = frame
             local box = Instance.new("TextBox")
-            box.Size = UDim2.new(0.5, -5, 1, 0)
-            box.Position = UDim2.new(0.5, 0, 0, 0)
+            box.Size = UDim2.new(0.55, -5, 1, 0)
+            box.Position = UDim2.new(0.45, 0, 0, 0)
             box.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
             box.BorderSizePixel = 1
             box.BorderColor3 = Color3.fromRGB(50, 50, 50)
             box.Text = iArgs.Default or ""
+            box.PlaceholderText = iArgs.Placeholder or ""
+            box.PlaceholderColor3 = Color3.fromRGB(110, 110, 110)
             box.TextColor3 = Color3.fromRGB(255, 255, 255)
             box.Font = Enum.Font.Code
             box.TextSize = 12
+            box.ClearTextOnFocus = false
             box.Parent = frame
             
             local FakeInput = { Value = iArgs.Default or "" }
-            box.FocusLost:Connect(function() FakeInput.Value = box.Text; if iArgs.Callback then task.spawn(iArgs.Callback, box.Text) end end)
+            box:GetPropertyChangedSignal("Text"):Connect(function()
+                FakeInput.Value = box.Text
+                if not iArgs.Finished and iArgs.Callback then
+                    task.spawn(iArgs.Callback, box.Text)
+                end
+            end)
+            box.FocusLost:Connect(function()
+                FakeInput.Value = box.Text
+                if iArgs.Callback then
+                    task.spawn(iArgs.Callback, box.Text)
+                end
+            end)
             FakeInput.SetValue = function(self, val) self.Value = val; box.Text = val; if iArgs.Callback then task.spawn(iArgs.Callback, val) end end
             if not isTable and id then getgenv().FishmanState.Fluent.Options[id] = FakeInput end
             return FakeInput
@@ -847,15 +861,57 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
     end
     refreshIslands()
 
-    local selectedIslandPos = nil
+    local selectedIslandPos = islandPositions[islandNames[1]]
 
-    local D_Island = getgenv().FishmanState.Tabs.Navigation:AddDropdown("D_Island", {
+    local function getFilteredIslands(query)
+        query = string.lower(query or ""):gsub("^%s*(.-)%s*$", "%1")
+        if query == "" then
+            local list = {}
+            for _, name in ipairs(islandNames) do
+                table.insert(list, name)
+            end
+            return list
+        end
+        local filtered = {}
+        for _, name in ipairs(islandNames) do
+            if string.find(string.lower(name), query, 1, true) then
+                table.insert(filtered, name)
+            end
+        end
+        if #filtered == 0 then
+            table.insert(filtered, "No matches found")
+        end
+        return filtered
+    end
+
+    local D_Island = nil
+
+    local searchIslandInput = getgenv().FishmanState.Tabs.Navigation:AddInput("SearchIsland", {
+        Title = "🔍 Search Island",
+        Default = "",
+        Placeholder = "Type island name (e.g. Zou)...",
+        Numeric = false,
+        Finished = false,
+        Callback = function(Value)
+            if not D_Island then return end
+            local filtered = getFilteredIslands(Value)
+            D_Island:SetValues(filtered)
+            if Value and Value ~= "" and #filtered == 1 and filtered[1] ~= "No matches found" then
+                D_Island:SetValue(filtered[1])
+                selectedIslandPos = islandPositions[filtered[1]]
+            end
+        end
+    })
+
+    D_Island = getgenv().FishmanState.Tabs.Navigation:AddDropdown("D_Island", {
         Title = "Select Island",
         Values = islandNames,
         Multi = false,
         Default = islandNames[1],
         Callback = function(Value)
-            selectedIslandPos = islandPositions[Value]
+            if Value and Value ~= "No matches found" and Value ~= "None" then
+                selectedIslandPos = islandPositions[Value]
+            end
         end
     })
     
@@ -864,7 +920,8 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
         Description = "Refreshes the island list if CompassGuider was slow to load.",
         Callback = function()
             refreshIslands()
-            D_Island:SetValues(islandNames)
+            local query = searchIslandInput and searchIslandInput.Value or ""
+            D_Island:SetValues(getFilteredIslands(query))
             getgenv().FishmanState.Fluent:Notify({ Title = "Refreshed", Content = "Island list updated.", Duration = 3 })
         end
     })
