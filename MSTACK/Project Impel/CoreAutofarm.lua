@@ -105,7 +105,8 @@ Model.State = {
     botMode = "NAVIGATE_MAZE", -- "NAVIGATE_MAZE", "ROOM_ROUND_UP", "ROOM_COMBAT"
     roundUpTimer = 0,
     macroIndex = 1,
-    isComputingPath = false
+    isComputingPath = false,
+    isWaitingAtWaypoint = false
 }
 
 -- ==========================================
@@ -243,6 +244,7 @@ function Model.ResetPhysics()
     currentEnemy = nil
     Model.State.mazePath = {}
     Model.State.isComputingPath = false
+    Model.State.isWaitingAtWaypoint = false
     Model.State.evadingTimer = 0
     Model.State.stuckTimer = 0
     visualizerFolder:ClearAllChildren()
@@ -407,59 +409,123 @@ function Model.UpdateTracking(deltaTime)
                           rootPart.Velocity = Vector3.new(0, 0, 0)
                         currentMacro = nil
                     else
-                        print("[AutoFarm] Reached Macro Waypoint " .. tostring(Model.State.macroIndex))
-                        if currentMacro.Action == "PULL_LEVER" then
-                            local islandsFolder = Workspace:FindFirstChild("Islands")
-                            if islandsFolder then
-                                local f2 = islandsFolder:FindFirstChild("Impel Base - Floor 2")
-                                local interactables = f2 and f2:FindFirstChild("Interactables")
-                                local lever = interactables and interactables:FindFirstChild("BossGateLever")
-                                if lever then
-                                    for _, desc in ipairs(lever:GetDescendants()) do
-                                        if desc:IsA("ProximityPrompt") then
-                                            print("[AutoFarm] Pulling Boss Gate Lever!")
-                                            local bv = rootPart:FindFirstChild("AntiGravity")
-                                            if bv then bv.Velocity = Vector3.new(0, 0, 0) end
-                                            fireproximityprompt(desc)
-                                            break
+                        local waitDuration = currentMacro.Wait or (currentMacro.Action == "PULL_LEVER" and 3) or 0
+                        
+                        if waitDuration > 0 and not Model.State.isWaitingAtWaypoint then
+                            Model.State.isWaitingAtWaypoint = true
+                            print(string.format("[AutoFarm] Reached Macro Waypoint %d (%s). Staying for %s seconds...", Model.State.macroIndex, tostring(currentMacro.Action or "NAVIGATE"), tostring(waitDuration)))
+                            
+                            task.spawn(function()
+                                -- Stop all movement
+                                local bv = rootPart:FindFirstChild("AntiGravity")
+                                if bv then bv.Velocity = Vector3.new(0, 0, 0) end
+                                rootPart.Velocity = Vector3.new(0, 0, 0)
+                                
+                                -- Pull lever if action is PULL_LEVER
+                                if currentMacro.Action == "PULL_LEVER" then
+                                    local leverFound = false
+                                    -- 1. Check for nearby ProximityPrompts within 25 studs
+                                    for _, desc in ipairs(Workspace:GetDescendants()) do
+                                        if desc:IsA("ProximityPrompt") and desc.Enabled and desc.Parent then
+                                            local promptPos = desc.Parent:IsA("Model") and desc.Parent:GetPivot().Position or desc.Parent.Position
+                                            if (rootPart.Position - promptPos).Magnitude <= 25 then
+                                                print("[AutoFarm] Found nearby Lever/Switch ProximityPrompt! Activating...")
+                                                pcall(function()
+                                                    if fireproximityprompt then
+                                                        fireproximityprompt(desc)
+                                                    end
+                                                    desc:InputHoldBegin()
+                                                    task.wait(desc.HoldDuration or 0.5)
+                                                    desc:InputHoldEnd()
+                                                end)
+                                                leverFound = true
+                                                break
+                                            end
+                                        end
+                                    end
+                                    
+                                    -- 2. Fallback to Floor 2 BossGateLever path
+                                    if not leverFound then
+                                        local islandsFolder = Workspace:FindFirstChild("Islands")
+                                        local f2 = islandsFolder and islandsFolder:FindFirstChild("Impel Base - Floor 2")
+                                        local interactables = f2 and f2:FindFirstChild("Interactables")
+                                        local lever = interactables and interactables:FindFirstChild("BossGateLever")
+                                        if lever then
+                                            for _, desc in ipairs(lever:GetDescendants()) do
+                                                if desc:IsA("ProximityPrompt") then
+                                                    print("[AutoFarm] Pulling Boss Gate Lever (Fallback path)!")
+                                                    pcall(function()
+                                                        if fireproximityprompt then
+                                                            fireproximityprompt(desc)
+                                                        end
+                                                        desc:InputHoldBegin()
+                                                        task.wait(desc.HoldDuration or 0.5)
+                                                        desc:InputHoldEnd()
+                                                    end)
+                                                    break
+                                                end
+                                            end
                                         end
                                     end
                                 end
-                            end
+                                
+                                -- Stay for the full wait duration
+                                task.wait(waitDuration)
+                                
+                                -- Advance to next waypoint
+                                Model.State.macroIndex = Model.State.macroIndex + 1
+                                currentMacro = MACRO_WAYPOINTS[Model.State.macroIndex]
+                                Model.State.mazePath = {} -- Force recalculation
+                                visualizerFolder:ClearAllChildren()
+                                Model.State.isWaitingAtWaypoint = false
+                                print("[AutoFarm] Wait complete! Advancing to Macro Waypoint " .. tostring(Model.State.macroIndex))
+                            end)
                         end
-                        Model.State.macroIndex = Model.State.macroIndex + 1
-                        currentMacro = MACRO_WAYPOINTS[Model.State.macroIndex]
-                        Model.State.mazePath = {} -- Force recalculation
-                        visualizerFolder:ClearAllChildren()
+                        
+                        if Model.State.isWaitingAtWaypoint then
+                            -- Keep hovering steadily in place while waiting
+                            targetDest = rootPart.Position
+                            local bv = rootPart:FindFirstChild("AntiGravity")
+                            if bv then bv.Velocity = Vector3.new(0, 0, 0) end
+                            rootPart.Velocity = Vector3.new(0, 0, 0)
+                        else
+                            print("[AutoFarm] Reached Macro Waypoint " .. tostring(Model.State.macroIndex))
+                            Model.State.macroIndex = Model.State.macroIndex + 1
+                            currentMacro = MACRO_WAYPOINTS[Model.State.macroIndex]
+                            Model.State.mazePath = {} -- Force recalculation
+                            visualizerFolder:ClearAllChildren()
+                        end
                     end
                 end
                 
-                -- Auto-skip if we are closer to a future waypoint
-                local closestIdx = Model.State.macroIndex
-                local distToCurrent = currentMacro and (rootPart.Position - currentMacro.Pos).Magnitude or math.huge
-                
-                for i = Model.State.macroIndex + 1, #MACRO_WAYPOINTS do
-                    local distToFuture = (rootPart.Position - MACRO_WAYPOINTS[i].Pos).Magnitude
-                    -- ONLY skip if we teleported and a future waypoint is drastically closer (e.g. F2 vs F1)
-                    -- We DO NOT skip based on pure distance (<50) to prevent skipping maze checkpoints!
-                    if distToFuture < (distToCurrent - 1000) then
-                        closestIdx = i
-                        distToCurrent = distToFuture
+                -- Auto-skip if we are closer to a future waypoint (disabled while waiting at a waypoint)
+                if not Model.State.isWaitingAtWaypoint then
+                    local closestIdx = Model.State.macroIndex
+                    local distToCurrent = currentMacro and (rootPart.Position - currentMacro.Pos).Magnitude or math.huge
+                    
+                    for i = Model.State.macroIndex + 1, #MACRO_WAYPOINTS do
+                        local distToFuture = (rootPart.Position - MACRO_WAYPOINTS[i].Pos).Magnitude
+                        -- ONLY skip if we teleported and a future waypoint is drastically closer (e.g. F2 vs F1)
+                        -- We DO NOT skip based on pure distance (<50) to prevent skipping maze checkpoints!
+                        if distToFuture < (distToCurrent - 1000) then
+                            closestIdx = i
+                            distToCurrent = distToFuture
+                        end
+                        
+                        -- If this waypoint is a mandatory action (like pulling a lever), 
+                        -- we CANNOT skip past it to future waypoints, otherwise we break the sequence!
+                        if MACRO_WAYPOINTS[i].Action == "PULL_LEVER" then
+                            break
+                        end
                     end
                     
-                    -- If this waypoint is a mandatory action (like pulling a lever), 
-                    -- we CANNOT skip past it to future waypoints, otherwise we break the sequence!
-                    if MACRO_WAYPOINTS[i].Action == "PULL_LEVER" then
-                        break
+                    if closestIdx > Model.State.macroIndex then
+                        print("[AutoFarm Debug] Detected we are much closer to Macro Waypoint " .. tostring(closestIdx) .. ". Skipping ahead!")
+                        Model.State.macroIndex = closestIdx
+                        currentMacro = MACRO_WAYPOINTS[Model.State.macroIndex]
+                        Model.State.mazePath = {}
+                        visualizerFolder:ClearAllChildren()
                     end
-                end
-                
-                if closestIdx > Model.State.macroIndex then
-                    print("[AutoFarm Debug] Detected we are much closer to Macro Waypoint " .. tostring(closestIdx) .. ". Skipping ahead!")
-                    Model.State.macroIndex = closestIdx
-                    currentMacro = MACRO_WAYPOINTS[Model.State.macroIndex]
-                    Model.State.mazePath = {}
-                    visualizerFolder:ClearAllChildren()
                 end
                 
                 if not currentMacro then
