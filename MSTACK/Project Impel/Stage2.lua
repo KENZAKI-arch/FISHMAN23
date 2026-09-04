@@ -16,9 +16,9 @@ getgenv().MACRO_WAYPOINTS = {
     { Pos = Vector3.new(3383, 2343, -20565), Action = "NAVIGATE" }, -- Pre-Lever Room
     { Pos = Vector3.new(3199, 2343, -20559), Action = "NAVIGATE" }, -- Pre-Lever Room 2
     { Pos = Vector3.new(3198, 2343, -20539), Action = "PULL_LEVER" }, -- Lever Room
-    { Pos = Vector3.new(3199, 2343, -20559), Action = "FLY_DIRECT" }, -- Exit Lever Room (Fly straight through door)
-    { Pos = Vector3.new(3383, 2343, -20565), Action = "NAVIGATE" }, -- Pre-Lever Room Return
-    { Pos = Vector3.new(3462, 2378, -20618), Action = "NAVIGATE" }, -- Back to F2 Corridor
+    { Pos = Vector3.new(3200, 2343, -20559), Action = "FLY_DIRECT" }, -- 3200 Exit Lever Room (Fly straight through door)
+    { Pos = Vector3.new(3438, 2378, -20408), Action = "NAVIGATE" }, -- F2 Corridor Return
+    { Pos = Vector3.new(3199, 2378, -20398), Action = "NAVIGATE" }, -- Central Hall Junction (In front of Boss Gate)
     { Pos = Vector3.new(3200, 2375, -20737), Action = "NAVIGATE" }, -- Final Boss Room (Kills Impel Down High Elite Guard)
     { Pos = Vector3.new(3197, 2379, -21085), Action = "WAIT_TELEPORT" } -- Teleporter to Stage 3
 }
