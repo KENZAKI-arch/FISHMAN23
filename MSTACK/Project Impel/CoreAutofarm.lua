@@ -482,8 +482,8 @@ function Model.UpdateTracking(deltaTime)
                             -- Spawn in a new thread to PREVENT Heartbeat lag spikes!
                             task.spawn(function()
                                 local path = PathfindingService:CreatePath({
-                                    AgentRadius = 2.0,
-                                    AgentHeight = 4,
+                                    AgentRadius = 3.0,
+                                    AgentHeight = 5,
                                     AgentCanJump = true,
                                     AgentCanClimb = true, -- Crucial for ladders and stairs!
                                     WaypointSpacing = 4,
@@ -531,7 +531,7 @@ function Model.UpdateTracking(deltaTime)
                         targetDest = currentMacro.Pos
                     elseif Model.State.mazePath and Model.State.mazeIndex <= #Model.State.mazePath then
                         local rawPos = Model.State.mazePath[Model.State.mazeIndex].Position
-                        targetDest = rawPos + Vector3.new(0, 3.5, 0)
+                        targetDest = rawPos + Vector3.new(0, 1.8, 0)
                     else
                         targetDest = rootPart.Position
                     end
@@ -689,8 +689,8 @@ function Model.UpdateTracking(deltaTime)
                 end
                 Model.State.lastMazeDist = arrivalDistance
                 
-                if Model.State.stuckTimer > 0.5 then
-                    print("[AutoFarm Debug] Stuck in maze! Noclipping & Dashing...")
+                if Model.State.stuckTimer > 2.0 then
+                    print("[AutoFarm Debug] Stuck in maze for 2s! Recomputing path & nudging...")
                     for _, part in ipairs(character:GetDescendants()) do
                         if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
                             part.CanCollide = false
@@ -700,10 +700,10 @@ function Model.UpdateTracking(deltaTime)
                         character.Humanoid.Jump = true
                     end
                     Model.State.mazePath = {} -- Force recalculation
-                    Model.State.stuckTimer = -1.0 -- Wait before checking stuck again
+                    Model.State.stuckTimer = -1.5 -- Wait before checking stuck again
                     
-                    -- Restore collisions shortly after to prevent flying through the entire maze
-                    task.delay(1.5, function()
+                    -- Restore collisions quickly to prevent flying through the entire maze
+                    task.delay(0.4, function()
                         if character then
                             for _, part in ipairs(character:GetDescendants()) do
                                 if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
@@ -725,7 +725,7 @@ function Model.UpdateTracking(deltaTime)
                     visualizerFolder:ClearAllChildren()
                 else
                     local rawPos = Model.State.mazePath[Model.State.mazeIndex].Position
-                    targetDest = rawPos + Vector3.new(0, 3.5, 0)
+                    targetDest = rawPos + Vector3.new(0, 1.8, 0)
                     flatTarget = Vector3.new(targetDest.X, 0, targetDest.Z)
                     horizontalDistance = (flatTarget - flatCurrent).Magnitude
                     arrivalDistance = (targetDest - rootPart.Position).Magnitude
