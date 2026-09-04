@@ -39,8 +39,8 @@ getgenv().FishmanState.addConn(GuiService.ErrorMessageChanged:Connect(function()
     if GlobalMem.FishmanAutoReconnect then
         task.spawn(function()
             -- It's a disconnect! Reroute to configured Default PS and Destination!
-            if GlobalMem.FishmanDefaultPSCode then GlobalMem.FishmanPSCode = GlobalMem.FishmanDefaultPSCode end
-            if GlobalMem.FishmanDefaultDestination then GlobalMem.FishmanDestination = GlobalMem.FishmanDefaultDestination end
+            -- if GlobalMem.FishmanDefaultPSCode then GlobalMem.FishmanPSCode = GlobalMem.FishmanDefaultPSCode end
+            -- if GlobalMem.FishmanDefaultDestination then GlobalMem.FishmanDestination = GlobalMem.FishmanDefaultDestination end
             GlobalMem.FishmanAutoTeleport = true
             getgenv().FishmanState.SaveConfig()
             

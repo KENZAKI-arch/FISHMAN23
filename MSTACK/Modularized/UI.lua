@@ -564,6 +564,13 @@ getgenv().FishmanState.Tabs = Tabs
     })
 
     local function ExecuteTeleport(destination, psCode)
+        if getgenv().FishmanState.Fluent then
+            getgenv().FishmanState.Fluent:Notify({
+                Title = "🚀 Teleport Sequence",
+                Content = "Warping to " .. tostring(destination) .. "\nPS Code: " .. tostring(psCode or "None"),
+                Duration = 5
+            })
+        end
         if getgenv().FishmanState.UpdateTeleportMemory then getgenv().FishmanState.UpdateTeleportMemory(GlobalMem.FishmanAutoTeleport) end
         if isLobby then
             if destination == "Lobby" then

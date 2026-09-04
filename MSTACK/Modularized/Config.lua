@@ -155,9 +155,9 @@ pcall(function()
     if isfile and readfile and isfile(configFileName) then
         local data = HttpService:JSONDecode(readfile(configFileName))
         if data then
-            if GlobalMem.FishmanPSCode == nil then GlobalMem.FishmanPSCode = data.FishmanPSCode end
-            if GlobalMem.FishmanPSCodeHistory == nil then GlobalMem.FishmanPSCodeHistory = data.FishmanPSCodeHistory end
-            if GlobalMem.FishmanDestination == nil then GlobalMem.FishmanDestination = data.FishmanDestination end
+            if data.FishmanPSCode ~= nil then GlobalMem.FishmanPSCode = data.FishmanPSCode end
+            if data.FishmanPSCodeHistory ~= nil then GlobalMem.FishmanPSCodeHistory = data.FishmanPSCodeHistory end
+            if data.FishmanDestination ~= nil then GlobalMem.FishmanDestination = data.FishmanDestination end
             if GlobalMem.FishmanAutoTeleport == nil then GlobalMem.FishmanAutoTeleport = data.FishmanAutoTeleport end
             if GlobalMem.FishmanAutoJoin == nil then GlobalMem.FishmanAutoJoin = data.FishmanAutoJoin end
             if GlobalMem.FishmanAutoReconnect == nil then GlobalMem.FishmanAutoReconnect = data.FishmanAutoReconnect end

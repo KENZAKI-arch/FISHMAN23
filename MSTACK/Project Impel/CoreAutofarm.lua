@@ -533,7 +533,7 @@ function Model.UpdateTracking(deltaTime)
                       local bv = rootPart:FindFirstChild("AntiGravity")
                       if bv then bv.Velocity = Vector3.new(0, 0, 0) end
                       rootPart.Velocity = Vector3.new(0, 0, 0)
-                elseif currentMacro.Action == "WAIT_TELEPORT" and distToCurrent < 15 then
+                elseif currentMacro.Action == "WAIT_TELEPORT" and (rootPart.Position - currentMacro.Pos).Magnitude < 15 then
                     targetDest = rootPart.Position -- We reached the pad, hover and wait for skip
                 else
                     local currentGoal = currentMacro.Pos
