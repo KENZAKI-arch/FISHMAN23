@@ -312,11 +312,22 @@ local function startTravelSequence()
             if roboPos and (currentPos - roboPos).Magnitude > 5 then
                 nextPoint = roboPos
             else
-                -- At Robo, save spawn
+                -- At Robo, trigger save spawn and enter wait phase
                 saveSpawnPoint()
+                phase = 4.5
+                -- Assign the wait time to a global/upvalue variable (which we will define outside)
+                getgenv().roboWaitTime = tick() + 2
+                toggleBtn.Text = "SAVING SPAWN..."
+            end
+        end
+        
+        if phase == 4.5 then
+            -- Keep hovering at Robo until time is up
+            if tick() >= getgenv().roboWaitTime then
                 phase = 5
                 toggleBtn.Text = "HEADING TO ENEMIES..."
-                return -- Yield 1 frame to let spawn process
+            else
+                nextPoint = roboPos
             end
         end
         
