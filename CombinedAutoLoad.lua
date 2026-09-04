@@ -20,10 +20,10 @@ local LocalPlayer = Players.LocalPlayer
 -- Fetch Model module
 local Model = loadstring(game:HttpGet("https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/Model.lua"))()
 
--- Target Coordinates (Fishman Island)
-local targetX = 7976.704
-local targetY = -2152.832
-local targetZ = -17074.277
+-- Target Coordinates (Fishman Island - Robo Location)
+local targetX = 7978
+local targetY = -2153
+local targetZ = -17074
 local finalTarget = Vector3.new(targetX, targetY, targetZ)
 local travelSpeed = 90
 
@@ -255,7 +255,6 @@ local function startTravelSequence()
     if travelHeartbeatConnection then travelHeartbeatConnection:Disconnect() end
     
     local phase = 1
-    local roboPos = nil
     
     travelHeartbeatConnection = RunService.Heartbeat:Connect(function(deltaTime)
         if not isActionActive or not isTraveling then
@@ -293,54 +292,24 @@ local function startTravelSequence()
             if math.abs(currentPos.Y - targetY) > 1 then
                 nextPoint = Vector3.new(targetX, targetY, targetZ)
             else
-                -- Arrived at island! Now find Robo to set checkpoint.
-                local npcs = Workspace:FindFirstChild("NPCs")
-                local robo = npcs and npcs:FindFirstChild("Robo")
-                local roboRoot = robo and robo:FindFirstChild("HumanoidRootPart")
-                if roboRoot then
-                    roboPos = roboRoot.Position
-                    phase = 4
-                    toggleBtn.Text = "CHECKPOINTING..."
-                else
-                    phase = 6
-                end
-            end
-        end
-        
-        if phase == 4 then
-            -- Fly to Robo
-            if roboPos and (currentPos - roboPos).Magnitude > 5 then
-                nextPoint = roboPos
-            else
-                -- At Robo, trigger save spawn and enter wait phase
+                -- Arrived at Robo location
                 saveSpawnPoint()
-                phase = 4.5
-                -- Assign the wait time to a global/upvalue variable (which we will define outside)
+                phase = 4
                 getgenv().roboWaitTime = tick() + 2
                 toggleBtn.Text = "SAVING SPAWN..."
             end
         end
         
-        if phase == 4.5 then
+        if phase == 4 then
             -- Keep hovering at Robo until time is up
             if tick() >= getgenv().roboWaitTime then
                 phase = 5
-                toggleBtn.Text = "HEADING TO ENEMIES..."
             else
-                nextPoint = roboPos
+                nextPoint = finalTarget
             end
         end
         
         if phase == 5 then
-            -- Fly back to original target (enemies)
-            if (currentPos - finalTarget).Magnitude > 5 then
-                nextPoint = finalTarget
-            else
-                phase = 6
-            end
-        end
-        
-        if phase == 6 then
             -- Finished all travel
             isTraveling = false
             if travelHeartbeatConnection then
@@ -350,8 +319,7 @@ local function startTravelSequence()
             
             disableFlight(character)
             
-            if not roboPos then saveSpawnPoint() end
-            
+            -- We let startCombatFarming trigger pathfinding from here
             task.spawn(function()
                 task.wait(0.5)
                 if isActionActive and isRunning then
