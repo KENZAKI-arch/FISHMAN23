@@ -482,8 +482,8 @@ function Model.UpdateTracking(deltaTime)
                             -- Spawn in a new thread to PREVENT Heartbeat lag spikes!
                             task.spawn(function()
                                 local path = PathfindingService:CreatePath({
-                                    AgentRadius = 3.0,
-                                    AgentHeight = 5,
+                                    AgentRadius = 1.5,
+                                    AgentHeight = 4.0,
                                     AgentCanJump = true,
                                     AgentCanClimb = true, -- Crucial for ladders and stairs!
                                     WaypointSpacing = 4,
@@ -512,12 +512,28 @@ function Model.UpdateTracking(deltaTime)
                                 end)
                                 
                                 if success and path.Status == Enum.PathStatus.Success then
+                                    Model.State.pathFailCount = 0
                                     Model.State.mazePath = path:GetWaypoints()
                                     Model.State.mazeIndex = 2 -- Skip first waypoint (current pos)
                                     drawWaypoints(Model.State.mazePath)
                                 else
-                                    print("[AutoFarm Debug] Pathfinding failed! (Status: " .. tostring(path.Status) .. ") Retrying in 1 second...")
-                                    task.wait(1)
+                                    if not Model.State.pathFailCount then Model.State.pathFailCount = 0 end
+                                    Model.State.pathFailCount = Model.State.pathFailCount + 1
+                                    print("[AutoFarm Debug] Pathfinding failed! (Status: " .. tostring(path.Status) .. ") Attempt " .. Model.State.pathFailCount .. "/2")
+                                    
+                                    local distToGoal = (rootPart.Position - currentGoal).Magnitude
+                                    -- Fallback: If close to narrow door/lever or after 2 failed attempts, fly directly through door!
+                                    if Model.State.pathFailCount >= 2 or distToGoal <= 60 or (currentMacro and currentMacro.Action == "PULL_LEVER") then
+                                        print("[AutoFarm Debug] 🚪 Narrow doorway or tight mesh detected! Flying directly to: " .. tostring(currentGoal))
+                                        Model.State.mazePath = {
+                                            { Position = rootPart.Position },
+                                            { Position = currentGoal }
+                                        }
+                                        Model.State.mazeIndex = 2
+                                        Model.State.pathFailCount = 0
+                                    else
+                                        task.wait(0.5)
+                                    end
                                 end
                                 Model.State.isComputingPath = false
                             end)
