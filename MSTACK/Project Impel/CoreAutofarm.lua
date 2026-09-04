@@ -271,7 +271,42 @@ function Model.UpdateTracking(deltaTime)
         rootPart.Anchored = false
     end
 
-    -- Checkpoint logic removed to allow Floor 2 navigation
+    -- ========================================================
+    -- GLOBAL STAGE TRANSITION DETECTION & TEARDOWN
+    -- ========================================================
+    -- Stage 1 -> Stage 2: Detected as soon as player lands on Floor 2 coordinates
+    if currentStage == 1 and (rootPart.Position.Y > 2200 or rootPart.Position.Z < -18000) then
+        print("[AutoFarm] 🚀 Detected Floor 2! Cleanly destroying Stage 1 and transitioning to Stage 2...")
+        getgenv().AUTO_START_ON_LOAD = true
+        if getgenv().StopAutofarm then
+            pcall(function() getgenv().StopAutofarm() end)
+        end
+        getgenv().CURRENT_STAGE = 2
+        getgenv().MACRO_WAYPOINTS = nil
+        task.spawn(function()
+            task.wait(0.3)
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/MSTACK/Project%20Impel/Stage2.lua"))()
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/MSTACK/Project%20Impel/CoreAutofarm.lua"))()
+        end)
+        return
+    end
+
+    -- Stage 2 -> Stage 3: Detected as soon as player lands on Floor 3 coordinates
+    if currentStage == 2 and ((rootPart.Position - Vector3.new(4960, 2308, -20604)).Magnitude < 800 or (rootPart.Position.X > 4200 and rootPart.Position.Z < -20000)) then
+        print("[AutoFarm] 🚀 Detected Floor 3! Cleanly destroying Stage 2 and transitioning to Stage 3...")
+        getgenv().AUTO_START_ON_LOAD = true
+        if getgenv().StopAutofarm then
+            pcall(function() getgenv().StopAutofarm() end)
+        end
+        getgenv().CURRENT_STAGE = 3
+        getgenv().MACRO_WAYPOINTS = nil
+        task.spawn(function()
+            task.wait(0.3)
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/MSTACK/Project%20Impel/Stage3.lua"))()
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/MSTACK/Project%20Impel/CoreAutofarm.lua"))()
+        end)
+        return
+    end
 
     local allEnemies = getAllEnemies()
 
@@ -357,25 +392,9 @@ function Model.UpdateTracking(deltaTime)
                 -- Auto-advance if we reached it
                 if currentMacro and (rootPart.Position - currentMacro.Pos).Magnitude < arrivalDist then
                     if currentMacro.Action == "WAIT_TELEPORT" then
-                        -- Don't advance! Just hover and wait for the game to teleport us.
-                        -- The auto-skip logic below will catch us when we land on F2.
-                        if currentStage == 1 and rootPart.Position.Y > 2300 then
-                            print("[AutoFarm] 🚀 Successfully teleported to Floor 2! Automatically transitioning to Stage 2...")
-                            
-                            -- Load Stage 2 Config
-                            loadstring(game:HttpGet("https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/MSTACK/Project%20Impel/Stage2.lua"))()
-                            
-                            -- Reboot CoreAutofarm Engine (This will automatically kill Stage 1 and start Stage 2)
-                            loadstring(game:HttpGet("https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/MSTACK/Project%20Impel/CoreAutofarm.lua"))()
-                        elseif currentStage == 2 and (rootPart.Position - Vector3.new(4960, 2308, -20604)).Magnitude < 500 then
-                            print("[AutoFarm] 🚀 Successfully teleported to Floor 3! Automatically transitioning to Stage 3...")
-                            
-                            -- Load Stage 3 Config
-                            loadstring(game:HttpGet("https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/MSTACK/Project%20Impel/Stage3.lua"))()
-                            
-                            -- Reboot CoreAutofarm Engine
-                            loadstring(game:HttpGet("https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/MSTACK/Project%20Impel/CoreAutofarm.lua"))()
-                        end
+                        -- Hover safely on the pad while waiting for dungeon teleportation.
+                        -- The global transition detector above will catch the teleport as soon as coordinates change.
+                        targetDest = rootPart.Position
                     elseif currentMacro.Action == "ROOM_ROUNDUP" then
                         print("[AutoFarm Debug] Reached the room! Securing the area...")
                         Model.State.botMode = "ROOM_ROUND_UP"
@@ -935,7 +954,6 @@ function Model.DoMeleeCombo()
         if not character or not character:FindFirstChild("HumanoidRootPart") then break end
         
         local myCFrame = character.HumanoidRootPart.CFrame
-        local myCFrame = character.HumanoidRootPart.CFrame
         
         local punchAnim
         local combatType = "Melee"
@@ -1479,6 +1497,7 @@ function View.Build(onToggleCallback)
     local dragInput, dragStart, startPos
     local dragDistance = 0
     local isFarming = false
+    local allowAutoStart = (getgenv().AUTO_START_ON_LOAD == true)
     
     local function setFarmingState(state)
         if isFarming == state then return end
@@ -1535,7 +1554,8 @@ function View.Build(onToggleCallback)
 
 
     task.spawn(function()
-        task.wait(5)
+        local waitTime = (getgenv().AUTO_START_ON_LOAD == true) and 1 or 5
+        task.wait(waitTime)
         if allowAutoStart and not isFarming then
             allowAutoStart = false
             setFarmingState(true)

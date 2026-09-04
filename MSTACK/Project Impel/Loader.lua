@@ -1,46 +1,61 @@
 -- ==========================================
 -- PROJECT IMPEL LOADER
 -- ==========================================
+
+-- Clean up any existing stage script or autofarm running
+if getgenv().StopAutofarm then
+    pcall(function() getgenv().StopAutofarm() end)
+    task.wait(0.2)
+end
+
+getgenv().CURRENT_STAGE = nil
+getgenv().MACRO_WAYPOINTS = nil
+getgenv().AUTO_START_ON_LOAD = true
+
 local TARGET_STAGE = 1
 
 pcall(function()
     local player = game:GetService("Players").LocalPlayer
     local character = player.Character or player.CharacterAdded:Wait()
-    local root = character:WaitForChild("HumanoidRootPart")
+    local root = character:WaitForChild("HumanoidRootPart", 5)
+    if not root then return end
     
-    -- Robust Detection: Check if the character is physically near the Floor 2 Spawn area
+    -- Stage 3 Detection: Check proximity to Stage 3 Spawn or coordinates
+    local stage3Spawn = Vector3.new(4960, 2308, -20604)
+    if (root.Position - stage3Spawn).Magnitude < 800 or (root.Position.X > 4200 and root.Position.Z < -20000) then
+        TARGET_STAGE = 3
+        return
+    end
+
+    -- Stage 2 Detection: Check if the character is near the Floor 2 area or coordinates
     local islands = workspace:FindFirstChild("Islands")
     if islands then
         local f2 = islands:FindFirstChild("Impel Base - Floor 2")
         if f2 then
             local base = f2:FindFirstChild("Base")
             local spawnFloor = base and base:FindFirstChild("SpawnFloor")
-            local spawnPart = spawnFloor and spawnFloor:FindFirstChild("Part") or spawnFloor
+            local spawnPart = spawnFloor and (spawnFloor:FindFirstChild("Part") or spawnFloor)
             
             if spawnPart and spawnPart:IsA("BasePart") then
-                if (root.Position - spawnPart.Position).Magnitude < 500 then
+                if (root.Position - spawnPart.Position).Magnitude < 800 then
                     TARGET_STAGE = 2
+                    return
                 end
             elseif spawnPart and spawnPart:IsA("Model") and spawnPart.PrimaryPart then
-                if (root.Position - spawnPart.PrimaryPart.Position).Magnitude < 500 then
+                if (root.Position - spawnPart.PrimaryPart.Position).Magnitude < 800 then
                     TARGET_STAGE = 2
+                    return
                 end
             end
         end
     end
     
-    -- Stage 3 Detection: Check proximity to Stage 3 Spawn
-    local stage3Spawn = Vector3.new(4960, 2308, -20604)
-    if (root.Position - stage3Spawn).Magnitude < 500 then
-        TARGET_STAGE = 3
-    end
-    
-    -- Fallback: If we execute mid-way through a stage, use coordinates to detect!
-    if TARGET_STAGE == 1 and root.Position.Y > 2200 then
-        if root.Position.X > 4000 then
-            TARGET_STAGE = 3 -- Stage 3 is far along the X axis
+    -- Coordinate Detection: F2 and F3 are far along Z and at higher elevation
+    if root.Position.Z < -18000 or root.Position.Y > 2200 then
+        if root.Position.X > 4200 then
+            TARGET_STAGE = 3 -- Stage 3 is further along X axis
         else
-            TARGET_STAGE = 2 -- Stage 2 is around X=3000
+            TARGET_STAGE = 2 -- Stage 2 is around X=3100-3400
         end
     end
 end)
@@ -61,4 +76,4 @@ end
 -- Load the Core Engine after the stage configuration is set
 loadstring(game:HttpGet("https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/MSTACK/Project%20Impel/CoreAutofarm.lua"))()
 
-print("[Impel Loader] Core Autofarm Engine successfully loaded!")
+print("[Impel Loader] Core Autofarm Engine successfully loaded for Stage " .. tostring(TARGET_STAGE) .. "!")
