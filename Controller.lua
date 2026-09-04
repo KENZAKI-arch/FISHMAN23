@@ -85,13 +85,29 @@ heartbeatConnection = RunService.Heartbeat:Connect(function(deltaTime)
     end
 end)
 
--- 3. Background Quest Loop
+-- 3. Background Quest Loop (Dynamic check)
 task.spawn(function()
     while isRunning do
-        task.wait(50)
-        -- Only attempt to grab quest if we are actively farming and running
-        if Model.State.isAutoFarming and isRunning then 
-            Model.GrabQuest()
+        task.wait(5)
+        -- Only attempt to grab quest if we are actively farming, not already questing, and running
+        if Model.State.isAutoFarming and not Model.State.isQuesting and isRunning then 
+            local hasQuest = false
+            pcall(function()
+                local args = { [1] = "getNPCQuestLocations" }
+                local questData = game:GetService("ReplicatedStorage"):WaitForChild("Events", 9e9):WaitForChild("Quest", 9e9):InvokeServer(unpack(args))
+                
+                -- If it returns an active quest table (not empty), or any truthy value other than an empty table
+                if type(questData) == "table" and next(questData) ~= nil then
+                    hasQuest = true
+                elseif questData and type(questData) ~= "table" then
+                    hasQuest = true
+                end
+            end)
+            
+            -- If the quest stops running (returns empty/nil), head back to Becky
+            if not hasQuest then
+                Model.GrabQuest()
+            end
         end
     end
 end)
