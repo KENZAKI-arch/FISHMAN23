@@ -562,15 +562,16 @@ function Model.UpdateTracking(deltaTime)
                                 rpParams.FilterDescendantsInstances = {character, Workspace:FindFirstChild("NPCs")}
                                 rpParams.FilterType = Enum.RaycastFilterType.Exclude
                                 
-                                local floorRay = Workspace:Raycast(rootPart.Position, Vector3.new(0, -100, 0), rpParams)
+                                local floorRay = Workspace:Raycast(rootPart.Position, Vector3.new(0, -30, 0), rpParams)
                                 if floorRay then
-                                    startPos = floorRay.Position + Vector3.new(0, 2, 0)
+                                    startPos = floorRay.Position + Vector3.new(0, 1.5, 0)
                                 end
                                 
                                 local goalPos = currentGoal
-                                local goalRay = Workspace:Raycast(currentGoal + Vector3.new(0, 10, 0), Vector3.new(0, -100, 0), rpParams)
-                                if goalRay then
-                                    goalPos = goalRay.Position + Vector3.new(0, 2, 0)
+                                -- Start only 2 studs above currentGoal to guarantee we stay below ceilings and roofs!
+                                local goalRay = Workspace:Raycast(currentGoal + Vector3.new(0, 2, 0), Vector3.new(0, -25, 0), rpParams)
+                                if goalRay and goalRay.Position.Y <= currentGoal.Y + 2 then
+                                    goalPos = goalRay.Position + Vector3.new(0, 1.5, 0)
                                 end
                                 
                                 local success, err = pcall(function()
@@ -588,9 +589,10 @@ function Model.UpdateTracking(deltaTime)
                                     print("[AutoFarm Debug] Pathfinding failed! (Status: " .. tostring(path.Status) .. ") Attempt " .. Model.State.pathFailCount .. "/2")
                                     
                                     local distToGoal = (rootPart.Position - currentGoal).Magnitude
-                                    -- Fallback: If close to narrow door/lever or after 2 failed attempts, fly directly through door!
-                                    if Model.State.pathFailCount >= 2 or distToGoal <= 60 or (currentMacro and currentMacro.Action == "PULL_LEVER") then
-                                        print("[AutoFarm Debug] 🚪 Narrow doorway or tight mesh detected! Flying directly to: " .. tostring(currentGoal))
+                                    -- Fallback: ONLY trigger direct line glide if we are literally at the doorway/lever (dist <= 35 studs)!
+                                    -- NEVER fly directly across long distances through dungeon walls!
+                                    if distToGoal <= 35 and (Model.State.pathFailCount >= 2 or (currentMacro and currentMacro.Action == "PULL_LEVER")) then
+                                        print("[AutoFarm Debug] 🚪 Tight doorway/lever clearance detected (within 35 studs)! Gliding through doorway to: " .. tostring(currentGoal))
                                         Model.State.mazePath = {
                                             { Position = rootPart.Position },
                                             { Position = currentGoal }
