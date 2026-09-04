@@ -15,6 +15,9 @@ if isLobby then
     print("[Fishman] In Lobby: Activating Ultra-Low Resource Mode (FPS Cap & 3D Off)")
     pcall(function() setfpscap(10) end)
     pcall(function() game:GetService("RunService"):Set3dRenderingEnabled(false) end)
+    
+    getgenv().FishmanState = getgenv().FishmanState or {}
+    getgenv().FishmanState.Model = { State = {} }
 end
 
 -- ⚡ CONCURRENT DOWNLOADS
