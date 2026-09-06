@@ -109,7 +109,11 @@ Model.State = {
     roundUpTimer = 0,
     macroIndex = 1,
     isComputingPath = false,
-    isWaitingAtWaypoint = false
+    isWaitingAtWaypoint = false,
+    hasEngagedStage2Boss = (getgenv().STAGE2_SAVED_STATE and getgenv().STAGE2_SAVED_STATE.bossEncountered) or false,
+    leverPulled = (getgenv().STAGE2_SAVED_STATE and getgenv().STAGE2_SAVED_STATE.leverPulled) or false,
+    returningToBoss = (getgenv().STAGE2_SAVED_STATE and getgenv().STAGE2_SAVED_STATE.returningToBoss) or false,
+    wasDead = false
 }
 
 -- ==========================================
@@ -235,7 +239,7 @@ local function findStage2Boss(allEnemies)
             if bHrp then
                 local dist = (rootPart.Position - bHrp.Position).Magnitude
                 -- Target if within 250 studs or after reaching boss hallway/room area
-                if dist <= 250 or (Model.State.macroIndex and Model.State.macroIndex >= 21) or rootPart.Position.Z < -20580 then
+                if dist <= 250 or (Model.State.macroIndex and Model.State.macroIndex >= 12) or rootPart.Position.Z < -20580 then
                     return npc
                 end
             end
@@ -344,7 +348,46 @@ function Model.UpdateTracking(deltaTime)
     local isStunned = character:FindFirstChild("Stun") or character:FindFirstChild("frozen") or _G.canuse == false
     local isDead = humanoid.Health <= 0
     
-    if isRagdolled or isStunned or isDead then
+    if isDead then
+        if not Model.State.wasDead then
+            Model.State.wasDead = true
+            local isStage2 = (currentStage == 2 or getgenv().CURRENT_STAGE == 2)
+            if isStage2 and (Model.State.hasEngagedStage2Boss or (currentEnemy and isStage2PriorityBoss(currentEnemy)) or (Model.State.macroIndex and Model.State.macroIndex >= 12) or rootPart.Position.Z < -20580) then
+                getgenv().STAGE2_SAVED_STATE = getgenv().STAGE2_SAVED_STATE or {}
+                getgenv().STAGE2_SAVED_STATE.bossEncountered = true
+                getgenv().STAGE2_SAVED_STATE.leverPulled = true
+                getgenv().STAGE2_SAVED_STATE.returningToBoss = true
+                Model.State.hasEngagedStage2Boss = true
+                Model.State.leverPulled = true
+                Model.State.returningToBoss = true
+                print("[AutoFarm] 💀 Died fighting Impel Down Elite High Guard! Saved state: will pathfind back on respawn.")
+            end
+        end
+        rootPart.Anchored = true
+        rootPart.Velocity = Vector3.new(0, 0, 0)
+        return
+    end
+    
+    if Model.State.wasDead then
+        Model.State.wasDead = false
+        print("[AutoFarm] 🔄 Respawned after death! Re-initializing physics and pathfinder...")
+        Model.ResetPhysics()
+        currentEnemy = nil
+        Model.State.botMode = "NAVIGATE_MAZE"
+        Model.State.mazePath = {}
+        visualizerFolder:ClearAllChildren()
+        
+        local isStage2 = (currentStage == 2 or getgenv().CURRENT_STAGE == 2)
+        if isStage2 and (Model.State.returningToBoss or (getgenv().STAGE2_SAVED_STATE and getgenv().STAGE2_SAVED_STATE.bossEncountered)) then
+            print("[AutoFarm] 🧭 Pathfinding back to Impel Down Elite High Guard from Floor 2 Spawn!")
+            Model.State.macroIndex = 1
+            Model.State.returningToBoss = true
+            Model.State.hasEngagedStage2Boss = true
+            Model.State.leverPulled = true
+        end
+    end
+    
+    if isRagdolled or isStunned then
         rootPart.Anchored = true
         rootPart.Velocity = Vector3.new(0, 0, 0)
         return
@@ -400,6 +443,20 @@ function Model.UpdateTracking(deltaTime)
             if hum and hum.Health > 0 then isAlive = true end
         end
         if not isAlive then
+            local isBoss = (isStage2PriorityBoss(currentEnemy) or cName == "Impel Down Elite High Guard")
+            if (currentStage == 2 or getgenv().CURRENT_STAGE == 2) and isBoss then
+                print("[AutoFarm] 🏆 Impel Down Elite High Guard has been DEFEATED!")
+                if getgenv().STAGE2_SAVED_STATE then
+                    getgenv().STAGE2_SAVED_STATE.bossEncountered = false
+                    getgenv().STAGE2_SAVED_STATE.returningToBoss = false
+                end
+                Model.State.hasEngagedStage2Boss = false
+                Model.State.returningToBoss = false
+                Model.State.botMode = "NAVIGATE_MAZE"
+                Model.State.macroIndex = 15 -- Advance directly to teleporter pad!
+                Model.State.mazePath = {}
+                visualizerFolder:ClearAllChildren()
+            end
             currentEnemy = nil
             targetSwitchTimer = switchInterval
         end
@@ -429,10 +486,23 @@ function Model.UpdateTracking(deltaTime)
         if stage2Boss then
             local bHrp = stage2Boss:FindFirstChild("HumanoidRootPart")
             if bHrp then
-                print("[AutoFarm] 🚨 Impel Down Elite High Guard detected! Prioritizing Boss and ignoring all other enemies!")
-                Model.State.botMode = "MAZE_COMBAT"
-                currentEnemy = stage2Boss
-                targetDest = bHrp.Position
+                local distToBoss = (rootPart.Position - bHrp.Position).Magnitude
+                getgenv().STAGE2_SAVED_STATE = getgenv().STAGE2_SAVED_STATE or {}
+                getgenv().STAGE2_SAVED_STATE.bossEncountered = true
+                getgenv().STAGE2_SAVED_STATE.leverPulled = true
+                Model.State.hasEngagedStage2Boss = true
+                Model.State.leverPulled = true
+                
+                -- Only switch to direct combat if in melee range (<= 50 studs) or reached the boss room (macroIndex >= 14)!
+                -- If we are still in the hallway or at spawn, let NAVIGATE_MAZE continue pathfinding safely to the boss room!
+                if distToBoss <= 50 or (Model.State.macroIndex and Model.State.macroIndex >= 14) then
+                    if Model.State.botMode ~= "MAZE_COMBAT" or currentEnemy ~= stage2Boss then
+                        print("[AutoFarm] 🚨 Impel Down Elite High Guard within combat range! Engaging Boss!")
+                        Model.State.botMode = "MAZE_COMBAT"
+                        currentEnemy = stage2Boss
+                        targetDest = bHrp.Position
+                    end
+                end
             end
         else
             -- 1. Check for ANY enemy within 15 studs to clear first (prioritizing lowest HP and closest)
@@ -539,6 +609,9 @@ function Model.UpdateTracking(deltaTime)
                                 
                                 -- Pull lever if action is PULL_LEVER
                                 if currentMacro.Action == "PULL_LEVER" then
+                                    getgenv().STAGE2_SAVED_STATE = getgenv().STAGE2_SAVED_STATE or {}
+                                    getgenv().STAGE2_SAVED_STATE.leverPulled = true
+                                    Model.State.leverPulled = true
                                     local leverFound = false
                                     -- 1. Check for nearby ProximityPrompts within 25 studs
                                     for _, desc in ipairs(Workspace:GetDescendants()) do
@@ -609,7 +682,16 @@ function Model.UpdateTracking(deltaTime)
                             rootPart.Velocity = Vector3.new(0, 0, 0)
                         else
                             print("[AutoFarm] Reached Macro Waypoint " .. tostring(Model.State.macroIndex))
-                            Model.State.macroIndex = Model.State.macroIndex + 1
+                            local isStage2 = (currentStage == 2 or getgenv().CURRENT_STAGE == 2)
+                            local gateAlreadyOpen = (Model.State.hasEngagedStage2Boss or Model.State.returningToBoss or Model.State.leverPulled or (getgenv().STAGE2_SAVED_STATE and (getgenv().STAGE2_SAVED_STATE.bossEncountered or getgenv().STAGE2_SAVED_STATE.leverPulled)))
+                            
+                            if isStage2 and gateAlreadyOpen and Model.State.macroIndex == 3 then
+                                print("[AutoFarm] 🚪 Boss Gate is already open from previous state! Skipping lever room and advancing directly to Boss Gate (Waypoint 12)!")
+                                Model.State.macroIndex = 12
+                            else
+                                Model.State.macroIndex = Model.State.macroIndex + 1
+                            end
+                            
                             currentMacro = MACRO_WAYPOINTS[Model.State.macroIndex]
                             Model.State.mazePath = {} -- Force recalculation
                             Model.State.mazeStartPos = nil
@@ -636,7 +718,7 @@ function Model.UpdateTracking(deltaTime)
                         
                         -- If this waypoint is a mandatory action (like pulling a lever), 
                         -- we CANNOT skip past it to future waypoints, otherwise we break the sequence!
-                        if MACRO_WAYPOINTS[i].Action == "PULL_LEVER" then
+                        if MACRO_WAYPOINTS[i].Action == "PULL_LEVER" and not (Model.State.leverPulled or (getgenv().STAGE2_SAVED_STATE and getgenv().STAGE2_SAVED_STATE.leverPulled)) then
                             break
                         end
                     end
@@ -786,7 +868,15 @@ function Model.UpdateTracking(deltaTime)
             -- Dive bomb the enemy
             local hrp = currentEnemy:FindFirstChild("HumanoidRootPart")
             if hrp then
-                targetDest = hrp.Position
+                local enemyDist = (rootPart.Position - hrp.Position).Magnitude
+                if enemyDist > 65 and currentMacro and Model.State.macroIndex then
+                    print(string.format("[AutoFarm] Target is %.1f studs away! Pathfinding back to target...", enemyDist))
+                    Model.State.botMode = "NAVIGATE_MAZE"
+                    Model.State.mazePath = {}
+                    targetDest = rootPart.Position
+                else
+                    targetDest = hrp.Position
+                end
             end
         end
         
@@ -1914,6 +2004,30 @@ local heartbeatConn = RunService.Heartbeat:Connect(function(deltaTime)
     Model.UpdateTracking(deltaTime)
 end)
 
+local charAddedConn = LocalPlayer.CharacterAdded:Connect(function(newChar)
+    if not Model.State.isAutoFarming then return end
+    task.spawn(function()
+        task.wait(0.4)
+        local root = newChar:WaitForChild("HumanoidRootPart", 5)
+        if root then
+            Model.ResetPhysics()
+            currentEnemy = nil
+            Model.State.botMode = "NAVIGATE_MAZE"
+            Model.State.mazePath = {}
+            visualizerFolder:ClearAllChildren()
+            
+            local isStage2 = (currentStage == 2 or getgenv().CURRENT_STAGE == 2)
+            if isStage2 and (Model.State.returningToBoss or (getgenv().STAGE2_SAVED_STATE and getgenv().STAGE2_SAVED_STATE.bossEncountered)) then
+                print("[AutoFarm] 🧭 Character respawned! Auto-resuming path to Impel Down Elite High Guard from Floor 2 Spawn...")
+                Model.State.macroIndex = 1
+                Model.State.returningToBoss = true
+                Model.State.hasEngagedStage2Boss = true
+                Model.State.leverPulled = true
+            end
+        end
+    end)
+end)
+
 getgenv().hotkeyConn = UserInputService.InputBegan:Connect(function(input, gpe)
     if gpe then return end
     if input.KeyCode == Enum.KeyCode.F4 then
@@ -1930,6 +2044,7 @@ getgenv().StopAutofarm = function()
     
     if steppedConn then steppedConn:Disconnect() end
     if heartbeatConn then heartbeatConn:Disconnect() end
+    if charAddedConn then charAddedConn:Disconnect() end
     if getgenv().hotkeyConn then getgenv().hotkeyConn:Disconnect() end
     if getgenv().posConn then getgenv().posConn:Disconnect() end
     if visualizerFolder then visualizerFolder:Destroy() end
