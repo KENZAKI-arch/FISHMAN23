@@ -193,14 +193,15 @@ end
       return false
   end
 
--- Find the highest priority target, prioritizing the closest one that is in line of sight
+-- Find the highest priority target, prioritizing the lowest HP and closest one that is in line of sight
 local function findBestTarget(allEnemies)
     local character = LocalPlayer.Character
     local rootPart = character and character:FindFirstChild("HumanoidRootPart")
     if not rootPart then return nil end
 
-    local closestTarget = nil
-    local closestDist = math.huge
+    local bestTarget = nil
+    local bestDist = math.huge
+    local bestHp = math.huge
     
     -- Setup Raycast for Line of Sight
     local params = RaycastParams.new()
@@ -210,7 +211,8 @@ local function findBestTarget(allEnemies)
     for _, npc in ipairs(allEnemies) do
         if isValidTarget(npc) then
             local hrp = npc:FindFirstChild("HumanoidRootPart")
-            if hrp then
+            local hum = npc:FindFirstChildOfClass("Humanoid") or npc:FindFirstChild("Humanoid")
+            if hrp and hum and hum.Health > 0 then
                 local dist = (rootPart.Position - hrp.Position).Magnitude
                 if dist <= ENEMY_DETECTION_RADIUS then
                     -- Cast a ray to the enemy to check for walls
@@ -219,9 +221,26 @@ local function findBestTarget(allEnemies)
                     
                     -- If result is nil, there are no walls in the way!
                     if not result then
-                        if dist < closestDist then
-                            closestDist = dist
-                            closestTarget = npc
+                        local hp = hum.Health
+                        local isBetter = false
+                        if not bestTarget then
+                            isBetter = true
+                        elseif math.abs(hp - bestHp) > 1 then
+                            -- Strictly lowest HP first
+                            if hp < bestHp then
+                                isBetter = true
+                            end
+                        else
+                            -- HP tied or within 1: closest distance first
+                            if dist < bestDist then
+                                isBetter = true
+                            end
+                        end
+                        
+                        if isBetter then
+                            bestTarget = npc
+                            bestDist = dist
+                            bestHp = hp
                         end
                     end
                 end
@@ -229,7 +248,7 @@ local function findBestTarget(allEnemies)
         end
     end
     
-    return closestTarget
+    return bestTarget
 end
 
 
@@ -345,17 +364,36 @@ function Model.UpdateTracking(deltaTime)
         currentEnemy = nil
         isPatrolling = true
         
-        -- 1. Check for ANY enemy within 15 studs to clear first (ignore line of sight, 15 studs is contact)
+        -- 1. Check for ANY enemy within 15 studs to clear first (prioritizing lowest HP and closest)
         local contactEnemy = nil
         local contactDist = 15
+        local contactHp = math.huge
         for _, npc in ipairs(allEnemies) do
             if isValidTarget(npc) then
                 local hrp = npc:FindFirstChild("HumanoidRootPart")
-                if hrp then
+                local hum = npc:FindFirstChildOfClass("Humanoid") or npc:FindFirstChild("Humanoid")
+                if hrp and hum and hum.Health > 0 then
                     local dist = (rootPart.Position - hrp.Position).Magnitude
-                    if dist <= contactDist then
-                        contactDist = dist
-                        contactEnemy = npc
+                    if dist <= 15 then
+                        local hp = hum.Health
+                        local isBetter = false
+                        if not contactEnemy then
+                            isBetter = true
+                        elseif math.abs(hp - contactHp) > 1 then
+                            if hp < contactHp then
+                                isBetter = true
+                            end
+                        else
+                            if dist < contactDist then
+                                isBetter = true
+                            end
+                        end
+                        
+                        if isBetter then
+                            contactEnemy = npc
+                            contactDist = dist
+                            contactHp = hp
+                        end
                     end
                 end
             end
@@ -634,6 +672,18 @@ function Model.UpdateTracking(deltaTime)
             if bv then bv.Velocity = Vector3.new(0, 0, 0) end
             rootPart.Velocity = Vector3.new(0, 0, 0)
         else
+            -- Check if a higher priority (lowest HP or closer contact) target emerged nearby
+            local curHum = currentEnemy:FindFirstChildOfClass("Humanoid") or currentEnemy:FindFirstChild("Humanoid")
+            local curHp = (curHum and curHum.Health) or math.huge
+            local betterTarget = findBestTarget(allEnemies)
+            if betterTarget and betterTarget ~= currentEnemy then
+                local bHum = betterTarget:FindFirstChildOfClass("Humanoid") or betterTarget:FindFirstChild("Humanoid")
+                local bHp = (bHum and bHum.Health) or math.huge
+                if bHp < curHp - 1 then
+                    currentEnemy = betterTarget
+                end
+            end
+
             -- Dive bomb the enemy
             local hrp = currentEnemy:FindFirstChild("HumanoidRootPart")
             if hrp then
@@ -709,15 +759,24 @@ function Model.UpdateTracking(deltaTime)
         for _, npc in ipairs(allEnemies) do
             if isValidTarget(npc) then
                 local hrp = npc:FindFirstChild("HumanoidRootPart")
-                  if hrp and (rootPart.Position - hrp.Position).Magnitude <= 75 and math.abs(rootPart.Position.Y - hrp.Position.Y) <= 30 then
-                      local rayParams = RaycastParams.new()
-                      rayParams.FilterDescendantsInstances = {LocalPlayer.Character, Workspace:FindFirstChild("NPCs")}
-                      rayParams.FilterType = Enum.RaycastFilterType.Exclude
-                      local dir = (hrp.Position - rootPart.Position)
-                      if not Workspace:Raycast(rootPart.Position, dir.Unit * dir.Magnitude, rayParams) then
-                          table.insert(validEnemies, hrp)
-                      end
-                  end
+                local hum = npc:FindFirstChildOfClass("Humanoid") or npc:FindFirstChild("Humanoid")
+                if hrp and hum and hum.Health > 0 then
+                    local dist = (rootPart.Position - hrp.Position).Magnitude
+                    if dist <= 75 and math.abs(rootPart.Position.Y - hrp.Position.Y) <= 30 then
+                        local rayParams = RaycastParams.new()
+                        rayParams.FilterDescendantsInstances = {LocalPlayer.Character, Workspace:FindFirstChild("NPCs")}
+                        rayParams.FilterType = Enum.RaycastFilterType.Exclude
+                        local dir = (hrp.Position - rootPart.Position)
+                        if not Workspace:Raycast(rootPart.Position, dir.Unit * dir.Magnitude, rayParams) then
+                            table.insert(validEnemies, {
+                                npc = npc,
+                                hrp = hrp,
+                                hp = hum.Health,
+                                dist = dist
+                            })
+                        end
+                    end
+                end
             end
         end
         
@@ -729,14 +788,17 @@ function Model.UpdateTracking(deltaTime)
             if bv then bv.Velocity = Vector3.new(0, 0, 0) end
             rootPart.Velocity = Vector3.new(0, 0, 0)
         else
-            -- Sort enemies by distance so we lock onto the closest one!
+            -- Sort enemies prioritizing lowest HP first, then closest distance
             table.sort(validEnemies, function(a, b)
-                return (rootPart.Position - a.Position).Magnitude < (rootPart.Position - b.Position).Magnitude
+                if math.abs(a.hp - b.hp) > 1 then
+                    return a.hp < b.hp
+                end
+                return a.dist < b.dist
             end)
             
-            -- Dive bomb the closest enemy!
-            targetDest = validEnemies[1].Position
-            currentEnemy = validEnemies[1].Parent
+            -- Dive bomb the highest priority enemy (lowest HP & closest)!
+            targetDest = validEnemies[1].hrp.Position
+            currentEnemy = validEnemies[1].npc
         end
     end
     
