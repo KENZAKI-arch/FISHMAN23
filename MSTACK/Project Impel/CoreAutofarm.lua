@@ -117,7 +117,8 @@ Model.State = {
     isDodgingAttack = false,
     dodgeTimer = 0,
     dodgeFlankSign = 1,
-    lastDodgeTick = 0
+    lastDodgeTick = 0,
+    lastHealth = nil
 }
 
 getgenv().AutoDodge = (getgenv().AutoDodge ~= false)
@@ -474,6 +475,7 @@ function Model.ResetPhysics()
     Model.State.stuckTimer = 0
     Model.State.isDodgingAttack = false
     Model.State.dodgeTimer = 0
+    Model.State.lastHealth = nil
     visualizerFolder:ClearAllChildren()
 end
 
@@ -491,6 +493,12 @@ function Model.UpdateTracking(deltaTime)
     local isRagdolled = (character.Parent and character.Parent.Name == "Ragdolls")
     local isStunned = character:FindFirstChild("Stun") or character:FindFirstChild("frozen") or _G.canuse == false
     local isDead = humanoid.Health <= 0
+    
+    if not Model.State.lastHealth then
+        Model.State.lastHealth = humanoid.Health
+    end
+    local tookDamage = (humanoid.Health < Model.State.lastHealth - 0.5)
+    Model.State.lastHealth = humanoid.Health
     
     local inCombat = (Model.State.botMode == "MAZE_COMBAT" or Model.State.botMode == "ROOM_COMBAT" or currentEnemy ~= nil)
     
@@ -1306,23 +1314,27 @@ function Model.UpdateTracking(deltaTime)
                 local isAttacking, attackTrack = false, nil
                 local distToEnemy = (rootPart.Position - eHrp.Position).Magnitude
                 
-                if autoDodgeEnabled and distToEnemy <= 30 then
+                if autoDodgeEnabled and distToEnemy <= 45 then
                     isAttacking, attackTrack = isEnemyAttacking(currentEnemy)
                 end
                 
                 -- Check if enemy is facing towards us (in strike cone)
                 local facingUs = isEnemyFacingPlayer(eHrp, rootPart)
                 
-                if autoDodgeEnabled and isAttacking and facingUs then
+                -- Outboxer triggers: enemy is attacking while facing us, or player just took damage/hit in combat!
+                if autoDodgeEnabled and (tookDamage or (isAttacking and facingUs)) then
                     if not Model.State.isDodgingAttack then
                         Model.State.isDodgingAttack = true
-                        Model.State.dodgeFlankSign = -(Model.State.dodgeFlankSign or 1)
                         Model.State.lastDodgeTick = tick()
-                        print("[AutoFarm] ⚡ Auto-Dodge! Enemy attack detected (" .. (attackTrack and attackTrack.Name or "Action") .. ") - slipping 15 studs into rear blindspot!")
+                        print("[AutoFarm] 🥊 Outboxer Dodge! Enemy attack detected (" .. (attackTrack and attackTrack.Name or (tookDamage and "Hit/Damage" or "Action")) .. ") - disengaging 32 studs away to avoid staying near!")
                     end
-                    Model.State.dodgeTimer = 0.7 -- Hold dodge slip during attack animation
+                    Model.State.dodgeTimer = 1.0 -- Maintain outboxer range while attack combo string plays out
                 elseif Model.State.dodgeTimer and Model.State.dodgeTimer > 0 then
-                    Model.State.dodgeTimer = Model.State.dodgeTimer - deltaTime
+                    if isAttacking then
+                        Model.State.dodgeTimer = 0.8 -- Keep holding outboxer distance if boss is still swinging!
+                    else
+                        Model.State.dodgeTimer = Model.State.dodgeTimer - deltaTime
+                    end
                     if Model.State.dodgeTimer <= 0 then
                         Model.State.isDodgingAttack = false
                     end
@@ -1336,33 +1348,42 @@ function Model.UpdateTracking(deltaTime)
                 
                 if Model.State.isDodgingAttack then
                     -- ========================================================
-                    -- ACTIVE AUTO-DODGE: 15 STUDS BLINDSPOT SLIP
+                    -- ACTIVE AUTO-DODGE: OUTBOXER LONG-RANGE DISENGAGE (30-35 STUDS)
                     -- ========================================================
-                    -- User requested: dodge 15 studs farther away!
-                    -- Slips rapidly 15 studs into the enemy's rear blindspot & flank.
-                    -- Enemy melee hitboxes only strike forward along LookVector.
-                    -- Being behind/flanking at 15 studs causes 100% of their swings & skills to whiff!
-                    local behindDir = -eHrp.CFrame.LookVector
-                    local flankDir = eHrp.CFrame.RightVector * (Model.State.dodgeFlankSign or 1)
-                    local dodgeDir = (behindDir * 0.85 + flankDir * 0.45).Unit
-                    local smartDodgeDist = math.max(15.0, enemyRadius + 8.0)
-                    local targetOffset = dodgeDir * smartDodgeDist
+                    -- User requested: Outboxer style! Avoid staying near the enemy.
+                    -- Disengages 32 studs away into open space to completely avoid the enemy's reach.
+                    local outboxerDist = math.max(32.0, enemyRadius + 22.0)
                     
-                    local wallRay = Workspace:Raycast(origin, targetOffset, rayParams)
-                    if wallRay then
-                        -- If primary flank hits wall, slip to opposite flank
-                        local altDir = (behindDir * 0.85 - flankDir * 0.45).Unit
-                        local altTargetOffset = altDir * smartDodgeDist
-                        local altWall = Workspace:Raycast(origin, altTargetOffset, rayParams)
-                        if altWall then
-                            local clearDist = math.max(3.5, math.min(wallRay.Distance - 1.5, altWall.Distance - 1.5))
-                            targetSpot = origin + (dodgeDir * clearDist)
-                        else
-                            targetSpot = origin + altTargetOffset
-                        end
+                    local diff = (rootPart.Position - eHrp.Position)
+                    local flatDiff = Vector3.new(diff.X, 0, diff.Z)
+                    local baseAwayDir
+                    if flatDiff.Magnitude > 1.0 then
+                        baseAwayDir = flatDiff.Unit
                     else
-                        targetSpot = origin + targetOffset
+                        baseAwayDir = -eHrp.CFrame.LookVector
                     end
+                    
+                    -- Check 10 angles around the enemy to find direction with maximum open clearance away from walls
+                    local testAngles = {0, 30, -30, 60, -60, 90, -90, 120, -120, 180}
+                    local bestDir = baseAwayDir
+                    local bestDist = 0
+                    
+                    for _, angle in ipairs(testAngles) do
+                        local testDir = (angle == 0) and baseAwayDir or (CFrame.Angles(0, math.rad(angle), 0):VectorToWorldSpace(baseAwayDir)).Unit
+                        local ray = Workspace:Raycast(origin, testDir * outboxerDist, rayParams)
+                        local clearDist = ray and (ray.Distance - 2.0) or outboxerDist
+                        if clearDist >= outboxerDist - 1 then
+                            bestDir = testDir
+                            bestDist = outboxerDist
+                            break
+                        elseif clearDist > bestDist then
+                            bestDist = clearDist
+                            bestDir = testDir
+                        end
+                    end
+                    
+                    local finalDist = math.max(18.0, math.min(outboxerDist, bestDist))
+                    targetSpot = origin + (bestDir * finalDist)
                 else
                     -- ========================================================
                     -- NORMAL COMBAT POSITIONING: VERTICALLY ABOVE ENEMY'S HEAD
@@ -1448,8 +1469,8 @@ function Model.UpdateTracking(deltaTime)
         
         local currentMoveSpeed = flySpeed
         if currentEnemy and Model.State.isDodgingAttack then
-            -- Whip 15 studs behind the enemy before their attack hitbox connects!
-            currentMoveSpeed = math.max(flySpeed * 2.5, 125)
+            -- Outboxer disengage speed! Fast snap to safe distance
+            currentMoveSpeed = math.max(flySpeed * 2.5, 130)
         end
         if distToActual > 0.5 then
             local lerpAlpha = math.clamp((currentMoveSpeed * deltaTime) / distToActual, 0, 1)
@@ -1508,6 +1529,8 @@ end
 function Model.GetEnemiesInRange()
     local character = LocalPlayer.Character
     if not character or not character:FindFirstChild("HumanoidRootPart") then return {} end
+    -- Outboxer: when actively avoiding/disengaging 32 studs away, do not swing melee at thin air
+    if Model.State.isDodgingAttack then return {} end
     local enemiesList = {}
     local allEnemies = getAllEnemies()
     
