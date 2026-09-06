@@ -1,6 +1,10 @@
 -- ==========================================
--- PROJECT IMPEL LOADER
+-- PROJECT IMPEL LOADER v1.0
 -- ==========================================
+
+print("=======================================")
+print("⚔️ PROJECT IMPEL LOADER [v1.0] INITIALIZED")
+print("=======================================")
 
 -- Clean up any existing stage script or autofarm running
 if getgenv().StopAutofarm then
@@ -79,7 +83,7 @@ local function safeLoad(url, name)
     return true
 end
 
-print("[Impel Loader] Auto-detected Stage " .. TARGET_STAGE .. "...")
+print("[Impel Loader v1.0] Auto-detected Stage " .. TARGET_STAGE .. "...")
 
 local stageUrl
 if TARGET_STAGE == 1 then
@@ -101,5 +105,5 @@ end
 -- Load the Core Engine after the stage configuration is set
 local coreUrl = "https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/MSTACK/Project%20Impel/CoreAutofarm.lua"
 if safeLoad(coreUrl .. cacheBust, "CoreAutofarm") then
-    print("[Impel Loader] Core Autofarm Engine successfully loaded for Stage " .. tostring(TARGET_STAGE) .. "!")
+    print("[Impel Loader v1.0] Core Autofarm Engine successfully loaded for Stage " .. tostring(TARGET_STAGE) .. "!")
 end

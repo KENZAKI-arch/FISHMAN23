@@ -1,4 +1,5 @@
 -- ============================================================================
+-- PROJECT IMPEL CORE AUTOFARM [v1.0]
 -- MELEE AUTOFARM SCRIPT (SEQUENCE TARGETING)
 -- Contains Model, View, and Controller logic in a single file
 -- ============================================================================
@@ -2027,14 +2028,34 @@ function View.Build(onToggleCallback)
     toggleBtn.Size = UDim2.new(0, 180, 0, 50)
     toggleBtn.Position = UDim2.new(0.5, -90, 0.1, 0)
     toggleBtn.BackgroundColor3 = Color3.fromRGB(255, 85, 85) -- Red Color!
-    toggleBtn.Text = "MUSASHI FARM: OFF"
+    toggleBtn.Text = "MUSASHI FARM v1.0: OFF"
     toggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
     toggleBtn.Font = Enum.Font.GothamBold
     toggleBtn.TextSize = 13
     toggleBtn.Parent = screenGui
 
     Instance.new("UICorner", toggleBtn).CornerRadius = UDim.new(0, 8)
-    
+
+    -- Top Version Header UI at the top of Musashi Farm
+    local headerFrame = Instance.new("Frame")
+    headerFrame.Size = UDim2.new(1, 0, 0, 24)
+    headerFrame.Position = UDim2.new(0, 0, 0, -28)
+    headerFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+    headerFrame.BorderSizePixel = 0
+    headerFrame.Parent = toggleBtn
+    Instance.new("UICorner", headerFrame).CornerRadius = UDim.new(0, 6)
+
+    local versionLabel = Instance.new("TextLabel")
+    versionLabel.Size = UDim2.new(1, -28, 1, 0)
+    versionLabel.Position = UDim2.new(0, 8, 0, 0)
+    versionLabel.BackgroundTransparency = 1
+    versionLabel.Text = "MUSASHI FARM  [v1.0]"
+    versionLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
+    versionLabel.Font = Enum.Font.GothamBold
+    versionLabel.TextSize = 11
+    versionLabel.TextXAlignment = Enum.TextXAlignment.Left
+    versionLabel.Parent = headerFrame
+
     local speedFrame = Instance.new("Frame")
     speedFrame.Size = UDim2.new(1, 0, 0, 30)
     speedFrame.Position = UDim2.new(0, 0, 1, 5)
@@ -2180,15 +2201,15 @@ function View.Build(onToggleCallback)
     end)
 
     local closeBtn = Instance.new("TextButton")
-    closeBtn.Size = UDim2.new(0, 24, 0, 24)
-    closeBtn.Position = UDim2.new(1, -12, 0, -12)
+    closeBtn.Size = UDim2.new(0, 18, 0, 18)
+    closeBtn.Position = UDim2.new(1, -21, 0, 3)
     closeBtn.BackgroundColor3 = Color3.fromRGB(220, 50, 50)
     closeBtn.Text = "X"
     closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
     closeBtn.Font = Enum.Font.GothamBold
-    closeBtn.TextSize = 12
-    closeBtn.Parent = toggleBtn
-    Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(1, 0)
+    closeBtn.TextSize = 10
+    closeBtn.Parent = headerFrame
+    Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, 4)
 
     closeBtn.MouseButton1Click:Connect(function()
         if getgenv().StopAutofarm then
@@ -2206,7 +2227,7 @@ function View.Build(onToggleCallback)
         if isFarming == state then return end
         isFarming = state
         
-        toggleBtn.Text = isFarming and "MUSASHI FARM: ON" or "MUSASHI FARM: OFF"
+        toggleBtn.Text = isFarming and "MUSASHI FARM v1.0: ON" or "MUSASHI FARM v1.0: OFF"
         toggleBtn.BackgroundColor3 = isFarming and Color3.fromRGB(85, 255, 85) or Color3.fromRGB(255, 85, 85)
         
         onToggleCallback(isFarming)
@@ -2216,6 +2237,22 @@ function View.Build(onToggleCallback)
         allowAutoStart = false
         setFarmingState(not isFarming)
     end
+
+    headerFrame.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = toggleBtn.Position
+            
+            local changedConn
+            changedConn = input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then 
+                    dragging = false 
+                    if changedConn then changedConn:Disconnect() end
+                end
+            end)
+        end
+    end)
     
     toggleBtn.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
