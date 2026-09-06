@@ -388,9 +388,16 @@ function Model.UpdateTracking(deltaTime)
     end
     
     if isRagdolled or isStunned then
-        rootPart.Anchored = true
-        rootPart.Velocity = Vector3.new(0, 0, 0)
-        return
+        if Model.State.botMode == "MAZE_COMBAT" or Model.State.botMode == "ROOM_COMBAT" or currentEnemy then
+            -- Combat Combo-Breaker: DO NOT freeze/anchor the character when hit or stunned!
+            -- Keeping rootPart unanchored allows our positioning loop to drift behind the boss or evade,
+            -- breaking the boss's combo string and preventing permastun!
+            rootPart.Anchored = false
+        else
+            rootPart.Anchored = true
+            rootPart.Velocity = Vector3.new(0, 0, 0)
+            return
+        end
     else
         rootPart.Anchored = false
     end
@@ -1136,27 +1143,36 @@ function Model.UpdateTracking(deltaTime)
             targetSpot = Vector3.new(targetDest.X, desiredY, targetDest.Z)
         else
             if isCloseToArrival then
-                desiredY = (currentEnemy and targetDest.Y + 8) or targetDest.Y
+                -- Height set to 7.5 per user request!
+                local baseCombatHeight = 7.5
+                -- If stunned by an attack, temporarily add +1.5 studs to evade follow-up ground combos!
+                if isStunned or isRagdolled then
+                    baseCombatHeight = 9.0
+                end
+                desiredY = (currentEnemy and targetDest.Y + baseCombatHeight) or targetDest.Y
                 
-                -- Orbit like a halo above the enemy
-                local orbitRadius = 6
-                local orbitSpeed = 4
-                local offsetX = math.cos(tick() * orbitSpeed) * orbitRadius
-                local offsetZ = math.sin(tick() * orbitSpeed) * orbitRadius
-                
-                local centerOrbit = Vector3.new(targetDest.X, desiredY, targetDest.Z)
-                local orbitOffset = Vector3.new(offsetX, 0, offsetZ)
-                
-                -- Prevent noclipping into walls during orbit!
-                local orbitRayParams = RaycastParams.new()
-                orbitRayParams.FilterDescendantsInstances = {character, currentEnemy}
-                orbitRayParams.FilterType = Enum.RaycastFilterType.Exclude
-                
-                local orbitRay = Workspace:Raycast(centerOrbit, orbitOffset, orbitRayParams)
-                if orbitRay then
-                    targetSpot = orbitRay.Position - (orbitOffset.Unit * 1.5)
+                -- Position behind the enemy's back instead of orbiting across their front face!
+                local eHrp = currentEnemy and currentEnemy:FindFirstChild("HumanoidRootPart")
+                if eHrp then
+                    local behindDir = -eHrp.CFrame.LookVector
+                    -- Gentle side-weave (+- 1.5 studs) so attacks register dynamically while remaining behind the back
+                    local sideWeave = eHrp.CFrame.RightVector * (math.sin(tick() * 3) * 1.5)
+                    local behindOffset = (behindDir * 4.0) + sideWeave
+                    local candidateSpot = Vector3.new(eHrp.Position.X, desiredY, eHrp.Position.Z) + behindOffset
+                    
+                    -- Prevent backing into walls behind the enemy
+                    local rayParams = RaycastParams.new()
+                    rayParams.FilterDescendantsInstances = {character, currentEnemy}
+                    rayParams.FilterType = Enum.RaycastFilterType.Exclude
+                    
+                    local wallRay = Workspace:Raycast(Vector3.new(eHrp.Position.X, desiredY, eHrp.Position.Z), behindOffset, rayParams)
+                    if wallRay then
+                        targetSpot = wallRay.Position - (behindOffset.Unit * 1.2)
+                    else
+                        targetSpot = candidateSpot
+                    end
                 else
-                    targetSpot = centerOrbit + orbitOffset
+                    targetSpot = Vector3.new(targetDest.X, desiredY, targetDest.Z)
                 end
             else
                 targetSpot = Vector3.new(targetDest.X, desiredY, targetDest.Z)
@@ -1292,7 +1308,7 @@ function Model.GetEnemiesInRange()
     -- Stage 2 Boss Priority: Only attack the boss if it's present and in range
     local stage2Boss = findStage2Boss(allEnemies)
     if stage2Boss then
-        local attackRange = 15
+        local attackRange = 18
         local bHrp = stage2Boss:FindFirstChild("HumanoidRootPart")
         if bHrp and (character.HumanoidRootPart.Position - bHrp.Position).Magnitude <= attackRange then
             return { stage2Boss }
@@ -1302,7 +1318,7 @@ function Model.GetEnemiesInRange()
 
     for _, npc in pairs(allEnemies) do
         if isValidTarget(npc) then
-            local attackRange = 15
+            local attackRange = 18
             if (character.HumanoidRootPart.Position - npc.HumanoidRootPart.Position).Magnitude <= attackRange then
                 table.insert(enemiesList, npc)
             end
