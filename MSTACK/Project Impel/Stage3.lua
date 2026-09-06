@@ -12,6 +12,7 @@ getgenv().MACRO_WAYPOINTS = {
     { Pos = Vector3.new(4802, 2307, -20757), Action = "NAVIGATE" }, -- clear room 
     { Pos = Vector3.new(4707, 2307, -20721), Action = "PULL_LEVER" }, -- pull lever
     { Pos = Vector3.new(4978, 2307, -20753), Action = "NAVIGATE" }, -- go back 
+    { Pos = Vector3.new(4981, 2306, -20863), Action = "NAVIGATE" }, -- corridor checkpoint
     { Pos = Vector3.new(4856, 2369, -20985), Action = "NAVIGATE" }, -- go here
     { Pos = Vector3.new(4794, 2400, -20828), Action = "NAVIGATE" }, -- boss fight
     { Pos = Vector3.new(5063, 2398, -20805), Action = "NAVIGATE" }, -- go here clear room
