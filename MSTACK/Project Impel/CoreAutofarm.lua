@@ -193,11 +193,65 @@ end
       return false
   end
 
+local function isStage2PriorityBoss(npc)
+    if not npc or not npc.Name then return false end
+    local name = string.lower(npc.Name)
+    
+    -- Exact / substring matches for "Impel Down Elite High Guard" and common variations
+    if string.find(name, "elite high guard") or string.find(name, "high elite guard") then
+        return true
+    end
+    
+    local hasImpel = string.find(name, "impel")
+    local hasElite = string.find(name, "elite")
+    local hasHigh = string.find(name, "high")
+    local hasGuard = string.find(name, "guard")
+    
+    if hasElite and hasHigh and hasGuard then
+        return true
+    end
+    
+    if hasImpel and hasElite and hasHigh then
+        return true
+    end
+    
+    return false
+end
+
+local function findStage2Boss(allEnemies)
+    local isStage2 = (getgenv().CURRENT_STAGE == 2 or currentStage == 2)
+    if not isStage2 then return nil end
+    
+    local character = LocalPlayer.Character
+    local rootPart = character and character:FindFirstChild("HumanoidRootPart")
+    if not rootPart then return nil end
+
+    for _, npc in ipairs(allEnemies) do
+        if isValidTarget(npc) and isStage2PriorityBoss(npc) then
+            local bHrp = npc:FindFirstChild("HumanoidRootPart")
+            if bHrp then
+                local dist = (rootPart.Position - bHrp.Position).Magnitude
+                -- Target if within 250 studs or after reaching boss hallway/room area
+                if dist <= 250 or (Model.State.macroIndex and Model.State.macroIndex >= 21) or rootPart.Position.Z < -20580 then
+                    return npc
+                end
+            end
+        end
+    end
+    return nil
+end
+
 -- Find the highest priority target, prioritizing the lowest HP and closest one that is in line of sight
 local function findBestTarget(allEnemies)
     local character = LocalPlayer.Character
     local rootPart = character and character:FindFirstChild("HumanoidRootPart")
     if not rootPart then return nil end
+
+    -- Stage 2 Boss Priority: If Impel Down Elite High Guard is active, strictly prioritize it!
+    local stage2Boss = findStage2Boss(allEnemies)
+    if stage2Boss then
+        return stage2Boss
+    end
 
     local bestTarget = nil
     local bestDist = math.huge
@@ -364,77 +418,95 @@ function Model.UpdateTracking(deltaTime)
         currentEnemy = nil
         isPatrolling = true
         
-        -- 1. Check for ANY enemy within 15 studs to clear first (prioritizing lowest HP and closest)
-        local contactEnemy = nil
-        local contactDist = 15
-        local contactHp = math.huge
-        for _, npc in ipairs(allEnemies) do
-            if isValidTarget(npc) then
-                local hrp = npc:FindFirstChild("HumanoidRootPart")
-                local hum = npc:FindFirstChildOfClass("Humanoid") or npc:FindFirstChild("Humanoid")
-                if hrp and hum and hum.Health > 0 then
-                    local dist = (rootPart.Position - hrp.Position).Magnitude
-                    if dist <= 15 then
-                        local hp = hum.Health
-                        local isBetter = false
-                        if not contactEnemy then
-                            isBetter = true
-                        elseif math.abs(hp - contactHp) > 1 then
-                            if hp < contactHp then
+        -- Stage 2 Boss Priority: If Impel Down Elite High Guard appears, prioritize it and ignore other enemies!
+        local stage2Boss = findStage2Boss(allEnemies)
+        if stage2Boss then
+            local bHrp = stage2Boss:FindFirstChild("HumanoidRootPart")
+            if bHrp then
+                print("[AutoFarm] 🚨 Impel Down Elite High Guard detected! Prioritizing Boss and ignoring all other enemies!")
+                Model.State.botMode = "MAZE_COMBAT"
+                currentEnemy = stage2Boss
+                targetDest = bHrp.Position
+            end
+        else
+            -- 1. Check for ANY enemy within 15 studs to clear first (prioritizing lowest HP and closest)
+            local contactEnemy = nil
+            local contactDist = 15
+            local contactHp = math.huge
+            for _, npc in ipairs(allEnemies) do
+                if isValidTarget(npc) then
+                    local hrp = npc:FindFirstChild("HumanoidRootPart")
+                    local hum = npc:FindFirstChildOfClass("Humanoid") or npc:FindFirstChild("Humanoid")
+                    if hrp and hum and hum.Health > 0 then
+                        local dist = (rootPart.Position - hrp.Position).Magnitude
+                        if dist <= 15 then
+                            local hp = hum.Health
+                            local isBetter = false
+                            if not contactEnemy then
                                 isBetter = true
+                            elseif math.abs(hp - contactHp) > 1 then
+                                if hp < contactHp then
+                                    isBetter = true
+                                end
+                            else
+                                if dist < contactDist then
+                                    isBetter = true
+                                end
                             end
-                        else
-                            if dist < contactDist then
-                                isBetter = true
+                            
+                            if isBetter then
+                                contactEnemy = npc
+                                contactDist = dist
+                                contactHp = hp
                             end
-                        end
-                        
-                        if isBetter then
-                            contactEnemy = npc
-                            contactDist = dist
-                            contactHp = hp
                         end
                     end
                 end
             end
-        end
-        
-        -- Combat is currently disabled/unimplemented. If enemies block the path, the stuck/noclip logic will bypass them.
-        if contactEnemy then
-            print("[AutoFarm] Enemy in contact! Clearing it first...")
-            Model.State.botMode = "MAZE_COMBAT"
-            currentEnemy = contactEnemy
-            targetDest = contactEnemy:FindFirstChild("HumanoidRootPart").Position
-            -- Model.State.mazePath = {} -- Preserve path so it doesn't freeze recomputing after killing
-        else
-            -- Check if we are blocked by an enemy further out (with Line of Sight)
-            local bestTarget = findBestTarget(allEnemies)
-            local targetHrp = bestTarget and bestTarget:FindFirstChild("HumanoidRootPart")
-                if targetHrp and (rootPart.Position - targetHrp.Position).Magnitude <= ENEMY_DETECTION_RADIUS then
-                    print("[AutoFarm Debug] Enemy blocking path! Punishing...")
-                    Model.State.botMode = "MAZE_COMBAT"
-                    currentEnemy = bestTarget
-                    targetDest = targetHrp.Position
-                    -- Model.State.mazePath = {} -- Preserve path so it doesn't freeze recomputing after killing
+            
+            -- Combat is currently disabled/unimplemented. If enemies block the path, the stuck/noclip logic will bypass them.
+            if contactEnemy then
+                print("[AutoFarm] Enemy in contact! Clearing it first...")
+                Model.State.botMode = "MAZE_COMBAT"
+                currentEnemy = contactEnemy
+                targetDest = contactEnemy:FindFirstChild("HumanoidRootPart").Position
+                -- Model.State.mazePath = {} -- Preserve path so it doesn't freeze recomputing after killing
             else
-                -- No enemies in the way, pathfind through the maze!
-                local currentMacro = MACRO_WAYPOINTS[Model.State.macroIndex]
-                
-                local arrivalDist = 15
-                if currentMacro then
-                    if currentMacro.Action == "PULL_LEVER" then
-                        arrivalDist = 5
-                    elseif currentMacro.Action == "FLY_DIRECT" or currentMacro.Action == "NAVIGATE" then
-                        arrivalDist = 3
+                -- Check if we are blocked by an enemy further out (with Line of Sight)
+                local bestTarget = findBestTarget(allEnemies)
+                local targetHrp = bestTarget and bestTarget:FindFirstChild("HumanoidRootPart")
+                    if targetHrp and (rootPart.Position - targetHrp.Position).Magnitude <= ENEMY_DETECTION_RADIUS then
+                        print("[AutoFarm Debug] Enemy blocking path! Punishing...")
+                        Model.State.botMode = "MAZE_COMBAT"
+                        currentEnemy = bestTarget
+                        targetDest = targetHrp.Position
+                        -- Model.State.mazePath = {} -- Preserve path so it doesn't freeze recomputing after killing
+                else
+                    -- No enemies in the way, pathfind through the maze!
+                    local currentMacro = MACRO_WAYPOINTS[Model.State.macroIndex]
+                    
+                    local arrivalDist = 15
+                    if currentMacro then
+                        if currentMacro.Action == "PULL_LEVER" then
+                            arrivalDist = 5
+                        elseif currentMacro.Action == "FLY_DIRECT" or currentMacro.Action == "NAVIGATE" then
+                            arrivalDist = 3
+                        end
                     end
-                end
-                
-                -- Auto-advance if we reached it
-                if currentMacro and (rootPart.Position - currentMacro.Pos).Magnitude < arrivalDist then
-                    if currentMacro.Action == "WAIT_TELEPORT" then
-                        -- Hover safely on the pad while waiting for dungeon teleportation.
-                        -- The global transition detector above will catch the teleport as soon as coordinates change.
-                        targetDest = rootPart.Position
+                    
+                    -- Auto-advance if we reached it
+                    if currentMacro and (rootPart.Position - currentMacro.Pos).Magnitude < arrivalDist then
+                        if currentMacro.Action == "WAIT_TELEPORT" then
+                            -- Check if Stage 2 Boss is still active before waiting at the teleporter
+                            local bossCheck = findStage2Boss(allEnemies)
+                            if bossCheck then
+                                print("[AutoFarm] 🚨 Impel Down Elite High Guard is still alive! Prioritizing Boss before waiting at teleporter...")
+                                Model.State.botMode = "MAZE_COMBAT"
+                                currentEnemy = bossCheck
+                                targetDest = bossCheck.HumanoidRootPart and bossCheck.HumanoidRootPart.Position or rootPart.Position
+                            else
+                                targetDest = rootPart.Position
+                            end
                     elseif currentMacro.Action == "ROOM_ROUNDUP" then
                         print("[AutoFarm Debug] Reached the room! Securing the area...")
                         Model.State.botMode = "ROOM_ROUND_UP"
@@ -672,15 +744,24 @@ function Model.UpdateTracking(deltaTime)
             if bv then bv.Velocity = Vector3.new(0, 0, 0) end
             rootPart.Velocity = Vector3.new(0, 0, 0)
         else
-            -- Check if a higher priority (lowest HP or closer contact) target emerged nearby
-            local curHum = currentEnemy:FindFirstChildOfClass("Humanoid") or currentEnemy:FindFirstChild("Humanoid")
-            local curHp = (curHum and curHum.Health) or math.huge
-            local betterTarget = findBestTarget(allEnemies)
-            if betterTarget and betterTarget ~= currentEnemy then
-                local bHum = betterTarget:FindFirstChildOfClass("Humanoid") or betterTarget:FindFirstChild("Humanoid")
-                local bHp = (bHum and bHum.Health) or math.huge
-                if bHp < curHp - 1 then
-                    currentEnemy = betterTarget
+            -- Stage 2 Boss Priority: If boss is active, strictly lock onto it and ignore other enemies
+            local stage2Boss = findStage2Boss(allEnemies)
+            if stage2Boss then
+                if currentEnemy ~= stage2Boss then
+                    print("[AutoFarm] 🚨 Switching focus directly to Impel Down Elite High Guard!")
+                    currentEnemy = stage2Boss
+                end
+            else
+                -- Check if a higher priority (lowest HP or closer contact) target emerged nearby
+                local curHum = currentEnemy:FindFirstChildOfClass("Humanoid") or currentEnemy:FindFirstChild("Humanoid")
+                local curHp = (curHum and curHum.Health) or math.huge
+                local betterTarget = findBestTarget(allEnemies)
+                if betterTarget and betterTarget ~= currentEnemy then
+                    local bHum = betterTarget:FindFirstChildOfClass("Humanoid") or betterTarget:FindFirstChild("Humanoid")
+                    local bHp = (bHum and bHum.Health) or math.huge
+                    if bHp < curHp - 1 then
+                        currentEnemy = betterTarget
+                    end
                 end
             end
 
@@ -693,112 +774,135 @@ function Model.UpdateTracking(deltaTime)
         
     elseif Model.State.botMode == "ROOM_ROUND_UP" then
         isPatrolling = false
-        Model.State.roundUpTimer = Model.State.roundUpTimer - deltaTime
         
-        local validEnemies = {}
-        for _, npc in ipairs(allEnemies) do
-            if isValidTarget(npc) then
-                local hrp = npc:FindFirstChild("HumanoidRootPart")
-                  if hrp and (rootPart.Position - hrp.Position).Magnitude <= 75 and math.abs(rootPart.Position.Y - hrp.Position.Y) <= 30 then
-                      local rayParams = RaycastParams.new()
-                      rayParams.FilterDescendantsInstances = {LocalPlayer.Character, Workspace:FindFirstChild("NPCs")}
-                      rayParams.FilterType = Enum.RaycastFilterType.Exclude
-                      local dir = (hrp.Position - rootPart.Position)
-                      if not Workspace:Raycast(rootPart.Position, dir.Unit * dir.Magnitude, rayParams) then
-                          table.insert(validEnemies, hrp)
-                      end
-                  end
-            end
-        end
-        
-        if #validEnemies == 0 then
-            if currentMacro and currentMacro.Action == "ROOM_ROUNDUP" then
-                print("[AutoFarm] Room cleared! Resuming navigation...")
-                Model.State.botMode = "NAVIGATE_MAZE"
-                Model.State.macroIndex = Model.State.macroIndex + 1
-                currentMacro = MACRO_WAYPOINTS[Model.State.macroIndex]
-                Model.State.mazePath = {}
-                Model.State.isComputingPath = false
-            else
-                -- No enemies left in room!
-                targetDest = rootPart.Position
-                local bv = rootPart:FindFirstChild("AntiGravity")
-                if bv then bv.Velocity = Vector3.new(0, 0, 0) end
-                rootPart.Velocity = Vector3.new(0, 0, 0)
-            end
+        -- Stage 2 Boss Priority: If boss is present, bypass roundup and engage immediately!
+        local stage2Boss = findStage2Boss(allEnemies)
+        if stage2Boss then
+            print("[AutoFarm] 🚨 Impel Down Elite High Guard detected during roundup! Engaging Boss directly!")
+            Model.State.botMode = "ROOM_COMBAT"
+            currentEnemy = stage2Boss
+            targetDest = stage2Boss:FindFirstChild("HumanoidRootPart") and stage2Boss.HumanoidRootPart.Position or rootPart.Position
         else
-            -- Calculate Center Position
-            local centerPos = Vector3.new(0, 0, 0)
-            for _, hrp in ipairs(validEnemies) do
-                centerPos = centerPos + hrp.Position
-            end
-            centerPos = centerPos / #validEnemies
-            targetDest = centerPos
+            Model.State.roundUpTimer = Model.State.roundUpTimer - deltaTime
             
-            currentEnemy = validEnemies[1].Parent -- Keep currentEnemy valid for raycast filters
-            
-            -- Check if all enemies are clumped (close to the center)
-            local allClumped = true
-            for _, hrp in ipairs(validEnemies) do
-                if (centerPos - hrp.Position).Magnitude > 5 then
-                    allClumped = false
-                    break
+            local validEnemies = {}
+            for _, npc in ipairs(allEnemies) do
+                if isValidTarget(npc) then
+                    local hrp = npc:FindFirstChild("HumanoidRootPart")
+                      if hrp and (rootPart.Position - hrp.Position).Magnitude <= 75 and math.abs(rootPart.Position.Y - hrp.Position.Y) <= 30 then
+                          local rayParams = RaycastParams.new()
+                          rayParams.FilterDescendantsInstances = {LocalPlayer.Character, Workspace:FindFirstChild("NPCs")}
+                          rayParams.FilterType = Enum.RaycastFilterType.Exclude
+                          local dir = (hrp.Position - rootPart.Position)
+                          if not Workspace:Raycast(rootPart.Position, dir.Unit * dir.Magnitude, rayParams) then
+                              table.insert(validEnemies, hrp)
+                          end
+                      end
                 end
             end
             
-            if allClumped or Model.State.roundUpTimer <= 0 then
-                print("[AutoFarm] Enemies rounded up! Initiating COMBAT.")
-                Model.State.botMode = "ROOM_COMBAT"
+            if #validEnemies == 0 then
+                if currentMacro and currentMacro.Action == "ROOM_ROUNDUP" then
+                    print("[AutoFarm] Room cleared! Resuming navigation...")
+                    Model.State.botMode = "NAVIGATE_MAZE"
+                    Model.State.macroIndex = Model.State.macroIndex + 1
+                    currentMacro = MACRO_WAYPOINTS[Model.State.macroIndex]
+                    Model.State.mazePath = {}
+                    Model.State.isComputingPath = false
+                else
+                    -- No enemies left in room!
+                    targetDest = rootPart.Position
+                    local bv = rootPart:FindFirstChild("AntiGravity")
+                    if bv then bv.Velocity = Vector3.new(0, 0, 0) end
+                    rootPart.Velocity = Vector3.new(0, 0, 0)
+                end
+            else
+                -- Calculate Center Position
+                local centerPos = Vector3.new(0, 0, 0)
+                for _, hrp in ipairs(validEnemies) do
+                    centerPos = centerPos + hrp.Position
+                end
+                centerPos = centerPos / #validEnemies
+                targetDest = centerPos
+                
+                currentEnemy = validEnemies[1].Parent -- Keep currentEnemy valid for raycast filters
+                
+                -- Check if all enemies are clumped (close to the center)
+                local allClumped = true
+                for _, hrp in ipairs(validEnemies) do
+                    if (centerPos - hrp.Position).Magnitude > 5 then
+                        allClumped = false
+                        break
+                    end
+                end
+                
+                if allClumped or Model.State.roundUpTimer <= 0 then
+                    print("[AutoFarm] Enemies rounded up! Initiating COMBAT.")
+                    Model.State.botMode = "ROOM_COMBAT"
+                end
             end
         end
         
     elseif Model.State.botMode == "ROOM_COMBAT" then
         isPatrolling = false
         
-        local validEnemies = {}
-        for _, npc in ipairs(allEnemies) do
-            if isValidTarget(npc) then
-                local hrp = npc:FindFirstChild("HumanoidRootPart")
-                local hum = npc:FindFirstChildOfClass("Humanoid") or npc:FindFirstChild("Humanoid")
-                if hrp and hum and hum.Health > 0 then
-                    local dist = (rootPart.Position - hrp.Position).Magnitude
-                    if dist <= 75 and math.abs(rootPart.Position.Y - hrp.Position.Y) <= 30 then
-                        local rayParams = RaycastParams.new()
-                        rayParams.FilterDescendantsInstances = {LocalPlayer.Character, Workspace:FindFirstChild("NPCs")}
-                        rayParams.FilterType = Enum.RaycastFilterType.Exclude
-                        local dir = (hrp.Position - rootPart.Position)
-                        if not Workspace:Raycast(rootPart.Position, dir.Unit * dir.Magnitude, rayParams) then
-                            table.insert(validEnemies, {
-                                npc = npc,
-                                hrp = hrp,
-                                hp = hum.Health,
-                                dist = dist
-                            })
+        -- Stage 2 Boss Priority: If boss is present, strictly lock onto it and ignore other enemies in the room!
+        local stage2Boss = findStage2Boss(allEnemies)
+        if stage2Boss then
+            local bHrp = stage2Boss:FindFirstChild("HumanoidRootPart")
+            if bHrp then
+                targetDest = bHrp.Position
+                currentEnemy = stage2Boss
+            else
+                Model.State.botMode = "ROOM_ROUND_UP"
+                targetDest = rootPart.Position
+            end
+        else
+            local validEnemies = {}
+            for _, npc in ipairs(allEnemies) do
+                if isValidTarget(npc) then
+                    local hrp = npc:FindFirstChild("HumanoidRootPart")
+                    local hum = npc:FindFirstChildOfClass("Humanoid") or npc:FindFirstChild("Humanoid")
+                    if hrp and hum and hum.Health > 0 then
+                        local dist = (rootPart.Position - hrp.Position).Magnitude
+                        if dist <= 75 and math.abs(rootPart.Position.Y - hrp.Position.Y) <= 30 then
+                            local rayParams = RaycastParams.new()
+                            rayParams.FilterDescendantsInstances = {LocalPlayer.Character, Workspace:FindFirstChild("NPCs")}
+                            rayParams.FilterType = Enum.RaycastFilterType.Exclude
+                            local dir = (hrp.Position - rootPart.Position)
+                            if not Workspace:Raycast(rootPart.Position, dir.Unit * dir.Magnitude, rayParams) then
+                                table.insert(validEnemies, {
+                                    npc = npc,
+                                    hrp = hrp,
+                                    hp = hum.Health,
+                                    dist = dist
+                                })
+                            end
                         end
                     end
                 end
             end
-        end
-        
-        if #validEnemies == 0 then
-            -- Enemies dead! Wait here for respawns.
-            Model.State.botMode = "ROOM_ROUND_UP"
-            targetDest = rootPart.Position
-            local bv = rootPart:FindFirstChild("AntiGravity")
-            if bv then bv.Velocity = Vector3.new(0, 0, 0) end
-            rootPart.Velocity = Vector3.new(0, 0, 0)
-        else
-            -- Sort enemies prioritizing lowest HP first, then closest distance
-            table.sort(validEnemies, function(a, b)
-                if math.abs(a.hp - b.hp) > 1 then
-                    return a.hp < b.hp
-                end
-                return a.dist < b.dist
-            end)
             
-            -- Dive bomb the highest priority enemy (lowest HP & closest)!
-            targetDest = validEnemies[1].hrp.Position
-            currentEnemy = validEnemies[1].npc
+            if #validEnemies == 0 then
+                -- Enemies dead! Wait here for respawns.
+                Model.State.botMode = "ROOM_ROUND_UP"
+                targetDest = rootPart.Position
+                local bv = rootPart:FindFirstChild("AntiGravity")
+                if bv then bv.Velocity = Vector3.new(0, 0, 0) end
+                rootPart.Velocity = Vector3.new(0, 0, 0)
+            else
+                -- Sort enemies prioritizing lowest HP first, then closest distance
+                table.sort(validEnemies, function(a, b)
+                    if math.abs(a.hp - b.hp) > 1 then
+                        return a.hp < b.hp
+                    end
+                    return a.dist < b.dist
+                end)
+                
+                -- Dive bomb the highest priority enemy (lowest HP & closest)!
+                targetDest = validEnemies[1].hrp.Position
+                currentEnemy = validEnemies[1].npc
+            end
         end
     end
     
@@ -1057,6 +1161,17 @@ function Model.GetEnemiesInRange()
     local enemiesList = {}
     local allEnemies = getAllEnemies()
     
+    -- Stage 2 Boss Priority: Only attack the boss if it's present and in range
+    local stage2Boss = findStage2Boss(allEnemies)
+    if stage2Boss then
+        local attackRange = 15
+        local bHrp = stage2Boss:FindFirstChild("HumanoidRootPart")
+        if bHrp and (character.HumanoidRootPart.Position - bHrp.Position).Magnitude <= attackRange then
+            return { stage2Boss }
+        end
+        return {}
+    end
+
     for _, npc in pairs(allEnemies) do
         if isValidTarget(npc) then
             local attackRange = 15
