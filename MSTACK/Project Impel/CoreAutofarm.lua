@@ -1171,37 +1171,53 @@ function Model.UpdateTracking(deltaTime)
             if eHrp then
                 local isEvadingHit = (Model.State.hitDisengageTimer > 0 or isStunned or isRagdolled)
                 local horizontalDist = isEvadingHit and 25.0 or 4.0
-                local offsetDir
+                local origin = Vector3.new(eHrp.Position.X, desiredY, eHrp.Position.Z)
+                
+                local rayParams = RaycastParams.new()
+                rayParams.FilterDescendantsInstances = {character, currentEnemy}
+                rayParams.FilterType = Enum.RaycastFilterType.Exclude
                 
                 if isEvadingHit then
                     -- User requested: Disengage 25 studs horizontally away from the enemy instead of above!
                     local diff = (rootPart.Position - eHrp.Position)
                     local flatDiff = Vector3.new(diff.X, 0, diff.Z)
-                    if flatDiff.Magnitude > 0.1 then
-                        offsetDir = flatDiff.Unit
-                    else
-                        offsetDir = -eHrp.CFrame.LookVector
+                    local baseDir = (flatDiff.Magnitude > 0.1) and flatDiff.Unit or -eHrp.CFrame.LookVector
+                    
+                    -- Check multiple horizontal angles to find the direction with maximum clear distance away from the enemy (up to 25 studs)
+                    local testAngles = {0, 45, -45, 90, -90, 135, -135}
+                    local bestDir = baseDir
+                    local bestDist = 0
+                    
+                    for _, angle in ipairs(testAngles) do
+                        local testDir = (angle == 0) and baseDir or (CFrame.Angles(0, math.rad(angle), 0):VectorToWorldSpace(baseDir)).Unit
+                        local ray = Workspace:Raycast(origin, testDir * horizontalDist, rayParams)
+                        local clearDist = ray and (ray.Distance - 1.5) or horizontalDist
+                        if clearDist >= horizontalDist - 1 then
+                            bestDir = testDir
+                            bestDist = horizontalDist
+                            break
+                        elseif clearDist > bestDist then
+                            bestDist = clearDist
+                            bestDir = testDir
+                        end
                     end
+                    
+                    local finalDist = math.max(0, math.min(horizontalDist, bestDist))
+                    targetSpot = origin + (bestDir * finalDist)
                 else
                     -- Normal combat: 4.0 studs behind the enemy's back
                     local behindDir = -eHrp.CFrame.LookVector
                     local sideWeave = eHrp.CFrame.RightVector * (math.sin(tick() * 3) * 1.5)
-                    offsetDir = (behindDir + (sideWeave * 0.3)).Unit
-                end
-                
-                local targetOffset = offsetDir * horizontalDist
-                local candidateSpot = Vector3.new(eHrp.Position.X, desiredY, eHrp.Position.Z) + targetOffset
-                
-                -- Prevent backing into walls
-                local rayParams = RaycastParams.new()
-                rayParams.FilterDescendantsInstances = {character, currentEnemy}
-                rayParams.FilterType = Enum.RaycastFilterType.Exclude
-                
-                local wallRay = Workspace:Raycast(Vector3.new(eHrp.Position.X, desiredY, eHrp.Position.Z), targetOffset, rayParams)
-                if wallRay then
-                    targetSpot = wallRay.Position - (offsetDir * 1.5)
-                else
-                    targetSpot = candidateSpot
+                    local offsetDir = (behindDir + (sideWeave * 0.3)).Unit
+                    local targetOffset = offsetDir * horizontalDist
+                    
+                    -- Prevent backing into walls behind the enemy
+                    local wallRay = Workspace:Raycast(origin, targetOffset, rayParams)
+                    if wallRay then
+                        targetSpot = wallRay.Position - (offsetDir * 1.5)
+                    else
+                        targetSpot = origin + targetOffset
+                    end
                 end
             else
                 targetSpot = Vector3.new(targetDest.X, desiredY, targetDest.Z)
@@ -1213,7 +1229,8 @@ function Model.UpdateTracking(deltaTime)
         
         local wallCheckCFrame = rootPart.CFrame + Vector3.new(0, 3, 0)
         
-        if Model.State.evadingTimer > 0 and not isCloseToArrival then
+        -- In combat, we NEVER run vertical obstacle evasion (flying upward)
+        if not currentEnemy and Model.State.evadingTimer > 0 and not isCloseToArrival then
             Model.State.evadingTimer = Model.State.evadingTimer - deltaTime
             local evadeWallCast = blockcastSolid(wallCheckCFrame, size, Model.State.evasionDir * 10, raycastParams)
             
@@ -1222,7 +1239,7 @@ function Model.UpdateTracking(deltaTime)
             else
                 moveDir = Model.State.evasionDir
             end
-        elseif not isPatrolling and not isCloseToArrival then
+        elseif not currentEnemy and not isPatrolling and not isCloseToArrival then
             local wallCast = blockcastSolid(wallCheckCFrame, size, moveDir * 8, raycastParams)
             if wallCast and wallCast.Distance <= 5 then
                 local evaded = false
@@ -1252,7 +1269,7 @@ function Model.UpdateTracking(deltaTime)
         end
         
         local actualTarget
-        if Model.State.evadingTimer > 0 then
+        if not currentEnemy and Model.State.evadingTimer > 0 then
             actualTarget = rootPart.Position + (moveDir * 50)
             if moveDir.Y == 0 then
                 -- Lock Y coordinate to maintain ground height during horizontal evasion!
@@ -1277,8 +1294,9 @@ function Model.UpdateTracking(deltaTime)
             finalCFrame = CFrame.lookAt(actualTarget, lookPos)
         end
         
+        local currentMoveSpeed = (currentEnemy and Model.State.hitDisengageTimer > 0) and (flySpeed * 1.6) or flySpeed
         if distToActual > 0.5 then
-            local lerpAlpha = math.clamp((flySpeed * deltaTime) / distToActual, 0, 1)
+            local lerpAlpha = math.clamp((currentMoveSpeed * deltaTime) / distToActual, 0, 1)
             rootPart.CFrame = rootPart.CFrame:Lerp(finalCFrame, lerpAlpha)
         else
             rootPart.CFrame = finalCFrame
