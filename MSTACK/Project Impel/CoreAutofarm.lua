@@ -502,6 +502,12 @@ function Model.UpdateTracking(deltaTime)
     
     local inCombat = (Model.State.botMode == "MAZE_COMBAT" or Model.State.botMode == "ROOM_COMBAT" or currentEnemy ~= nil)
     
+    if inCombat and tookDamage and getgenv().AutoDodge ~= false then
+        Model.State.isDodgingAttack = true
+        Model.State.dodgeTimer = 1.3
+        print("[AutoFarm] 🥊 Outboxer: Hit detected! Immediately disengaging 32 studs away!")
+    end
+    
     if isDead then
         if not Model.State.wasDead then
             Model.State.wasDead = true
@@ -547,6 +553,8 @@ function Model.UpdateTracking(deltaTime)
             rootPart.Anchored = false
             if getgenv().AutoDodge ~= false then
                 triggerAutoEvasive(character)
+                Model.State.isDodgingAttack = true
+                Model.State.dodgeTimer = 1.3
             end
         else
             rootPart.Anchored = true
@@ -1574,10 +1582,16 @@ function Model.DoMeleeCombo()
     local combatRegister = ReplicatedStorage:FindFirstChild("Events") and ReplicatedStorage.Events:FindFirstChild("CombatRegister")
     if not combatRegister then return end
     
+    -- If outboxer is currently disengaged 32 studs away, wait for disengage to finish
+    if Model.State.isDodgingAttack then
+        task.wait(0.2)
+        return
+    end
+    
     Model.EquipMelee()
     local targets = Model.GetEnemiesInRange()
     if #targets == 0 then
-        task.wait(0.5)
+        task.wait(0.3)
         return
     end
     local equippedToolName = "Melee"
@@ -1597,6 +1611,7 @@ function Model.DoMeleeCombo()
     print("[AutoFarm] Enemies in range! Starting Combo with " .. equippedToolName)
     for currentHit = 1, 4 do
         if not Model.State.isAutoFarming then break end
+        if Model.State.isDodgingAttack then break end
         
         local character = LocalPlayer.Character
         if not character or not character:FindFirstChild("HumanoidRootPart") then break end
@@ -1664,7 +1679,21 @@ function Model.DoMeleeCombo()
         end
         task.wait(0.2)
     end
-    if Model.State.isAutoFarming then task.wait(0.1) end
+    
+    -- ========================================================
+    -- OUTBOXER HIT-AND-RUN: DISENGAGE 32 STUDS AFTER COMBO!
+    -- ========================================================
+    -- An outboxer delivers a combo then immediately steps out 32 studs away
+    -- to avoid staying near the opponent, letting the boss swing & whiff at empty air!
+    if getgenv().AutoDodge ~= false and currentEnemy and Model.State.isAutoFarming then
+        Model.State.isDodgingAttack = true
+        Model.State.dodgeTimer = 1.3 -- Disengage for 1.3 seconds
+        print("[AutoFarm] 🥊 Outboxer: Combo landed! Disengaging 32 studs away to avoid staying near!")
+        task.wait(1.3)
+        Model.State.isDodgingAttack = false
+    elseif Model.State.isAutoFarming then
+        task.wait(0.1)
+    end
 end
 
 -- ==========================================

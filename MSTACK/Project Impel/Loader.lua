@@ -93,12 +93,13 @@ else
     return
 end
 
-if not safeLoad(stageUrl, "Stage " .. tostring(TARGET_STAGE)) then
+local cacheBust = "?t=" .. tostring(math.floor(tick()))
+if not safeLoad(stageUrl .. cacheBust, "Stage " .. tostring(TARGET_STAGE)) then
     return
 end
 
 -- Load the Core Engine after the stage configuration is set
 local coreUrl = "https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/MSTACK/Project%20Impel/CoreAutofarm.lua"
-if safeLoad(coreUrl, "CoreAutofarm") then
+if safeLoad(coreUrl .. cacheBust, "CoreAutofarm") then
     print("[Impel Loader] Core Autofarm Engine successfully loaded for Stage " .. tostring(TARGET_STAGE) .. "!")
 end
