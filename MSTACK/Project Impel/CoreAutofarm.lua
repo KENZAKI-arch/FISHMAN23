@@ -297,6 +297,92 @@ local function triggerAutoEvasive(char)
     end
 end
 
+function Model.OnPlayerHit(source, details)
+    if getgenv().AutoDodge == false then return end
+    if not Model.State.isAutoFarming then return end
+    
+    local now = tick()
+    -- Debounce: avoid duplicate triggers in a 0.35s window
+    if now - (Model.State.lastHitTime or 0) < 0.35 then return end
+    Model.State.lastHitTime = now
+    
+    warn(string.format("[AutoFarm] 🚨 PLAYER HIT DETECTED via [%s] (%s)! OUTBOXER REACTIVE DISENGAGE TRIGGERED!", tostring(source), tostring(details or "")))
+    
+    Model.State.isDodgingAttack = true
+    Model.State.dodgeTimer = 1.4 -- Hold 32-stud distance for 1.4s
+    Model.State.lastDodgeTick = now
+    Model.State.cancelCombo = true -- Abort active melee combo immediately
+    
+    -- Also trigger BasicEvasive if available as a combo breaker
+    local char = LocalPlayer.Character
+    if char then
+        triggerAutoEvasive(char)
+    end
+end
+
+local function hookPlayerHitDetection(char)
+    if not char then return end
+    local hum = char:WaitForChild("Humanoid", 5)
+    if not hum then return end
+    
+    local lastHp = hum.Health
+    Model.State.lastHealth = lastHp
+    Model.State.lastKnownHealth = lastHp
+    
+    if Model._healthConn then pcall(function() Model._healthConn:Disconnect() end) end
+    Model._healthConn = hum.HealthChanged:Connect(function(newHp)
+        if newHp < lastHp - 0.1 then
+            local lost = lastHp - newHp
+            lastHp = newHp
+            Model.State.lastHealth = newHp
+            Model.State.lastKnownHealth = newHp
+            Model.OnPlayerHit("Humanoid.HealthChanged", string.format("-%.1f HP (Current: %.1f)", lost, newHp))
+        else
+            lastHp = newHp
+            Model.State.lastHealth = newHp
+            Model.State.lastKnownHealth = newHp
+        end
+    end)
+    
+    if Model._childAddedConn then pcall(function() Model._childAddedConn:Disconnect() end) end
+    Model._childAddedConn = char.ChildAdded:Connect(function(child)
+        local cName = string.lower(child.Name)
+        if cName:find("stun") or cName:find("frozen") or cName:find("freeze") or cName:find("hit") or cName:find("damage") or cName:find("combat") or cName:find("ragdoll") then
+            Model.OnPlayerHit("Character.ChildAdded", child.Name)
+        end
+    end)
+end
+
+local function hookRemoteDamageEvents()
+    local events = ReplicatedStorage:FindFirstChild("Events")
+    if not events then return end
+    
+    local clientDmg = events:FindFirstChild("ClientDMG")
+    if clientDmg and not Model._clientDmgHooked then
+        Model._clientDmgHooked = true
+        if Model._clientDmgConn then pcall(function() Model._clientDmgConn:Disconnect() end) end
+        Model._clientDmgConn = clientDmg.OnClientEvent:Connect(function(...)
+            local args = {...}
+            local char = LocalPlayer.Character
+            for _, arg in ipairs(args) do
+                if arg == char or (char and (arg == char:FindFirstChild("HumanoidRootPart") or arg == char:FindFirstChild("Humanoid"))) then
+                    Model.OnPlayerHit("ClientDMG Remote", "Server damage remote targeted player")
+                    return
+                end
+            end
+        end)
+    end
+    
+    local combatTag = events:FindFirstChild("CombatTag")
+    if combatTag and not Model._combatTagHooked then
+        Model._combatTagHooked = true
+        if Model._combatTagConn then pcall(function() Model._combatTagConn:Disconnect() end) end
+        Model._combatTagConn = combatTag.OnClientEvent:Connect(function(...)
+            Model.OnPlayerHit("CombatTag Remote", "Combat tag applied")
+        end)
+    end
+end
+
 local lastHakiTick = 0
 local function maintainCombatHaki(char)
     if tick() - lastHakiTick < 2.5 then return end
@@ -495,18 +581,24 @@ function Model.UpdateTracking(deltaTime)
     local isStunned = character:FindFirstChild("Stun") or character:FindFirstChild("frozen") or _G.canuse == false
     local isDead = humanoid.Health <= 0
     
+    -- Continuous Fallback Hit & Health-Drop Check (Catches any HP drop >= 0.1)
     if not Model.State.lastHealth then
         Model.State.lastHealth = humanoid.Health
     end
-    local tookDamage = (humanoid.Health < Model.State.lastHealth - 0.5)
-    Model.State.lastHealth = humanoid.Health
+    if humanoid.Health < Model.State.lastHealth - 0.1 then
+        local lost = Model.State.lastHealth - humanoid.Health
+        Model.State.lastHealth = humanoid.Health
+        Model.OnPlayerHit("PerFrameHealthCheck", string.format("-%.1f HP (Current: %.1f)", lost, humanoid.Health))
+    else
+        Model.State.lastHealth = humanoid.Health
+    end
     
-    local inCombat = (Model.State.botMode == "MAZE_COMBAT" or Model.State.botMode == "ROOM_COMBAT" or currentEnemy ~= nil)
-    
-    if inCombat and tookDamage and getgenv().AutoDodge ~= false then
-        Model.State.isDodgingAttack = true
-        Model.State.dodgeTimer = 1.3
-        print("[AutoFarm] 🥊 Outboxer: Hit detected! Immediately disengaging 32 studs away!")
+    -- Stun & Ragdoll Reactive Check
+    if (isRagdolled or isStunned) and not Model.State.wasStunned then
+        Model.State.wasStunned = true
+        Model.OnPlayerHit("StunOrRagdoll", isRagdolled and "Ragdolled" or "Stunned")
+    elseif not (isRagdolled or isStunned) then
+        Model.State.wasStunned = false
     end
     
     if isDead then
@@ -1330,20 +1422,24 @@ function Model.UpdateTracking(deltaTime)
                 -- Check if enemy is facing towards us (in strike cone)
                 local facingUs = isEnemyFacingPlayer(eHrp, rootPart)
                 
-                -- Outboxer triggers: enemy is attacking while facing us, or player just took damage/hit in combat!
-                if autoDodgeEnabled and (tookDamage or (isAttacking and facingUs)) then
+                -- Outboxer triggers: player hit recently, or active dodge flag, or enemy attacking facing us
+                local isHitRecently = (Model.State.lastHitTime and (tick() - Model.State.lastHitTime < 1.4))
+                if autoDodgeEnabled and (isHitRecently or Model.State.isDodgingAttack or (isAttacking and facingUs)) then
                     if not Model.State.isDodgingAttack then
                         Model.State.isDodgingAttack = true
                         Model.State.lastDodgeTick = tick()
-                        print("[AutoFarm] 🥊 Outboxer Dodge! Enemy attack detected (" .. (attackTrack and attackTrack.Name or (tookDamage and "Hit/Damage" or "Action")) .. ") - disengaging 32 studs away to avoid staying near!")
+                        warn("[AutoFarm] 🥊 Outboxer Dodge Active! Disengaging 32 studs away to avoid staying near!")
                     end
-                    Model.State.dodgeTimer = 1.0 -- Maintain outboxer range while attack combo string plays out
-                elseif Model.State.dodgeTimer and Model.State.dodgeTimer > 0 then
-                    if isAttacking then
-                        Model.State.dodgeTimer = 0.8 -- Keep holding outboxer distance if boss is still swinging!
-                    else
+                    if not Model.State.dodgeTimer or Model.State.dodgeTimer <= 0 then
+                        Model.State.dodgeTimer = 1.4
+                    elseif not isHitRecently and not isAttacking then
                         Model.State.dodgeTimer = Model.State.dodgeTimer - deltaTime
+                        if Model.State.dodgeTimer <= 0 then
+                            Model.State.isDodgingAttack = false
+                        end
                     end
+                elseif Model.State.dodgeTimer and Model.State.dodgeTimer > 0 then
+                    Model.State.dodgeTimer = Model.State.dodgeTimer - deltaTime
                     if Model.State.dodgeTimer <= 0 then
                         Model.State.isDodgingAttack = false
                     end
@@ -1612,7 +1708,10 @@ function Model.DoMeleeCombo()
     print("[AutoFarm] Enemies in range! Starting Combo with " .. equippedToolName)
     for currentHit = 1, 4 do
         if not Model.State.isAutoFarming then break end
-        if Model.State.isDodgingAttack then break end
+        if Model.State.isDodgingAttack or Model.State.cancelCombo then
+            Model.State.cancelCombo = false
+            break
+        end
         
         local character = LocalPlayer.Character
         if not character or not character:FindFirstChild("HumanoidRootPart") then break end
@@ -1656,7 +1755,10 @@ function Model.DoMeleeCombo()
         
         task.wait(0.35) 
         
-        if not Model.State.isAutoFarming then break end
+        if not Model.State.isAutoFarming or Model.State.isDodgingAttack or Model.State.cancelCombo then
+            Model.State.cancelCombo = false
+            break
+        end
         
         local currentTargets = Model.GetEnemiesInRange()
         local roots = {}
@@ -1679,6 +1781,10 @@ function Model.DoMeleeCombo()
             task.spawn(function() pcall(function() combatRegister:InvokeServer(unpack(damageArgs)) end) end)
         end
         task.wait(0.2)
+        if Model.State.isDodgingAttack or Model.State.cancelCombo then
+            Model.State.cancelCombo = false
+            break
+        end
     end
     
     -- ========================================================
@@ -1687,9 +1793,11 @@ function Model.DoMeleeCombo()
     -- An outboxer delivers a combo then immediately steps out 32 studs away
     -- to avoid staying near the opponent, letting the boss swing & whiff at empty air!
     if getgenv().AutoDodge ~= false and currentEnemy and Model.State.isAutoFarming then
-        Model.State.isDodgingAttack = true
-        Model.State.dodgeTimer = 1.3 -- Disengage for 1.3 seconds
-        print("[AutoFarm] 🥊 Outboxer: Combo landed! Disengaging 32 studs away to avoid staying near!")
+        if not Model.State.isDodgingAttack then
+            Model.State.isDodgingAttack = true
+            Model.State.dodgeTimer = 1.3 -- Disengage for 1.3 seconds
+            print("[AutoFarm] 🥊 Outboxer: Combo landed! Disengaging 32 studs away to avoid staying near!")
+        end
         task.wait(1.3)
         Model.State.isDodgingAttack = false
     elseif Model.State.isAutoFarming then
@@ -2356,11 +2464,13 @@ local heartbeatConn = RunService.Heartbeat:Connect(function(deltaTime)
 end)
 
 local charAddedConn = LocalPlayer.CharacterAdded:Connect(function(newChar)
+    hookPlayerHitDetection(newChar)
     if not Model.State.isAutoFarming then return end
     task.spawn(function()
         task.wait(0.4)
         local root = newChar:WaitForChild("HumanoidRootPart", 5)
         if root then
+            hookPlayerHitDetection(newChar)
             Model.ResetPhysics()
             currentEnemy = nil
             Model.State.botMode = "NAVIGATE_MAZE"
@@ -2393,6 +2503,11 @@ getgenv().StopAutofarm = function()
     Model.State.isAutoFarming = false
     Model.ResetPhysics()
     
+    if Model._healthConn then pcall(function() Model._healthConn:Disconnect() end) end
+    if Model._childAddedConn then pcall(function() Model._childAddedConn:Disconnect() end) end
+    if Model._clientDmgConn then pcall(function() Model._clientDmgConn:Disconnect() end) end
+    if Model._combatTagConn then pcall(function() Model._combatTagConn:Disconnect() end) end
+    
     if steppedConn then steppedConn:Disconnect() end
     if heartbeatConn then heartbeatConn:Disconnect() end
     if charAddedConn then charAddedConn:Disconnect() end
@@ -2410,6 +2525,12 @@ getgenv().StopAutofarm = function()
     
     print("[Melee Autofarm] Autofarm forcefully stopped and UI destroyed.")
 end
+
+-- Initialize Hit Detection listeners on load
+if LocalPlayer.Character then
+    hookPlayerHitDetection(LocalPlayer.Character)
+end
+hookRemoteDamageEvents()
 
 
 
