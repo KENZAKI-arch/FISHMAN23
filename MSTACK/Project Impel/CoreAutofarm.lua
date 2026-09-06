@@ -1365,20 +1365,10 @@ function Model.UpdateTracking(deltaTime)
                     end
                 else
                     -- ========================================================
-                    -- NORMAL COMBAT POSITIONING: REAR BLINDSPOT WITH WEAVE
+                    -- NORMAL COMBAT POSITIONING: VERTICALLY ABOVE ENEMY'S HEAD
                     -- ========================================================
-                    local smartBehindDist = math.clamp(enemyRadius + 2.0, 3.5, 12.0)
-                    local behindDir = -eHrp.CFrame.LookVector
-                    local sideWeave = eHrp.CFrame.RightVector * (math.sin(tick() * 3) * 1.5)
-                    local offsetDir = (behindDir + (sideWeave * 0.3)).Unit
-                    local targetOffset = offsetDir * smartBehindDist
-                    
-                    local wallRay = Workspace:Raycast(origin, targetOffset, rayParams)
-                    if wallRay then
-                        targetSpot = wallRay.Position - (offsetDir * 1.5)
-                    else
-                        targetSpot = origin + targetOffset
-                    end
+                    -- User requested: "when im attacking make me just above the enemy's head literally just vertically above no sideways"
+                    targetSpot = Vector3.new(eHrp.Position.X, desiredY, eHrp.Position.Z)
                 end
             else
                 targetSpot = Vector3.new(targetDest.X, desiredY, targetDest.Z)
@@ -1450,7 +1440,8 @@ function Model.UpdateTracking(deltaTime)
         
         local finalCFrame
         if (lookPos - actualTarget).Magnitude < 0.1 then
-            finalCFrame = CFrame.new(actualTarget, actualTarget + rootPart.CFrame.LookVector)
+            local faceDir = (currentEnemy and eHrp) and eHrp.CFrame.LookVector or rootPart.CFrame.LookVector
+            finalCFrame = CFrame.lookAt(actualTarget, actualTarget + faceDir)
         else
             finalCFrame = CFrame.lookAt(actualTarget, lookPos)
         end
