@@ -1453,45 +1453,22 @@ function Model.UpdateTracking(deltaTime)
                 
                 if Model.State.isDodgingAttack then
                     -- ========================================================
-                    -- ACTIVE AUTO-DODGE: OUTBOXER LONG-RANGE DISENGAGE (30-35 STUDS)
+                    -- ACTIVE AUTO-DODGE: OUTBOXER FARAWAY SPIN (28-32 STUDS)
                     -- ========================================================
-                    -- User requested: Outboxer style! Avoid staying near the enemy.
-                    -- Disengages 32 studs away into open space to completely avoid the enemy's reach.
-                    local outboxerDist = math.max(32.0, enemyRadius + 22.0)
+                    -- User requested: "spinning from faraway ... like rubberbanding"
+                    local outboxerDist = math.max(30.0, enemyRadius + 20.0)
                     
-                    local diff = (rootPart.Position - eHrp.Position)
-                    local flatDiff = Vector3.new(diff.X, 0, diff.Z)
-                    local baseAwayDir
-                    if flatDiff.Magnitude > 1.0 then
-                        baseAwayDir = flatDiff.Unit
-                    else
-                        baseAwayDir = -eHrp.CFrame.LookVector
-                    end
+                    -- Smoothly advance orbit spin angle around the enemy
+                    Model.State.orbitAngle = ((Model.State.orbitAngle or 0) + (deltaTime * 2.8)) % (math.pi * 2)
+                    local orbitDir = Vector3.new(math.cos(Model.State.orbitAngle), 0, math.sin(Model.State.orbitAngle))
                     
-                    -- Check 10 angles around the enemy to find direction with maximum open clearance away from walls
-                    local testAngles = {0, 30, -30, 60, -60, 90, -90, 120, -120, 180}
-                    local bestDir = baseAwayDir
-                    local bestDist = 0
-                    
-                    for _, angle in ipairs(testAngles) do
-                        local testDir = (angle == 0) and baseAwayDir or (CFrame.Angles(0, math.rad(angle), 0):VectorToWorldSpace(baseAwayDir)).Unit
-                        local ray = Workspace:Raycast(origin, testDir * outboxerDist, rayParams)
-                        local clearDist = ray and (ray.Distance - 2.0) or outboxerDist
-                        if clearDist >= outboxerDist - 1 then
-                            bestDir = testDir
-                            bestDist = outboxerDist
-                            break
-                        elseif clearDist > bestDist then
-                            bestDist = clearDist
-                            bestDir = testDir
-                        end
-                    end
-                    
-                    local finalDist = math.max(18.0, math.min(outboxerDist, bestDist))
-                    targetSpot = origin + (bestDir * finalDist)
+                    -- Raycast check along orbit vector to ensure we don't clip into walls
+                    local ray = Workspace:Raycast(origin, orbitDir * outboxerDist, rayParams)
+                    local finalDist = ray and math.max(16.0, ray.Distance - 2.5) or outboxerDist
+                    targetSpot = origin + (orbitDir * finalDist)
                 else
                     -- ========================================================
-                    -- NORMAL COMBAT POSITIONING: VERTICALLY ABOVE ENEMY'S HEAD
+                    -- ATTACK POSITIONING: DIRECTLY VERTICALLY ABOVE ENEMY'S HEAD
                     -- ========================================================
                     -- User requested: "when im attacking make me just above the enemy's head literally just vertically above no sideways"
                     targetSpot = Vector3.new(eHrp.Position.X, desiredY, eHrp.Position.Z)
@@ -1560,7 +1537,10 @@ function Model.UpdateTracking(deltaTime)
         
         -- Face the target smoothly and safely
         local lookPos = Vector3.new(actualTarget.X, actualTarget.Y, actualTarget.Z)
-        if Model.State.evadingTimer <= 0 then
+        if currentEnemy and eHrp then
+            -- Always face towards the enemy in combat
+            lookPos = Vector3.new(eHrp.Position.X, actualTarget.Y, eHrp.Position.Z)
+        elseif Model.State.evadingTimer <= 0 then
             lookPos = Vector3.new(targetDest.X, actualTarget.Y, targetDest.Z)
         end
         
@@ -1573,9 +1553,9 @@ function Model.UpdateTracking(deltaTime)
         end
         
         local currentMoveSpeed = flySpeed
-        if currentEnemy and Model.State.isDodgingAttack then
-            -- Outboxer disengage speed! Fast snap to safe distance
-            currentMoveSpeed = math.max(flySpeed * 2.5, 130)
+        if currentEnemy then
+            -- Rubberband snap speed! 175 studs/s for high-speed snap-in and snap-out
+            currentMoveSpeed = math.max(flySpeed * 2.8, 175)
         end
         if distToActual > 0.5 then
             local lerpAlpha = math.clamp((currentMoveSpeed * deltaTime) / distToActual, 0, 1)
@@ -1679,33 +1659,58 @@ function Model.DoMeleeCombo()
     local combatRegister = ReplicatedStorage:FindFirstChild("Events") and ReplicatedStorage.Events:FindFirstChild("CombatRegister")
     if not combatRegister then return end
     
-    -- If outboxer is currently disengaged 32 studs away, wait for disengage to finish
+    -- If currently in the faraway spin phase, wait for spin duration to elapse
     if Model.State.isDodgingAttack then
-        task.wait(0.2)
+        task.wait(0.05)
+        return
+    end
+    
+    local character = LocalPlayer.Character
+    if not character or not character:FindFirstChild("HumanoidRootPart") then return end
+    local rootPart = character.HumanoidRootPart
+    
+    if not currentEnemy or not currentEnemy:FindFirstChild("HumanoidRootPart") then
+        task.wait(0.1)
+        return
+    end
+    local eHrp = currentEnemy.HumanoidRootPart
+    
+    -- ========================================================
+    -- RUBBERBAND SNAP-IN: RUSH TO ENEMY HEAD FAST
+    -- ========================================================
+    -- High speed snap onto the enemy's head (waits until within 15 studs)
+    local snapStart = tick()
+    while tick() - snapStart < 0.4 do
+        if not Model.State.isAutoFarming or Model.State.isDodgingAttack or Model.State.cancelCombo then break end
+        local dist = (rootPart.Position - eHrp.Position).Magnitude
+        if dist <= 14 then break end
+        task.wait(0.02)
+    end
+    
+    if not Model.State.isAutoFarming or Model.State.isDodgingAttack or Model.State.cancelCombo then
+        Model.State.cancelCombo = false
         return
     end
     
     Model.EquipMelee()
     local targets = Model.GetEnemiesInRange()
     if #targets == 0 then
-        task.wait(0.3)
+        task.wait(0.05)
         return
     end
+    
     local equippedToolName = "Melee"
-    local character = LocalPlayer.Character
-    if character then
-        local tool = character:FindFirstChildOfClass("Tool")
-        if tool then
-            local swordFolder = ReplicatedStorage:FindFirstChild("Modules")
-                and ReplicatedStorage.Modules:FindFirstChild("SwordHandle")
-                and ReplicatedStorage.Modules.SwordHandle:FindFirstChild("Swords")
-            if swordFolder and swordFolder:FindFirstChild(tool.Name) then
-                equippedToolName = tool.Name
-            end
+    local tool = character:FindFirstChildOfClass("Tool")
+    if tool then
+        local swordFolder = ReplicatedStorage:FindFirstChild("Modules")
+            and ReplicatedStorage.Modules:FindFirstChild("SwordHandle")
+            and ReplicatedStorage.Modules.SwordHandle:FindFirstChild("Swords")
+        if swordFolder and swordFolder:FindFirstChild(tool.Name) then
+            equippedToolName = tool.Name
         end
     end
 
-    print("[AutoFarm] Enemies in range! Starting Combo with " .. equippedToolName)
+    print("[AutoFarm] ⚡ Rubberband Dash In! Sneaking in combo with " .. equippedToolName)
     for currentHit = 1, 4 do
         if not Model.State.isAutoFarming then break end
         if Model.State.isDodgingAttack or Model.State.cancelCombo then
@@ -1713,9 +1718,7 @@ function Model.DoMeleeCombo()
             break
         end
         
-        local character = LocalPlayer.Character
         if not character or not character:FindFirstChild("HumanoidRootPart") then break end
-        
         local myCFrame = character.HumanoidRootPart.CFrame
         
         local punchAnim
@@ -1753,7 +1756,7 @@ function Model.DoMeleeCombo()
         }
         task.spawn(function() pcall(function() combatRegister:InvokeServer(unpack(swingArgs)) end) end)
         
-        task.wait(0.35) 
+        task.wait(0.24) -- Fast, crisp hit pacing
         
         if not Model.State.isAutoFarming or Model.State.isDodgingAttack or Model.State.cancelCombo then
             Model.State.cancelCombo = false
@@ -1780,7 +1783,7 @@ function Model.DoMeleeCombo()
             }
             task.spawn(function() pcall(function() combatRegister:InvokeServer(unpack(damageArgs)) end) end)
         end
-        task.wait(0.2)
+        task.wait(0.12)
         if Model.State.isDodgingAttack or Model.State.cancelCombo then
             Model.State.cancelCombo = false
             break
@@ -1788,18 +1791,14 @@ function Model.DoMeleeCombo()
     end
     
     -- ========================================================
-    -- OUTBOXER HIT-AND-RUN: DISENGAGE 32 STUDS AFTER COMBO!
+    -- RUBBERBAND SNAP-OUT: CATAPULT BACK TO SAFE AREA & SPIN!
     -- ========================================================
-    -- An outboxer delivers a combo then immediately steps out 32 studs away
-    -- to avoid staying near the opponent, letting the boss swing & whiff at empty air!
+    -- Immediately snaps back out 30 studs away into safe faraway spin
     if getgenv().AutoDodge ~= false and currentEnemy and Model.State.isAutoFarming then
-        if not Model.State.isDodgingAttack then
-            Model.State.isDodgingAttack = true
-            Model.State.dodgeTimer = 1.3 -- Disengage for 1.3 seconds
-            print("[AutoFarm] 🥊 Outboxer: Combo landed! Disengaging 32 studs away to avoid staying near!")
-        end
-        task.wait(1.3)
-        Model.State.isDodgingAttack = false
+        Model.State.isDodgingAttack = true
+        Model.State.dodgeTimer = 1.05 -- Spin faraway for 1.05 seconds
+        print("[AutoFarm] 🪀 Rubberband Snap-Out! Catapulting back 30 studs to spin from faraway!")
+        task.wait(0.25)
     elseif Model.State.isAutoFarming then
         task.wait(0.1)
     end
