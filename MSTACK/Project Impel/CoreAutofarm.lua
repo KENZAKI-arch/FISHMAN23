@@ -359,6 +359,37 @@ local function findStage2Boss(allEnemies)
     return nil
 end
 
+local function isStage3PriorityBoss(npc)
+    if not npc or not npc.Name then return false end
+    local name = string.lower(npc.Name)
+    if string.find(name, "head jailer") or (string.find(name, "jailer") and string.find(name, "head")) then
+        return true
+    end
+    if string.find(name, "jailer of impel") or string.find(name, "head jailer of impel down") then
+        return true
+    end
+    return false
+end
+
+local function findStage3Boss(allEnemies)
+    local isStage3 = (getgenv().CURRENT_STAGE == 3 or currentStage == 3)
+    if not isStage3 then return nil end
+    
+    local character = LocalPlayer.Character
+    local rootPart = character and character:FindFirstChild("HumanoidRootPart")
+    if not rootPart then return nil end
+
+    for _, npc in ipairs(allEnemies) do
+        if isValidTarget(npc) and isStage3PriorityBoss(npc) then
+            local bHrp = npc:FindFirstChild("HumanoidRootPart")
+            if bHrp then
+                return npc
+            end
+        end
+    end
+    return nil
+end
+
 -- Find the highest priority target, prioritizing the lowest HP and closest one that is in line of sight
 local function findBestTarget(allEnemies)
     local character = LocalPlayer.Character
@@ -1275,7 +1306,7 @@ function Model.UpdateTracking(deltaTime)
                 local isAttacking, attackTrack = false, nil
                 local distToEnemy = (rootPart.Position - eHrp.Position).Magnitude
                 
-                if autoDodgeEnabled and distToEnemy <= 24 then
+                if autoDodgeEnabled and distToEnemy <= 30 then
                     isAttacking, attackTrack = isEnemyAttacking(currentEnemy)
                 end
                 
@@ -1287,9 +1318,9 @@ function Model.UpdateTracking(deltaTime)
                         Model.State.isDodgingAttack = true
                         Model.State.dodgeFlankSign = -(Model.State.dodgeFlankSign or 1)
                         Model.State.lastDodgeTick = tick()
-                        print("[AutoFarm] ⚡ Auto-Dodge! Enemy attack detected (" .. (attackTrack and attackTrack.Name or "Action") .. ") - slipping into rear blindspot!")
+                        print("[AutoFarm] ⚡ Auto-Dodge! Enemy attack detected (" .. (attackTrack and attackTrack.Name or "Action") .. ") - slipping 15 studs into rear blindspot!")
                     end
-                    Model.State.dodgeTimer = 0.55 -- Hold dodge slip during attack animation
+                    Model.State.dodgeTimer = 0.7 -- Hold dodge slip during attack animation
                 elseif Model.State.dodgeTimer and Model.State.dodgeTimer > 0 then
                     Model.State.dodgeTimer = Model.State.dodgeTimer - deltaTime
                     if Model.State.dodgeTimer <= 0 then
@@ -1305,18 +1336,16 @@ function Model.UpdateTracking(deltaTime)
                 
                 if Model.State.isDodgingAttack then
                     -- ========================================================
-                    -- ACTIVE AUTO-DODGE: BLINDSPOT SLIP
+                    -- ACTIVE AUTO-DODGE: 15 STUDS BLINDSPOT SLIP
                     -- ========================================================
-                    -- Instead of retreating backward (which breaks attack range),
-                    -- slip rapidly into the enemy's rear blindspot & flank!
+                    -- User requested: dodge 15 studs farther away!
+                    -- Slips rapidly 15 studs into the enemy's rear blindspot & flank.
                     -- Enemy melee hitboxes only strike forward along LookVector.
-                    -- Being behind/flanking causes 100% of their swings to whiff!
-                    -- At 3.5 to 8.5 studs distance, we stay strictly inside attack range (18 studs)
-                    -- so our attack combos continue uninterrupted!
+                    -- Being behind/flanking at 15 studs causes 100% of their swings & skills to whiff!
                     local behindDir = -eHrp.CFrame.LookVector
                     local flankDir = eHrp.CFrame.RightVector * (Model.State.dodgeFlankSign or 1)
                     local dodgeDir = (behindDir * 0.85 + flankDir * 0.45).Unit
-                    local smartDodgeDist = math.clamp(enemyRadius + 2.2, 3.5, 8.5)
+                    local smartDodgeDist = math.max(15.0, enemyRadius + 8.0)
                     local targetOffset = dodgeDir * smartDodgeDist
                     
                     local wallRay = Workspace:Raycast(origin, targetOffset, rayParams)
@@ -1326,7 +1355,8 @@ function Model.UpdateTracking(deltaTime)
                         local altTargetOffset = altDir * smartDodgeDist
                         local altWall = Workspace:Raycast(origin, altTargetOffset, rayParams)
                         if altWall then
-                            targetSpot = wallRay.Position - (dodgeDir * 1.0)
+                            local clearDist = math.max(3.5, math.min(wallRay.Distance - 1.5, altWall.Distance - 1.5))
+                            targetSpot = origin + (dodgeDir * clearDist)
                         else
                             targetSpot = origin + altTargetOffset
                         end
@@ -1427,8 +1457,8 @@ function Model.UpdateTracking(deltaTime)
         
         local currentMoveSpeed = flySpeed
         if currentEnemy and Model.State.isDodgingAttack then
-            -- Whip behind the enemy before their attack hitbox connects!
-            currentMoveSpeed = math.max(flySpeed * 2.2, 110)
+            -- Whip 15 studs behind the enemy before their attack hitbox connects!
+            currentMoveSpeed = math.max(flySpeed * 2.5, 125)
         end
         if distToActual > 0.5 then
             local lerpAlpha = math.clamp((currentMoveSpeed * deltaTime) / distToActual, 0, 1)
@@ -1494,7 +1524,7 @@ function Model.GetEnemiesInRange()
     local stage2Boss = findStage2Boss(allEnemies)
     if stage2Boss then
         local bossRadius = getEnemyDimensions(stage2Boss)
-        local attackRange = math.max(18, bossRadius + 10)
+        local attackRange = math.max(24, bossRadius + 12)
         local bHrp = stage2Boss:FindFirstChild("HumanoidRootPart")
         if bHrp and (character.HumanoidRootPart.Position - bHrp.Position).Magnitude <= attackRange then
             return { stage2Boss }
@@ -1502,10 +1532,22 @@ function Model.GetEnemiesInRange()
         return {}
     end
 
+    -- Stage 3 Boss Priority: Only attack Head Jailer if present and in range
+    local stage3Boss = findStage3Boss(allEnemies)
+    if stage3Boss then
+        local bossRadius = getEnemyDimensions(stage3Boss)
+        local attackRange = math.max(24, bossRadius + 12)
+        local bHrp = stage3Boss:FindFirstChild("HumanoidRootPart")
+        if bHrp and (character.HumanoidRootPart.Position - bHrp.Position).Magnitude <= attackRange then
+            return { stage3Boss }
+        end
+        return {}
+    end
+
     for _, npc in pairs(allEnemies) do
         if isValidTarget(npc) then
             local enemyRadius = getEnemyDimensions(npc)
-            local attackRange = math.max(18, enemyRadius + 10)
+            local attackRange = math.max(24, enemyRadius + 12)
             if (character.HumanoidRootPart.Position - npc.HumanoidRootPart.Position).Magnitude <= attackRange then
                 table.insert(enemiesList, npc)
             end
