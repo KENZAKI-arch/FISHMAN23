@@ -113,9 +113,7 @@ Model.State = {
     hasEngagedStage2Boss = (getgenv().STAGE2_SAVED_STATE and getgenv().STAGE2_SAVED_STATE.bossEncountered) or false,
     leverPulled = (getgenv().STAGE2_SAVED_STATE and getgenv().STAGE2_SAVED_STATE.leverPulled) or false,
     returningToBoss = (getgenv().STAGE2_SAVED_STATE and getgenv().STAGE2_SAVED_STATE.returningToBoss) or false,
-    wasDead = false,
-    lastHealth = nil,
-    hitDisengageTimer = 0
+    wasDead = false
 }
 
 -- ==========================================
@@ -357,8 +355,6 @@ function Model.ResetPhysics()
     Model.State.isWaitingAtWaypoint = false
     Model.State.evadingTimer = 0
     Model.State.stuckTimer = 0
-    Model.State.hitDisengageTimer = 0
-    Model.State.lastHealth = nil
     visualizerFolder:ClearAllChildren()
 end
 
@@ -377,23 +373,7 @@ function Model.UpdateTracking(deltaTime)
     local isStunned = character:FindFirstChild("Stun") or character:FindFirstChild("frozen") or _G.canuse == false
     local isDead = humanoid.Health <= 0
     
-    if not Model.State.lastHealth then
-        Model.State.lastHealth = humanoid.Health
-    end
-    local tookDamage = (humanoid.Health < Model.State.lastHealth - 0.5)
-    Model.State.lastHealth = humanoid.Health
-    
     local inCombat = (Model.State.botMode == "MAZE_COMBAT" or Model.State.botMode == "ROOM_COMBAT" or currentEnemy ~= nil)
-    if (tookDamage or isStunned or isRagdolled) and inCombat then
-        if Model.State.hitDisengageTimer <= 0 then
-            print("[AutoFarm] ⚡ Hit/Stun detected! Dynamically disengaging horizontally (scaled to opponent size) to drop combo...")
-        end
-        Model.State.hitDisengageTimer = 1.0 -- Disengage horizontally for 1.0s to let the enemy combo drop
-    end
-    
-    if Model.State.hitDisengageTimer > 0 then
-        Model.State.hitDisengageTimer = Model.State.hitDisengageTimer - deltaTime
-    end
     
     if isDead then
         if not Model.State.wasDead then
@@ -1194,66 +1174,28 @@ function Model.UpdateTracking(deltaTime)
             
             local eHrp = currentEnemy:FindFirstChild("HumanoidRootPart")
             if eHrp then
-                local isEvadingHit = (Model.State.hitDisengageTimer > 0 or isStunned or isRagdolled)
                 local enemyRadius, enemyHeight = getEnemyDimensions(currentEnemy)
                 
-                -- Smart opponent-based scaling:
-                -- Disengage distance scales dynamically with opponent's physical size & attack reach:
-                -- Small mob (radius ~2.0): disengages ~10.4 studs (outside short melee swings)
-                -- Elite Guard (radius ~5.0): disengages ~17.0 studs
-                -- Giant Boss (radius ~8.0): disengages ~23.6 studs (outside massive weapon swings)
-                local smartDisengageDist = math.clamp(enemyRadius * 2.2 + 6.0, 10.0, 35.0)
-                -- Normal combat positioning: stay right behind back (prevents clipping inside large boss models)
+                -- Relentless combat positioning: stay right behind the enemy's back at all times!
+                -- User requested: remove the horizontal dodge and keep attacking continuously even if hit!
                 local smartBehindDist = math.clamp(enemyRadius + 2.0, 3.5, 12.0)
-                
-                local horizontalDist = isEvadingHit and smartDisengageDist or smartBehindDist
                 local origin = Vector3.new(eHrp.Position.X, desiredY, eHrp.Position.Z)
                 
+                local behindDir = -eHrp.CFrame.LookVector
+                local sideWeave = eHrp.CFrame.RightVector * (math.sin(tick() * 3) * 1.5)
+                local offsetDir = (behindDir + (sideWeave * 0.3)).Unit
+                local targetOffset = offsetDir * smartBehindDist
+                
+                -- Prevent backing into walls behind the enemy
                 local rayParams = RaycastParams.new()
                 rayParams.FilterDescendantsInstances = {character, currentEnemy}
                 rayParams.FilterType = Enum.RaycastFilterType.Exclude
                 
-                if isEvadingHit then
-                    -- Smart Disengage: dynamically scales to opponent size horizontally away from enemy
-                    local diff = (rootPart.Position - eHrp.Position)
-                    local flatDiff = Vector3.new(diff.X, 0, diff.Z)
-                    local baseDir = (flatDiff.Magnitude > 0.1) and flatDiff.Unit or -eHrp.CFrame.LookVector
-                    
-                    -- Check multiple horizontal angles to find direction with maximum clear distance away from enemy
-                    local testAngles = {0, 45, -45, 90, -90, 135, -135}
-                    local bestDir = baseDir
-                    local bestDist = 0
-                    
-                    for _, angle in ipairs(testAngles) do
-                        local testDir = (angle == 0) and baseDir or (CFrame.Angles(0, math.rad(angle), 0):VectorToWorldSpace(baseDir)).Unit
-                        local ray = Workspace:Raycast(origin, testDir * horizontalDist, rayParams)
-                        local clearDist = ray and (ray.Distance - 1.5) or horizontalDist
-                        if clearDist >= horizontalDist - 1 then
-                            bestDir = testDir
-                            bestDist = horizontalDist
-                            break
-                        elseif clearDist > bestDist then
-                            bestDist = clearDist
-                            bestDir = testDir
-                        end
-                    end
-                    
-                    local finalDist = math.max(0, math.min(horizontalDist, bestDist))
-                    targetSpot = origin + (bestDir * finalDist)
+                local wallRay = Workspace:Raycast(origin, targetOffset, rayParams)
+                if wallRay then
+                    targetSpot = wallRay.Position - (offsetDir * 1.5)
                 else
-                    -- Normal combat: smart distance behind the enemy's back (prevents clipping inside large boss models)
-                    local behindDir = -eHrp.CFrame.LookVector
-                    local sideWeave = eHrp.CFrame.RightVector * (math.sin(tick() * 3) * 1.5)
-                    local offsetDir = (behindDir + (sideWeave * 0.3)).Unit
-                    local targetOffset = offsetDir * horizontalDist
-                    
-                    -- Prevent backing into walls behind the enemy
-                    local wallRay = Workspace:Raycast(origin, targetOffset, rayParams)
-                    if wallRay then
-                        targetSpot = wallRay.Position - (offsetDir * 1.5)
-                    else
-                        targetSpot = origin + targetOffset
-                    end
+                    targetSpot = origin + targetOffset
                 end
             else
                 targetSpot = Vector3.new(targetDest.X, desiredY, targetDest.Z)
@@ -1330,7 +1272,7 @@ function Model.UpdateTracking(deltaTime)
             finalCFrame = CFrame.lookAt(actualTarget, lookPos)
         end
         
-        local currentMoveSpeed = (currentEnemy and Model.State.hitDisengageTimer > 0) and (flySpeed * 1.6) or flySpeed
+        local currentMoveSpeed = flySpeed
         if distToActual > 0.5 then
             local lerpAlpha = math.clamp((currentMoveSpeed * deltaTime) / distToActual, 0, 1)
             rootPart.CFrame = rootPart.CFrame:Lerp(finalCFrame, lerpAlpha)
