@@ -732,6 +732,7 @@ function Model.UpdateTracking(deltaTime)
                 end
             end
         end
+        end
         
     elseif Model.State.botMode == "MAZE_COMBAT" then
         isPatrolling = false

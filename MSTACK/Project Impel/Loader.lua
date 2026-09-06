@@ -60,20 +60,45 @@ pcall(function()
     end
 end)
 
+local function safeLoad(url, name)
+    local success, content = pcall(function() return game:HttpGet(url) end)
+    if not success or not content then
+        warn("[Impel Loader] Failed to download " .. name .. ": " .. tostring(content))
+        return false
+    end
+    local fn, err = loadstring(content)
+    if not fn then
+        warn("[Impel Loader] Syntax error in " .. name .. ": " .. tostring(err))
+        return false
+    end
+    local runSuccess, runErr = pcall(fn)
+    if not runSuccess then
+        warn("[Impel Loader] Runtime error in " .. name .. ": " .. tostring(runErr))
+        return false
+    end
+    return true
+end
+
 print("[Impel Loader] Auto-detected Stage " .. TARGET_STAGE .. "...")
 
+local stageUrl
 if TARGET_STAGE == 1 then
-    loadstring(game:HttpGet("https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/MSTACK/Project%20Impel/Stage1.lua"))()
+    stageUrl = "https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/MSTACK/Project%20Impel/Stage1.lua"
 elseif TARGET_STAGE == 2 then
-    loadstring(game:HttpGet("https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/MSTACK/Project%20Impel/Stage2.lua"))()
+    stageUrl = "https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/MSTACK/Project%20Impel/Stage2.lua"
 elseif TARGET_STAGE == 3 then
-    loadstring(game:HttpGet("https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/MSTACK/Project%20Impel/Stage3.lua"))()
+    stageUrl = "https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/MSTACK/Project%20Impel/Stage3.lua"
 else
     warn("Invalid Stage Selected!")
     return
 end
 
--- Load the Core Engine after the stage configuration is set
-loadstring(game:HttpGet("https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/MSTACK/Project%20Impel/CoreAutofarm.lua"))()
+if not safeLoad(stageUrl, "Stage " .. tostring(TARGET_STAGE)) then
+    return
+end
 
-print("[Impel Loader] Core Autofarm Engine successfully loaded for Stage " .. tostring(TARGET_STAGE) .. "!")
+-- Load the Core Engine after the stage configuration is set
+local coreUrl = "https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/MSTACK/Project%20Impel/CoreAutofarm.lua"
+if safeLoad(coreUrl, "CoreAutofarm") then
+    print("[Impel Loader] Core Autofarm Engine successfully loaded for Stage " .. tostring(TARGET_STAGE) .. "!")
+end
