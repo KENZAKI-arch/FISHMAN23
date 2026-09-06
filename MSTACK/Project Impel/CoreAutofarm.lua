@@ -100,6 +100,9 @@ Model.State = {
     evasionDir = Vector3.new(0, 0, 0),
     mazePath = {},
     mazeIndex = 1,
+    mazeStartPos = nil,
+    mazeTotalWaypoints = 0,
+    halfwayRecalculated = false,
     stuckTimer = 0,
     lastMazeDist = 0,
     botMode = "NAVIGATE_MAZE", -- "NAVIGATE_MAZE", "ROOM_ROUND_UP", "ROOM_COMBAT"
@@ -316,6 +319,9 @@ function Model.ResetPhysics()
     end
     currentEnemy = nil
     Model.State.mazePath = {}
+    Model.State.mazeStartPos = nil
+    Model.State.mazeTotalWaypoints = 0
+    Model.State.halfwayRecalculated = false
     Model.State.isComputingPath = false
     Model.State.isWaitingAtWaypoint = false
     Model.State.evadingTimer = 0
@@ -586,6 +592,9 @@ function Model.UpdateTracking(deltaTime)
                                 Model.State.macroIndex = Model.State.macroIndex + 1
                                 currentMacro = MACRO_WAYPOINTS[Model.State.macroIndex]
                                 Model.State.mazePath = {} -- Force recalculation
+                                Model.State.mazeStartPos = nil
+                                Model.State.mazeTotalWaypoints = 0
+                                Model.State.halfwayRecalculated = false
                                 visualizerFolder:ClearAllChildren()
                                 Model.State.isWaitingAtWaypoint = false
                                 print("[AutoFarm] Wait complete! Advancing to Macro Waypoint " .. tostring(Model.State.macroIndex))
@@ -603,6 +612,9 @@ function Model.UpdateTracking(deltaTime)
                             Model.State.macroIndex = Model.State.macroIndex + 1
                             currentMacro = MACRO_WAYPOINTS[Model.State.macroIndex]
                             Model.State.mazePath = {} -- Force recalculation
+                            Model.State.mazeStartPos = nil
+                            Model.State.mazeTotalWaypoints = 0
+                            Model.State.halfwayRecalculated = false
                             visualizerFolder:ClearAllChildren()
                         end
                     end
@@ -634,6 +646,9 @@ function Model.UpdateTracking(deltaTime)
                         Model.State.macroIndex = closestIdx
                         currentMacro = MACRO_WAYPOINTS[Model.State.macroIndex]
                         Model.State.mazePath = {}
+                        Model.State.mazeStartPos = nil
+                        Model.State.mazeTotalWaypoints = 0
+                        Model.State.halfwayRecalculated = false
                         visualizerFolder:ClearAllChildren()
                     end
                 end
@@ -692,6 +707,8 @@ function Model.UpdateTracking(deltaTime)
                                     Model.State.pathFailCount = 0
                                     Model.State.mazePath = path:GetWaypoints()
                                     Model.State.mazeIndex = 2 -- Skip first waypoint (current pos)
+                                    Model.State.mazeStartPos = rootPart.Position
+                                    Model.State.mazeTotalWaypoints = #Model.State.mazePath
                                     drawWaypoints(Model.State.mazePath)
                                 else
                                     if not Model.State.pathFailCount then Model.State.pathFailCount = 0 end
@@ -970,11 +987,31 @@ function Model.UpdateTracking(deltaTime)
             
             if arrivalDistance <= 3.0 and #Model.State.mazePath > 0 and Model.State.mazeIndex <= #Model.State.mazePath then
                 Model.State.mazeIndex = Model.State.mazeIndex + 1
+
+                -- Stage 1 halfway maze recalculation
+                local isStage1 = (getgenv().CURRENT_STAGE == 1 or currentStage == 1)
+                if isStage1 and not Model.State.halfwayRecalculated and #Model.State.mazePath >= 10 then
+                    local halfwayIdx = math.floor((Model.State.mazeTotalWaypoints or #Model.State.mazePath) / 2)
+                    local isHalfwayByWaypoints = (Model.State.mazeIndex >= halfwayIdx)
+                    local isHalfwayByCoord = (rootPart.Position.Z <= -14747 and rootPart.Position.Z >= -15300 and (not Model.State.mazeStartPos or Model.State.mazeStartPos.Z > -14400))
+                    
+                    if isHalfwayByWaypoints or isHalfwayByCoord then
+                        print(string.format("[AutoFarm] 🔄 Halfway through Stage 1 Maze (Waypoint %d/%d, Z=%.1f)! Recalculating path...", Model.State.mazeIndex, #Model.State.mazePath, rootPart.Position.Z))
+                        Model.State.halfwayRecalculated = true
+                        Model.State.mazePath = {} -- Force fresh path calculation from current position to end pad
+                        visualizerFolder:ClearAllChildren()
+                        targetDest = rootPart.Position
+                        flatTarget = Vector3.new(targetDest.X, 0, targetDest.Z)
+                        horizontalDistance = 0
+                        arrivalDistance = 0
+                    end
+                end
+
                 if Model.State.mazeIndex > #Model.State.mazePath then
                     print("[AutoFarm Debug] Reached Maze Destination!")
                     Model.State.mazePath = {} -- Re-compute or just hover
                     visualizerFolder:ClearAllChildren()
-                else
+                elseif #Model.State.mazePath > 0 then
                     local rawPos = Model.State.mazePath[Model.State.mazeIndex].Position
                     targetDest = rawPos + Vector3.new(0, 1.8, 0)
                     flatTarget = Vector3.new(targetDest.X, 0, targetDest.Z)
