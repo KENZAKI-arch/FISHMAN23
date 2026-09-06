@@ -189,9 +189,10 @@ local function getAllEnemies()
 end
 
   local function isValidTarget(npc)
-      if not npc:FindFirstChild("HumanoidRootPart") then return false end
+      local hrp = npc:FindFirstChild("HumanoidRootPart") or npc:FindFirstChild("Torso") or npc.PrimaryPart
+      if not hrp then return false end
       
-      local humanoid = npc:FindFirstChild("Humanoid")
+      local humanoid = npc:FindFirstChildOfClass("Humanoid") or npc:FindFirstChild("Humanoid")
       if humanoid and humanoid.Health > 0 then
           local isVisible = false
           for _, part in ipairs(npc:GetDescendants()) do
@@ -224,13 +225,27 @@ local function getEnemyDimensions(npc)
         return radius, height
     end
     
-    local hrp = npc:FindFirstChild("HumanoidRootPart")
+    local hrp = npc:FindFirstChild("HumanoidRootPart") or npc:FindFirstChild("Torso") or npc.PrimaryPart
     if hrp then
         local rawRadius = math.max(hrp.Size.X, hrp.Size.Z) * 0.5
         return math.clamp(rawRadius, 1.5, 30.0), math.clamp(hrp.Size.Y, 3.0, 50.0)
     end
     
     return 2.5, 5.0
+end
+
+local function getEnemyHeadTopY(npc)
+    if not npc then return nil end
+    local eHrp = npc:FindFirstChild("HumanoidRootPart") or npc:FindFirstChild("Torso") or npc.PrimaryPart
+    if not eHrp then return nil end
+    
+    local head = npc:FindFirstChild("Head") or npc:FindFirstChild("head")
+    if head and head:IsA("BasePart") then
+        return head.Position.Y + (head.Size.Y * 0.5)
+    end
+    
+    local _, enemyHeight = getEnemyDimensions(npc)
+    return eHrp.Position.Y + (enemyHeight * 0.5)
 end
 
 -- ==========================================
@@ -460,16 +475,13 @@ local function isStage3PriorityBoss(npc)
 end
 
 local function findStage3Boss(allEnemies)
-    local isStage3 = (getgenv().CURRENT_STAGE == 3 or currentStage == 3)
-    if not isStage3 then return nil end
-    
     local character = LocalPlayer.Character
     local rootPart = character and character:FindFirstChild("HumanoidRootPart")
     if not rootPart then return nil end
 
     for _, npc in ipairs(allEnemies) do
         if isValidTarget(npc) and isStage3PriorityBoss(npc) then
-            local bHrp = npc:FindFirstChild("HumanoidRootPart")
+            local bHrp = npc:FindFirstChild("HumanoidRootPart") or npc:FindFirstChild("Torso") or npc.PrimaryPart
             if bHrp then
                 return npc
             end
@@ -483,6 +495,12 @@ local function findBestTarget(allEnemies)
     local character = LocalPlayer.Character
     local rootPart = character and character:FindFirstChild("HumanoidRootPart")
     if not rootPart then return nil end
+
+    -- Stage 3 Boss Priority: If Head Jailer of Impel Down is active, strictly prioritize it!
+    local stage3Boss = findStage3Boss(allEnemies)
+    if stage3Boss then
+        return stage3Boss
+    end
 
     -- Stage 2 Boss Priority: If Impel Down Elite High Guard is active, strictly prioritize it!
     local stage2Boss = findStage2Boss(allEnemies)
@@ -710,8 +728,8 @@ function Model.UpdateTracking(deltaTime)
             if hum and hum.Health > 0 then isAlive = true end
         end
         if not isAlive then
-            local isBoss = (isStage2PriorityBoss(currentEnemy) or cName == "Impel Down Elite High Guard")
-            if (currentStage == 2 or getgenv().CURRENT_STAGE == 2) and isBoss then
+            local isStage2Boss = (isStage2PriorityBoss(currentEnemy) or cName == "Impel Down Elite High Guard")
+            if (currentStage == 2 or getgenv().CURRENT_STAGE == 2) and isStage2Boss then
                 print("[AutoFarm] 🏆 Impel Down Elite High Guard has been DEFEATED!")
                 if getgenv().STAGE2_SAVED_STATE then
                     getgenv().STAGE2_SAVED_STATE.bossEncountered = false
@@ -721,6 +739,18 @@ function Model.UpdateTracking(deltaTime)
                 Model.State.returningToBoss = false
                 Model.State.botMode = "NAVIGATE_MAZE"
                 Model.State.macroIndex = 15 -- Advance directly to teleporter pad!
+                Model.State.mazePath = {}
+                visualizerFolder:ClearAllChildren()
+            end
+
+            local isStage3Boss = isStage3PriorityBoss(currentEnemy)
+            if (currentStage == 3 or getgenv().CURRENT_STAGE == 3) and isStage3Boss then
+                print("[AutoFarm] 🏆 Head Jailer of Impel Down has been DEFEATED!")
+                if getgenv().STAGE3_SAVED_STATE then
+                    getgenv().STAGE3_SAVED_STATE.bossEncountered = false
+                end
+                Model.State.hasEngagedStage3Boss = false
+                Model.State.botMode = "NAVIGATE_MAZE"
                 Model.State.mazePath = {}
                 visualizerFolder:ClearAllChildren()
             end
@@ -748,9 +778,28 @@ function Model.UpdateTracking(deltaTime)
         currentEnemy = nil
         isPatrolling = true
         
-        -- Stage 2 Boss Priority: If Impel Down Elite High Guard appears, prioritize it and ignore other enemies!
+        -- Stage 3 Boss Priority: If Head Jailer of Impel Down appears, prioritize it and engage!
+        local stage3Boss = findStage3Boss(allEnemies)
         local stage2Boss = findStage2Boss(allEnemies)
-        if stage2Boss then
+        if stage3Boss then
+            local bHrp = stage3Boss:FindFirstChild("HumanoidRootPart") or stage3Boss:FindFirstChild("Torso") or stage3Boss.PrimaryPart
+            if bHrp then
+                local distToBoss = (rootPart.Position - bHrp.Position).Magnitude
+                getgenv().STAGE3_SAVED_STATE = getgenv().STAGE3_SAVED_STATE or {}
+                getgenv().STAGE3_SAVED_STATE.bossEncountered = true
+                Model.State.hasEngagedStage3Boss = true
+                
+                -- Switch to direct combat if in range (<= 120 studs) or in boss room (macroIndex >= 16)
+                if distToBoss <= 120 or (Model.State.macroIndex and Model.State.macroIndex >= 16) then
+                    if Model.State.botMode ~= "MAZE_COMBAT" or currentEnemy ~= stage3Boss then
+                        print("[AutoFarm] 🚨 Head Jailer of Impel Down detected! Engaging Boss directly!")
+                        Model.State.botMode = "MAZE_COMBAT"
+                        currentEnemy = stage3Boss
+                        targetDest = bHrp.Position
+                    end
+                end
+            end
+        elseif stage2Boss then
             local bHrp = stage2Boss:FindFirstChild("HumanoidRootPart")
             if bHrp then
                 local distToBoss = (rootPart.Position - bHrp.Position).Magnitude
@@ -1111,9 +1160,15 @@ function Model.UpdateTracking(deltaTime)
             if bv then bv.Velocity = Vector3.new(0, 0, 0) end
             rootPart.Velocity = Vector3.new(0, 0, 0)
         else
-            -- Stage 2 Boss Priority: If boss is active, strictly lock onto it and ignore other enemies
+            -- Stage 3 Boss Priority: If Head Jailer is active, strictly lock onto it!
+            local stage3Boss = findStage3Boss(allEnemies)
             local stage2Boss = findStage2Boss(allEnemies)
-            if stage2Boss then
+            if stage3Boss then
+                if currentEnemy ~= stage3Boss then
+                    print("[AutoFarm] 🚨 Switching focus directly to Head Jailer of Impel Down!")
+                    currentEnemy = stage3Boss
+                end
+            elseif stage2Boss then
                 if currentEnemy ~= stage2Boss then
                     print("[AutoFarm] 🚨 Switching focus directly to Impel Down Elite High Guard!")
                     currentEnemy = stage2Boss
@@ -1133,10 +1188,12 @@ function Model.UpdateTracking(deltaTime)
             end
 
             -- Dive bomb the enemy
-            local hrp = currentEnemy:FindFirstChild("HumanoidRootPart")
+            local hrp = currentEnemy:FindFirstChild("HumanoidRootPart") or currentEnemy:FindFirstChild("Torso") or currentEnemy.PrimaryPart
             if hrp then
                 local enemyDist = (rootPart.Position - hrp.Position).Magnitude
-                if enemyDist > 65 and currentMacro and Model.State.macroIndex then
+                local isBoss = (stage3Boss and currentEnemy == stage3Boss) or (stage2Boss and currentEnemy == stage2Boss)
+                local maxEngageDist = isBoss and 150 or 65
+                if enemyDist > maxEngageDist and currentMacro and Model.State.macroIndex then
                     print(string.format("[AutoFarm] Target is %.1f studs away! Pathfinding back to target...", enemyDist))
                     Model.State.botMode = "NAVIGATE_MAZE"
                     Model.State.mazePath = {}
@@ -1150,13 +1207,21 @@ function Model.UpdateTracking(deltaTime)
     elseif Model.State.botMode == "ROOM_ROUND_UP" then
         isPatrolling = false
         
-        -- Stage 2 Boss Priority: If boss is present, bypass roundup and engage immediately!
+        -- Stage 3 / Stage 2 Boss Priority: If boss is present, bypass roundup and engage immediately!
+        local stage3Boss = findStage3Boss(allEnemies)
         local stage2Boss = findStage2Boss(allEnemies)
-        if stage2Boss then
+        if stage3Boss then
+            print("[AutoFarm] 🚨 Head Jailer of Impel Down detected during roundup! Engaging Boss directly!")
+            Model.State.botMode = "ROOM_COMBAT"
+            currentEnemy = stage3Boss
+            local bHrp = stage3Boss:FindFirstChild("HumanoidRootPart") or stage3Boss:FindFirstChild("Torso") or stage3Boss.PrimaryPart
+            targetDest = bHrp and bHrp.Position or rootPart.Position
+        elseif stage2Boss then
             print("[AutoFarm] 🚨 Impel Down Elite High Guard detected during roundup! Engaging Boss directly!")
             Model.State.botMode = "ROOM_COMBAT"
             currentEnemy = stage2Boss
-            targetDest = stage2Boss:FindFirstChild("HumanoidRootPart") and stage2Boss.HumanoidRootPart.Position or rootPart.Position
+            local bHrp = stage2Boss:FindFirstChild("HumanoidRootPart") or stage2Boss:FindFirstChild("Torso") or stage2Boss.PrimaryPart
+            targetDest = bHrp and bHrp.Position or rootPart.Position
         else
             Model.State.roundUpTimer = Model.State.roundUpTimer - deltaTime
             
@@ -1221,10 +1286,20 @@ function Model.UpdateTracking(deltaTime)
     elseif Model.State.botMode == "ROOM_COMBAT" then
         isPatrolling = false
         
-        -- Stage 2 Boss Priority: If boss is present, strictly lock onto it and ignore other enemies in the room!
+        -- Stage 3 / Stage 2 Boss Priority: If boss is present, strictly lock onto it and ignore other enemies in the room!
+        local stage3Boss = findStage3Boss(allEnemies)
         local stage2Boss = findStage2Boss(allEnemies)
-        if stage2Boss then
-            local bHrp = stage2Boss:FindFirstChild("HumanoidRootPart")
+        if stage3Boss then
+            local bHrp = stage3Boss:FindFirstChild("HumanoidRootPart") or stage3Boss:FindFirstChild("Torso") or stage3Boss.PrimaryPart
+            if bHrp then
+                targetDest = bHrp.Position
+                currentEnemy = stage3Boss
+            else
+                Model.State.botMode = "ROOM_ROUND_UP"
+                targetDest = rootPart.Position
+            end
+        elseif stage2Boss then
+            local bHrp = stage2Boss:FindFirstChild("HumanoidRootPart") or stage2Boss:FindFirstChild("Torso") or stage2Boss.PrimaryPart
             if bHrp then
                 targetDest = bHrp.Position
                 currentEnemy = stage2Boss
@@ -1396,85 +1471,82 @@ function Model.UpdateTracking(deltaTime)
         local desiredY = currentFloorY + 4 -- Hover low to the ground
         local isCloseToArrival = (horizontalDistance <= 15)
         
+        local eHrp = currentEnemy and (currentEnemy:FindFirstChild("HumanoidRootPart") or currentEnemy:FindFirstChild("Torso") or currentEnemy.PrimaryPart)
         local targetSpot
         if isPatrolling then
             -- CRITICAL: When following macro paths, we MUST fly to their exact Y altitude!
             desiredY = targetDest.Y
             targetSpot = Vector3.new(targetDest.X, desiredY, targetDest.Z)
-        elseif currentEnemy then
-            -- Combat Height strictly maintained at 7.5 per user request! (No vertical lift above 7.5!)
-            desiredY = targetDest.Y + 7.5
+        elseif currentEnemy and eHrp then
+            local enemyRadius, enemyHeight = getEnemyDimensions(currentEnemy)
+            local headTopY = getEnemyHeadTopY(currentEnemy) or (eHrp.Position.Y + (enemyHeight * 0.5))
             
-            local eHrp = currentEnemy:FindFirstChild("HumanoidRootPart")
-            if eHrp then
-                local enemyRadius, enemyHeight = getEnemyDimensions(currentEnemy)
-                local origin = Vector3.new(eHrp.Position.X, desiredY, eHrp.Position.Z)
-                
-                -- Check for active enemy attack for Auto-Dodge
-                local autoDodgeEnabled = (getgenv().AutoDodge ~= false)
-                local isAttacking, attackTrack = false, nil
-                local distToEnemy = (rootPart.Position - eHrp.Position).Magnitude
-                
-                if autoDodgeEnabled and distToEnemy <= 45 then
-                    isAttacking, attackTrack = isEnemyAttacking(currentEnemy)
+            -- Combat Height: Strictly directly vertically above enemy's head!
+            desiredY = math.max(headTopY + 4.5, eHrp.Position.Y + 7.5)
+            local origin = Vector3.new(eHrp.Position.X, desiredY, eHrp.Position.Z)
+            
+            -- Check for active enemy attack for Auto-Dodge
+            local autoDodgeEnabled = (getgenv().AutoDodge ~= false)
+            local isAttacking, attackTrack = false, nil
+            local distToEnemy = (rootPart.Position - eHrp.Position).Magnitude
+            
+            if autoDodgeEnabled and distToEnemy <= 45 then
+                isAttacking, attackTrack = isEnemyAttacking(currentEnemy)
+            end
+            
+            -- Check if enemy is facing towards us (in strike cone)
+            local facingUs = isEnemyFacingPlayer(eHrp, rootPart)
+            
+            -- Outboxer triggers: player hit recently, or active dodge flag, or enemy attacking facing us
+            local isHitRecently = (Model.State.lastHitTime and (tick() - Model.State.lastHitTime < 1.4))
+            if autoDodgeEnabled and (isHitRecently or Model.State.isDodgingAttack or (isAttacking and facingUs)) then
+                if not Model.State.isDodgingAttack then
+                    Model.State.isDodgingAttack = true
+                    Model.State.lastDodgeTick = tick()
+                    warn("[AutoFarm] 🥊 Outboxer Dodge Active! Disengaging 32 studs away to avoid staying near!")
                 end
-                
-                -- Check if enemy is facing towards us (in strike cone)
-                local facingUs = isEnemyFacingPlayer(eHrp, rootPart)
-                
-                -- Outboxer triggers: player hit recently, or active dodge flag, or enemy attacking facing us
-                local isHitRecently = (Model.State.lastHitTime and (tick() - Model.State.lastHitTime < 1.4))
-                if autoDodgeEnabled and (isHitRecently or Model.State.isDodgingAttack or (isAttacking and facingUs)) then
-                    if not Model.State.isDodgingAttack then
-                        Model.State.isDodgingAttack = true
-                        Model.State.lastDodgeTick = tick()
-                        warn("[AutoFarm] 🥊 Outboxer Dodge Active! Disengaging 32 studs away to avoid staying near!")
-                    end
-                    if not Model.State.dodgeTimer or Model.State.dodgeTimer <= 0 then
-                        Model.State.dodgeTimer = 1.4
-                    elseif not isHitRecently and not isAttacking then
-                        Model.State.dodgeTimer = Model.State.dodgeTimer - deltaTime
-                        if Model.State.dodgeTimer <= 0 then
-                            Model.State.isDodgingAttack = false
-                        end
-                    end
-                elseif Model.State.dodgeTimer and Model.State.dodgeTimer > 0 then
+                if not Model.State.dodgeTimer or Model.State.dodgeTimer <= 0 then
+                    Model.State.dodgeTimer = 1.4
+                elseif not isHitRecently and not isAttacking then
                     Model.State.dodgeTimer = Model.State.dodgeTimer - deltaTime
                     if Model.State.dodgeTimer <= 0 then
                         Model.State.isDodgingAttack = false
                     end
-                else
+                end
+            elseif Model.State.dodgeTimer and Model.State.dodgeTimer > 0 then
+                Model.State.dodgeTimer = Model.State.dodgeTimer - deltaTime
+                if Model.State.dodgeTimer <= 0 then
                     Model.State.isDodgingAttack = false
                 end
-                
-                local rayParams = RaycastParams.new()
-                rayParams.FilterDescendantsInstances = {character, currentEnemy}
-                rayParams.FilterType = Enum.RaycastFilterType.Exclude
-                
-                if Model.State.isDodgingAttack then
-                    -- ========================================================
-                    -- ACTIVE AUTO-DODGE: OUTBOXER FARAWAY SPIN (28-32 STUDS)
-                    -- ========================================================
-                    -- User requested: "spinning from faraway ... like rubberbanding"
-                    local outboxerDist = math.max(30.0, enemyRadius + 20.0)
-                    
-                    -- Smoothly advance orbit spin angle around the enemy
-                    Model.State.orbitAngle = ((Model.State.orbitAngle or 0) + (deltaTime * 2.8)) % (math.pi * 2)
-                    local orbitDir = Vector3.new(math.cos(Model.State.orbitAngle), 0, math.sin(Model.State.orbitAngle))
-                    
-                    -- Raycast check along orbit vector to ensure we don't clip into walls
-                    local ray = Workspace:Raycast(origin, orbitDir * outboxerDist, rayParams)
-                    local finalDist = ray and math.max(16.0, ray.Distance - 2.5) or outboxerDist
-                    targetSpot = origin + (orbitDir * finalDist)
-                else
-                    -- ========================================================
-                    -- ATTACK POSITIONING: DIRECTLY VERTICALLY ABOVE ENEMY'S HEAD
-                    -- ========================================================
-                    -- User requested: "when im attacking make me just above the enemy's head literally just vertically above no sideways"
-                    targetSpot = Vector3.new(eHrp.Position.X, desiredY, eHrp.Position.Z)
-                end
             else
-                targetSpot = Vector3.new(targetDest.X, desiredY, targetDest.Z)
+                Model.State.isDodgingAttack = false
+            end
+            
+            local rayParams = RaycastParams.new()
+            rayParams.FilterDescendantsInstances = {character, currentEnemy}
+            rayParams.FilterType = Enum.RaycastFilterType.Exclude
+            
+            if Model.State.isDodgingAttack then
+                -- ========================================================
+                -- ACTIVE AUTO-DODGE: OUTBOXER FARAWAY SPIN (28-32 STUDS)
+                -- ========================================================
+                -- User requested: "spinning from faraway ... like rubberbanding"
+                local outboxerDist = math.max(30.0, enemyRadius + 20.0)
+                
+                -- Smoothly advance orbit spin angle around the enemy
+                Model.State.orbitAngle = ((Model.State.orbitAngle or 0) + (deltaTime * 2.8)) % (math.pi * 2)
+                local orbitDir = Vector3.new(math.cos(Model.State.orbitAngle), 0, math.sin(Model.State.orbitAngle))
+                
+                -- Raycast check along orbit vector to ensure we don't clip into walls
+                local ray = Workspace:Raycast(origin, orbitDir * outboxerDist, rayParams)
+                local finalDist = ray and math.max(16.0, ray.Distance - 2.5) or outboxerDist
+                targetSpot = origin + (orbitDir * finalDist)
+            else
+                -- ========================================================
+                -- ATTACK POSITIONING: DIRECTLY VERTICALLY ABOVE ENEMY'S HEAD
+                -- ========================================================
+                -- User requested: "when im attacking make me just above the enemy's head literally just vertically above no sideways"
+                targetSpot = Vector3.new(eHrp.Position.X, desiredY, eHrp.Position.Z)
             end
         else
             desiredY = targetDest.Y + 4
@@ -1611,184 +1683,201 @@ function Model.EquipMelee()
     end
 end
 
-function Model.GetEnemiesInRange()
-    local character = LocalPlayer.Character
-    if not character or not character:FindFirstChild("HumanoidRootPart") then return {} end
-    -- Outboxer: when actively avoiding/disengaging 32 studs away, do not swing melee at thin air
-    if Model.State.isDodgingAttack then return {} end
-    local enemiesList = {}
-    local allEnemies = getAllEnemies()
-    
-    -- Stage 2 Boss Priority: Only attack the boss if it's present and in range
-    local stage2Boss = findStage2Boss(allEnemies)
-    if stage2Boss then
-        local bossRadius = getEnemyDimensions(stage2Boss)
-        local attackRange = math.max(24, bossRadius + 12)
-        local bHrp = stage2Boss:FindFirstChild("HumanoidRootPart")
-        if bHrp and (character.HumanoidRootPart.Position - bHrp.Position).Magnitude <= attackRange then
-            return { stage2Boss }
+    function Model.GetEnemiesInRange()
+        local character = LocalPlayer.Character
+        if not character or not character:FindFirstChild("HumanoidRootPart") then return {} end
+        local rootPart = character.HumanoidRootPart
+        -- Outboxer: when actively avoiding/disengaging 32 studs away, do not swing melee at thin air
+        if Model.State.isDodgingAttack then return {} end
+        local enemiesList = {}
+        local allEnemies = getAllEnemies()
+        
+        -- Stage 3 Boss Priority: Only attack Head Jailer if present and in range
+        local stage3Boss = findStage3Boss(allEnemies)
+        if stage3Boss then
+            local bossRadius, bossHeight = getEnemyDimensions(stage3Boss)
+            local bHrp = stage3Boss:FindFirstChild("HumanoidRootPart") or stage3Boss:FindFirstChild("Torso") or stage3Boss.PrimaryPart
+            if bHrp then
+                local flatDist = (Vector2.new(rootPart.Position.X, rootPart.Position.Z) - Vector2.new(bHrp.Position.X, bHrp.Position.Z)).Magnitude
+                local headTopY = getEnemyHeadTopY(stage3Boss) or (bHrp.Position.Y + (bossHeight * 0.5))
+                local vertDist = math.abs(rootPart.Position.Y - headTopY)
+                if flatDist <= math.max(25, bossRadius + 12) and vertDist <= 22 then
+                    return { stage3Boss }
+                end
+            end
+            return {}
         end
-        return {}
-    end
 
-    -- Stage 3 Boss Priority: Only attack Head Jailer if present and in range
-    local stage3Boss = findStage3Boss(allEnemies)
-    if stage3Boss then
-        local bossRadius = getEnemyDimensions(stage3Boss)
-        local attackRange = math.max(24, bossRadius + 12)
-        local bHrp = stage3Boss:FindFirstChild("HumanoidRootPart")
-        if bHrp and (character.HumanoidRootPart.Position - bHrp.Position).Magnitude <= attackRange then
-            return { stage3Boss }
+        -- Stage 2 Boss Priority: Only attack the boss if it's present and in range
+        local stage2Boss = findStage2Boss(allEnemies)
+        if stage2Boss then
+            local bossRadius, bossHeight = getEnemyDimensions(stage2Boss)
+            local bHrp = stage2Boss:FindFirstChild("HumanoidRootPart") or stage2Boss:FindFirstChild("Torso") or stage2Boss.PrimaryPart
+            if bHrp then
+                local flatDist = (Vector2.new(rootPart.Position.X, rootPart.Position.Z) - Vector2.new(bHrp.Position.X, bHrp.Position.Z)).Magnitude
+                local headTopY = getEnemyHeadTopY(stage2Boss) or (bHrp.Position.Y + (bossHeight * 0.5))
+                local vertDist = math.abs(rootPart.Position.Y - headTopY)
+                if flatDist <= math.max(25, bossRadius + 12) and vertDist <= 22 then
+                    return { stage2Boss }
+                end
+            end
+            return {}
         end
-        return {}
-    end
 
-    for _, npc in pairs(allEnemies) do
-        if isValidTarget(npc) then
-            local enemyRadius = getEnemyDimensions(npc)
-            local attackRange = math.max(24, enemyRadius + 12)
-            if (character.HumanoidRootPart.Position - npc.HumanoidRootPart.Position).Magnitude <= attackRange then
-                table.insert(enemiesList, npc)
+        for _, npc in pairs(allEnemies) do
+            if isValidTarget(npc) then
+                local enemyRadius, enemyHeight = getEnemyDimensions(npc)
+                local nHrp = npc:FindFirstChild("HumanoidRootPart") or npc:FindFirstChild("Torso") or npc.PrimaryPart
+                if nHrp then
+                    local flatDist = (Vector2.new(rootPart.Position.X, rootPart.Position.Z) - Vector2.new(nHrp.Position.X, nHrp.Position.Z)).Magnitude
+                    local headTopY = getEnemyHeadTopY(npc) or (nHrp.Position.Y + (enemyHeight * 0.5))
+                    local vertDist = math.abs(rootPart.Position.Y - headTopY)
+                    if flatDist <= math.max(24, enemyRadius + 12) and vertDist <= 22 then
+                        table.insert(enemiesList, npc)
+                    end
+                end
             end
         end
-    end
-    return enemiesList
-end
-
-function Model.DoMeleeCombo()
-    local combatRegister = ReplicatedStorage:FindFirstChild("Events") and ReplicatedStorage.Events:FindFirstChild("CombatRegister")
-    if not combatRegister then return end
-    
-    -- If currently in the faraway spin phase, wait for spin duration to elapse
-    if Model.State.isDodgingAttack then
-        task.wait(0.05)
-        return
-    end
-    
-    local character = LocalPlayer.Character
-    if not character or not character:FindFirstChild("HumanoidRootPart") then return end
-    local rootPart = character.HumanoidRootPart
-    
-    if not currentEnemy or not currentEnemy:FindFirstChild("HumanoidRootPart") then
-        task.wait(0.1)
-        return
-    end
-    local eHrp = currentEnemy.HumanoidRootPart
-    
-    -- ========================================================
-    -- RUBBERBAND SNAP-IN: RUSH TO ENEMY HEAD FAST
-    -- ========================================================
-    -- High speed snap onto the enemy's head (waits until within 15 studs)
-    local snapStart = tick()
-    while tick() - snapStart < 0.4 do
-        if not Model.State.isAutoFarming or Model.State.isDodgingAttack or Model.State.cancelCombo then break end
-        local dist = (rootPart.Position - eHrp.Position).Magnitude
-        if dist <= 14 then break end
-        task.wait(0.02)
-    end
-    
-    if not Model.State.isAutoFarming or Model.State.isDodgingAttack or Model.State.cancelCombo then
-        Model.State.cancelCombo = false
-        return
-    end
-    
-    Model.EquipMelee()
-    local targets = Model.GetEnemiesInRange()
-    if #targets == 0 then
-        task.wait(0.05)
-        return
-    end
-    
-    local equippedToolName = "Melee"
-    local tool = character:FindFirstChildOfClass("Tool")
-    if tool then
-        local swordFolder = ReplicatedStorage:FindFirstChild("Modules")
-            and ReplicatedStorage.Modules:FindFirstChild("SwordHandle")
-            and ReplicatedStorage.Modules.SwordHandle:FindFirstChild("Swords")
-        if swordFolder and swordFolder:FindFirstChild(tool.Name) then
-            equippedToolName = tool.Name
-        end
+        return enemiesList
     end
 
-    print("[AutoFarm] ⚡ Rubberband Dash In! Sneaking in combo with " .. equippedToolName)
-    for currentHit = 1, 4 do
-        if not Model.State.isAutoFarming then break end
-        if Model.State.isDodgingAttack or Model.State.cancelCombo then
-            Model.State.cancelCombo = false
-            break
+    function Model.DoMeleeCombo()
+        local combatRegister = ReplicatedStorage:FindFirstChild("Events") and ReplicatedStorage.Events:FindFirstChild("CombatRegister")
+        if not combatRegister then return end
+        
+        -- If currently in the faraway spin phase, wait for spin duration to elapse
+        if Model.State.isDodgingAttack then
+            task.wait(0.05)
+            return
         end
         
-        if not character or not character:FindFirstChild("HumanoidRootPart") then break end
-        local myCFrame = character.HumanoidRootPart.CFrame
+        local character = LocalPlayer.Character
+        if not character or not character:FindFirstChild("HumanoidRootPart") then return end
+        local rootPart = character.HumanoidRootPart
         
-        local punchAnim
-        local combatType = "Melee"
-        
-        if equippedToolName ~= "Melee" then
-            combatType = "Sword"
-            local swordSlashes = ReplicatedStorage:FindFirstChild("Modules") 
-                and ReplicatedStorage.Modules:FindFirstChild("SwordHandle") 
-                and ReplicatedStorage.Modules.SwordHandle:FindFirstChild("Swords") 
-                and ReplicatedStorage.Modules.SwordHandle.Swords:FindFirstChild(equippedToolName) 
-                and ReplicatedStorage.Modules.SwordHandle.Swords[equippedToolName]:FindFirstChild("Slashes")
-            
-            if swordSlashes then
-                punchAnim = swordSlashes:FindFirstChild(tostring(currentHit)) or swordSlashes:GetChildren()[1]
-            end
+        local eHrp = currentEnemy and (currentEnemy:FindFirstChild("HumanoidRootPart") or currentEnemy:FindFirstChild("Torso") or currentEnemy.PrimaryPart)
+        if not eHrp then
+            task.wait(0.1)
+            return
         end
         
-        if not punchAnim then
-            local animName = "Punch" .. currentHit
-            punchAnim = ReplicatedStorage:WaitForChild("CombatAnimations", 9e9):WaitForChild("Melee", 9e9):WaitForChild(animName, 9e9)
+        -- ========================================================
+        -- RUBBERBAND SNAP-IN: RUSH TO ENEMY HEAD FAST
+        -- ========================================================
+        -- High speed snap onto the enemy's head (waits until horizontally within 14 studs and vertically near head)
+        local snapStart = tick()
+        while tick() - snapStart < 0.4 do
+            if not Model.State.isAutoFarming or Model.State.isDodgingAttack or Model.State.cancelCombo then break end
+            local flatDist = (Vector2.new(rootPart.Position.X, rootPart.Position.Z) - Vector2.new(eHrp.Position.X, eHrp.Position.Z)).Magnitude
+            local headTopY = getEnemyHeadTopY(currentEnemy) or (eHrp.Position.Y + 4)
+            local vertDist = math.abs(rootPart.Position.Y - (headTopY + 4.5))
+            if flatDist <= 14 and vertDist <= 15 then break end
+            task.wait(0.02)
         end
-        
-        local swingArgs = {
-            [1] = {
-                [1] = "swingsfx",
-                [2] = combatType,
-                [3] = currentHit,
-                [4] = "Ground",
-                [5] = false,
-                [6] = punchAnim,
-                [7] = 2,
-                [8] = 1.5
-            }
-        }
-        task.spawn(function() pcall(function() combatRegister:InvokeServer(unpack(swingArgs)) end) end)
-        
-        task.wait(0.24) -- Fast, crisp hit pacing
         
         if not Model.State.isAutoFarming or Model.State.isDodgingAttack or Model.State.cancelCombo then
             Model.State.cancelCombo = false
-            break
+            return
         end
         
-        local currentTargets = Model.GetEnemiesInRange()
-        local roots = {}
-        for _, npc in pairs(currentTargets) do
-            if npc:FindFirstChild("HumanoidRootPart") then table.insert(roots, npc.HumanoidRootPart) end
+        Model.EquipMelee()
+        local targets = Model.GetEnemiesInRange()
+        if #targets == 0 then
+            task.wait(0.05)
+            return
         end
         
-        if #roots > 0 then
-            local damageArgs = {
+        local equippedToolName = "Melee"
+        local tool = character:FindFirstChildOfClass("Tool")
+        if tool then
+            local swordFolder = ReplicatedStorage:FindFirstChild("Modules")
+                and ReplicatedStorage.Modules:FindFirstChild("SwordHandle")
+                and ReplicatedStorage.Modules.SwordHandle:FindFirstChild("Swords")
+            if swordFolder and swordFolder:FindFirstChild(tool.Name) then
+                equippedToolName = tool.Name
+            end
+        end
+
+        print("[AutoFarm] ⚡ Rubberband Dash In! Sneaking in combo with " .. equippedToolName)
+        for currentHit = 1, 4 do
+            if not Model.State.isAutoFarming then break end
+            if Model.State.isDodgingAttack or Model.State.cancelCombo then
+                Model.State.cancelCombo = false
+                break
+            end
+            
+            if not character or not character:FindFirstChild("HumanoidRootPart") then break end
+            local myCFrame = character.HumanoidRootPart.CFrame
+            
+            local punchAnim
+            local combatType = "Melee"
+            
+            if equippedToolName ~= "Melee" then
+                combatType = "Sword"
+                local swordSlashes = ReplicatedStorage:FindFirstChild("Modules") 
+                    and ReplicatedStorage.Modules:FindFirstChild("SwordHandle") 
+                    and ReplicatedStorage.Modules.SwordHandle:FindFirstChild("Swords") 
+                    and ReplicatedStorage.Modules.SwordHandle.Swords:FindFirstChild(equippedToolName) 
+                    and ReplicatedStorage.Modules.SwordHandle.Swords[equippedToolName]:FindFirstChild("Slashes")
+                
+                if swordSlashes then
+                    punchAnim = swordSlashes:FindFirstChild(tostring(currentHit)) or swordSlashes:GetChildren()[1]
+                end
+            end
+            
+            if not punchAnim then
+                local animName = "Punch" .. currentHit
+                punchAnim = ReplicatedStorage:WaitForChild("CombatAnimations", 9e9):WaitForChild("Melee", 9e9):WaitForChild(animName, 9e9)
+            end
+            
+            local swingArgs = {
                 [1] = {
-                    [1] = "damage",
-                    [2] = roots,
-                    [3] = combatType,
-                    [4] = {[1] = currentHit, [2] = "Ground", [3] = combatType},
-                    [5] = true,
-                    [6] = myCFrame,
-                    ["aircombo"] = "Ground"
+                    [1] = "swingsfx",
+                    [2] = combatType,
+                    [3] = currentHit,
+                    [4] = "Ground",
+                    [5] = false,
+                    [6] = punchAnim,
+                    [7] = 2,
+                    [8] = 1.5
                 }
             }
-            task.spawn(function() pcall(function() combatRegister:InvokeServer(unpack(damageArgs)) end) end)
+            task.spawn(function() pcall(function() combatRegister:InvokeServer(unpack(swingArgs)) end) end)
+            
+            task.wait(0.24) -- Fast, crisp hit pacing
+            
+            if not Model.State.isAutoFarming or Model.State.isDodgingAttack or Model.State.cancelCombo then
+                Model.State.cancelCombo = false
+                break
+            end
+            
+            local currentTargets = Model.GetEnemiesInRange()
+            local roots = {}
+            for _, npc in pairs(currentTargets) do
+                local nrp = npc:FindFirstChild("HumanoidRootPart") or npc:FindFirstChild("Torso") or npc.PrimaryPart
+                if nrp then table.insert(roots, nrp) end
+            end
+            
+            if #roots > 0 then
+                local damageArgs = {
+                    [1] = {
+                        [1] = "damage",
+                        [2] = roots,
+                        [3] = combatType,
+                        [4] = {[1] = currentHit, [2] = "Ground", [3] = combatType},
+                        [5] = true,
+                        [6] = myCFrame,
+                        ["aircombo"] = "Ground"
+                    }
+                }
+                task.spawn(function() pcall(function() combatRegister:InvokeServer(unpack(damageArgs)) end) end)
+            end
+            task.wait(0.12)
+            if Model.State.isDodgingAttack or Model.State.cancelCombo then
+                Model.State.cancelCombo = false
+                break
+            end
         end
-        task.wait(0.12)
-        if Model.State.isDodgingAttack or Model.State.cancelCombo then
-            Model.State.cancelCombo = false
-            break
-        end
-    end
     
     -- ========================================================
     -- RUBBERBAND SNAP-OUT: CATAPULT BACK TO SAFE AREA & SPIN!
