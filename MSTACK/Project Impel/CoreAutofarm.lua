@@ -113,8 +113,14 @@ Model.State = {
     hasEngagedStage2Boss = (getgenv().STAGE2_SAVED_STATE and getgenv().STAGE2_SAVED_STATE.bossEncountered) or false,
     leverPulled = (getgenv().STAGE2_SAVED_STATE and getgenv().STAGE2_SAVED_STATE.leverPulled) or false,
     returningToBoss = (getgenv().STAGE2_SAVED_STATE and getgenv().STAGE2_SAVED_STATE.returningToBoss) or false,
-    wasDead = false
+    wasDead = false,
+    isDodgingAttack = false,
+    dodgeTimer = 0,
+    dodgeFlankSign = 1,
+    lastDodgeTick = 0
 }
+
+getgenv().AutoDodge = (getgenv().AutoDodge ~= false)
 
 -- ==========================================
 -- AUTO-RESUME LOGIC (FOR RE-EXECUTING HALFWAY)
@@ -223,6 +229,86 @@ local function getEnemyDimensions(npc)
     end
     
     return 2.5, 5.0
+end
+
+-- ==========================================
+-- AUTO DODGE & COMBAT EVASION HELPERS
+-- ==========================================
+local function isEnemyAttacking(enemy)
+    if not enemy or not enemy:IsA("Model") then return false, nil end
+    local hum = enemy:FindFirstChildOfClass("Humanoid")
+    if not hum then return false, nil end
+    
+    local animator = hum:FindFirstChildOfClass("Animator")
+    if animator then
+        local tracks = animator:GetPlayingAnimationTracks()
+        for _, track in ipairs(tracks) do
+            local prio = track.Priority
+            if prio == Enum.AnimationPriority.Action 
+               or prio == Enum.AnimationPriority.Action2 
+               or prio == Enum.AnimationPriority.Action3 
+               or prio == Enum.AnimationPriority.Action4 then
+                return true, track
+            end
+            
+            local name = string.lower(track.Name or (track.Animation and track.Animation.Name) or "")
+            if string.find(name, "attack") or string.find(name, "slash") or string.find(name, "punch")
+               or string.find(name, "swing") or string.find(name, "skill") or string.find(name, "combo")
+               or string.find(name, "heavy") or string.find(name, "slam") or string.find(name, "thrust")
+               or string.find(name, "strike") then
+                return true, track
+            end
+        end
+    end
+    
+    if enemy:GetAttribute("Attacking") or enemy:FindFirstChild("Attacking") or enemy:FindFirstChild("inCombo") then
+        return true, nil
+    end
+    
+    return false, nil
+end
+
+local function isEnemyFacingPlayer(enemyHrp, playerHrp)
+    if not enemyHrp or not playerHrp then return false end
+    local diff = playerHrp.Position - enemyHrp.Position
+    local flatDiff = Vector3.new(diff.X, 0, diff.Z)
+    if flatDiff.Magnitude < 0.1 then return true end
+    local dot = enemyHrp.CFrame.LookVector:Dot(flatDiff.Unit)
+    return dot > 0.05 -- Within forward ~170 degree strike cone
+end
+
+local lastEvasiveTick = 0
+local function triggerAutoEvasive(char)
+    if tick() - lastEvasiveTick < 0.8 then return end
+    lastEvasiveTick = tick()
+    
+    local skillRemote = ReplicatedStorage:FindFirstChild("Events") and ReplicatedStorage.Events:FindFirstChild("Skill")
+    if skillRemote then
+        task.spawn(function()
+            pcall(function()
+                local res = skillRemote:InvokeServer("BasicEvasive")
+                if res then
+                    print("[AutoFarm] 💨 Auto-Dodge: BasicEvasive combo breaker triggered!")
+                end
+            end)
+        end)
+    end
+end
+
+local lastHakiTick = 0
+local function maintainCombatHaki(char)
+    if tick() - lastHakiTick < 2.5 then return end
+    lastHakiTick = tick()
+    
+    local hakiRemote = ReplicatedStorage:FindFirstChild("Events") and ReplicatedStorage.Events:FindFirstChild("Haki")
+    if hakiRemote then
+        -- Auto Ken Haki (Observation Haki Auto-Dodge)
+        if not char:GetAttribute("KenActive") and not char:FindFirstChild("KenActive") then
+            pcall(function() hakiRemote:FireServer("Ken", true) end)
+        end
+        -- Auto Buso Haki (Armament Haki Defense/Damage)
+        pcall(function() hakiRemote:FireServer("Buso") end)
+    end
 end
 
 local function isStage2PriorityBoss(npc)
@@ -355,6 +441,8 @@ function Model.ResetPhysics()
     Model.State.isWaitingAtWaypoint = false
     Model.State.evadingTimer = 0
     Model.State.stuckTimer = 0
+    Model.State.isDodgingAttack = false
+    Model.State.dodgeTimer = 0
     visualizerFolder:ClearAllChildren()
 end
 
@@ -417,9 +505,10 @@ function Model.UpdateTracking(deltaTime)
     if isRagdolled or isStunned then
         if inCombat then
             -- Combat Combo-Breaker: DO NOT freeze/anchor the character when hit or stunned!
-            -- Keeping rootPart unanchored allows our positioning loop to disengage 25 studs horizontally,
-            -- breaking the boss's combo string and preventing permastun!
             rootPart.Anchored = false
+            if getgenv().AutoDodge ~= false then
+                triggerAutoEvasive(character)
+            end
         else
             rootPart.Anchored = true
             rootPart.Velocity = Vector3.new(0, 0, 0)
@@ -427,6 +516,10 @@ function Model.UpdateTracking(deltaTime)
         end
     else
         rootPart.Anchored = false
+    end
+
+    if inCombat and getgenv().AutoDodge ~= false then
+        maintainCombatHaki(character)
     end
 
     -- ========================================================
@@ -1175,27 +1268,87 @@ function Model.UpdateTracking(deltaTime)
             local eHrp = currentEnemy:FindFirstChild("HumanoidRootPart")
             if eHrp then
                 local enemyRadius, enemyHeight = getEnemyDimensions(currentEnemy)
-                
-                -- Relentless combat positioning: stay right behind the enemy's back at all times!
-                -- User requested: remove the horizontal dodge and keep attacking continuously even if hit!
-                local smartBehindDist = math.clamp(enemyRadius + 2.0, 3.5, 12.0)
                 local origin = Vector3.new(eHrp.Position.X, desiredY, eHrp.Position.Z)
                 
-                local behindDir = -eHrp.CFrame.LookVector
-                local sideWeave = eHrp.CFrame.RightVector * (math.sin(tick() * 3) * 1.5)
-                local offsetDir = (behindDir + (sideWeave * 0.3)).Unit
-                local targetOffset = offsetDir * smartBehindDist
+                -- Check for active enemy attack for Auto-Dodge
+                local autoDodgeEnabled = (getgenv().AutoDodge ~= false)
+                local isAttacking, attackTrack = false, nil
+                local distToEnemy = (rootPart.Position - eHrp.Position).Magnitude
                 
-                -- Prevent backing into walls behind the enemy
+                if autoDodgeEnabled and distToEnemy <= 24 then
+                    isAttacking, attackTrack = isEnemyAttacking(currentEnemy)
+                end
+                
+                -- Check if enemy is facing towards us (in strike cone)
+                local facingUs = isEnemyFacingPlayer(eHrp, rootPart)
+                
+                if autoDodgeEnabled and isAttacking and facingUs then
+                    if not Model.State.isDodgingAttack then
+                        Model.State.isDodgingAttack = true
+                        Model.State.dodgeFlankSign = -(Model.State.dodgeFlankSign or 1)
+                        Model.State.lastDodgeTick = tick()
+                        print("[AutoFarm] ⚡ Auto-Dodge! Enemy attack detected (" .. (attackTrack and attackTrack.Name or "Action") .. ") - slipping into rear blindspot!")
+                    end
+                    Model.State.dodgeTimer = 0.55 -- Hold dodge slip during attack animation
+                elseif Model.State.dodgeTimer and Model.State.dodgeTimer > 0 then
+                    Model.State.dodgeTimer = Model.State.dodgeTimer - deltaTime
+                    if Model.State.dodgeTimer <= 0 then
+                        Model.State.isDodgingAttack = false
+                    end
+                else
+                    Model.State.isDodgingAttack = false
+                end
+                
                 local rayParams = RaycastParams.new()
                 rayParams.FilterDescendantsInstances = {character, currentEnemy}
                 rayParams.FilterType = Enum.RaycastFilterType.Exclude
                 
-                local wallRay = Workspace:Raycast(origin, targetOffset, rayParams)
-                if wallRay then
-                    targetSpot = wallRay.Position - (offsetDir * 1.5)
+                if Model.State.isDodgingAttack then
+                    -- ========================================================
+                    -- ACTIVE AUTO-DODGE: BLINDSPOT SLIP
+                    -- ========================================================
+                    -- Instead of retreating backward (which breaks attack range),
+                    -- slip rapidly into the enemy's rear blindspot & flank!
+                    -- Enemy melee hitboxes only strike forward along LookVector.
+                    -- Being behind/flanking causes 100% of their swings to whiff!
+                    -- At 3.5 to 8.5 studs distance, we stay strictly inside attack range (18 studs)
+                    -- so our attack combos continue uninterrupted!
+                    local behindDir = -eHrp.CFrame.LookVector
+                    local flankDir = eHrp.CFrame.RightVector * (Model.State.dodgeFlankSign or 1)
+                    local dodgeDir = (behindDir * 0.85 + flankDir * 0.45).Unit
+                    local smartDodgeDist = math.clamp(enemyRadius + 2.2, 3.5, 8.5)
+                    local targetOffset = dodgeDir * smartDodgeDist
+                    
+                    local wallRay = Workspace:Raycast(origin, targetOffset, rayParams)
+                    if wallRay then
+                        -- If primary flank hits wall, slip to opposite flank
+                        local altDir = (behindDir * 0.85 - flankDir * 0.45).Unit
+                        local altTargetOffset = altDir * smartDodgeDist
+                        local altWall = Workspace:Raycast(origin, altTargetOffset, rayParams)
+                        if altWall then
+                            targetSpot = wallRay.Position - (dodgeDir * 1.0)
+                        else
+                            targetSpot = origin + altTargetOffset
+                        end
+                    else
+                        targetSpot = origin + targetOffset
+                    end
                 else
-                    targetSpot = origin + targetOffset
+                    -- ========================================================
+                    -- NORMAL COMBAT POSITIONING: REAR BLINDSPOT WITH WEAVE
+                    -- ========================================================
+                    local smartBehindDist = math.clamp(enemyRadius + 2.0, 3.5, 12.0)
+                    local behindDir = -eHrp.CFrame.LookVector
+                    local sideWeave = eHrp.CFrame.RightVector * (math.sin(tick() * 3) * 1.5)
+                    local offsetDir = (behindDir + (sideWeave * 0.3)).Unit
+                    local targetOffset = offsetDir * smartBehindDist
+                    
+                    local wallRay = Workspace:Raycast(origin, targetOffset, rayParams)
+                    if wallRay then
+                        targetSpot = wallRay.Position - (offsetDir * 1.5)
+                    else
+                        targetSpot = origin + targetOffset
+                    end
                 end
             else
                 targetSpot = Vector3.new(targetDest.X, desiredY, targetDest.Z)
@@ -1273,6 +1426,10 @@ function Model.UpdateTracking(deltaTime)
         end
         
         local currentMoveSpeed = flySpeed
+        if currentEnemy and Model.State.isDodgingAttack then
+            -- Whip behind the enemy before their attack hitbox connects!
+            currentMoveSpeed = math.max(flySpeed * 2.2, 110)
+        end
         if distToActual > 0.5 then
             local lerpAlpha = math.clamp((currentMoveSpeed * deltaTime) / distToActual, 0, 1)
             rootPart.CFrame = rootPart.CFrame:Lerp(finalCFrame, lerpAlpha)
@@ -1910,6 +2067,32 @@ function View.Build(onToggleCallback)
         end
     end)
 
+    local autoDodgeBtn = Instance.new("TextButton")
+    autoDodgeBtn.Size = UDim2.new(1, 0, 0, 30)
+    autoDodgeBtn.Position = UDim2.new(0, 0, 1, 110)
+    
+    local isAutoDodgeEnabled = (getgenv().AutoDodge ~= false)
+    autoDodgeBtn.BackgroundColor3 = isAutoDodgeEnabled and Color3.fromRGB(50, 150, 50) or Color3.fromRGB(40, 40, 40)
+    autoDodgeBtn.Text = isAutoDodgeEnabled and "AUTO DODGE: ON" or "AUTO DODGE: OFF"
+    autoDodgeBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+    autoDodgeBtn.Font = Enum.Font.GothamBold
+    autoDodgeBtn.TextSize = 10
+    autoDodgeBtn.Parent = toggleBtn
+    Instance.new("UICorner", autoDodgeBtn).CornerRadius = UDim.new(0, 5)
+    
+    autoDodgeBtn.MouseButton1Click:Connect(function()
+        if getgenv().AutoDodge ~= false then
+            getgenv().AutoDodge = false
+            autoDodgeBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+            autoDodgeBtn.Text = "AUTO DODGE: OFF"
+            print("[AutoFarm UI] Auto Dodge Disabled")
+        else
+            getgenv().AutoDodge = true
+            autoDodgeBtn.BackgroundColor3 = Color3.fromRGB(50, 150, 50)
+            autoDodgeBtn.Text = "AUTO DODGE: ON"
+            print("[AutoFarm UI] Auto Dodge Enabled")
+        end
+    end)
 
     local closeBtn = Instance.new("TextButton")
     closeBtn.Size = UDim2.new(0, 24, 0, 24)
