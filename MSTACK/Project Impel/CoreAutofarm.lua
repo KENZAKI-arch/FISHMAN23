@@ -113,7 +113,9 @@ Model.State = {
     hasEngagedStage2Boss = (getgenv().STAGE2_SAVED_STATE and getgenv().STAGE2_SAVED_STATE.bossEncountered) or false,
     leverPulled = (getgenv().STAGE2_SAVED_STATE and getgenv().STAGE2_SAVED_STATE.leverPulled) or false,
     returningToBoss = (getgenv().STAGE2_SAVED_STATE and getgenv().STAGE2_SAVED_STATE.returningToBoss) or false,
-    wasDead = false
+    wasDead = false,
+    lastHealth = nil,
+    hitDisengageTimer = 0
 }
 
 -- ==========================================
@@ -330,6 +332,8 @@ function Model.ResetPhysics()
     Model.State.isWaitingAtWaypoint = false
     Model.State.evadingTimer = 0
     Model.State.stuckTimer = 0
+    Model.State.hitDisengageTimer = 0
+    Model.State.lastHealth = nil
     visualizerFolder:ClearAllChildren()
 end
 
@@ -347,6 +351,24 @@ function Model.UpdateTracking(deltaTime)
     local isRagdolled = (character.Parent and character.Parent.Name == "Ragdolls")
     local isStunned = character:FindFirstChild("Stun") or character:FindFirstChild("frozen") or _G.canuse == false
     local isDead = humanoid.Health <= 0
+    
+    if not Model.State.lastHealth then
+        Model.State.lastHealth = humanoid.Health
+    end
+    local tookDamage = (humanoid.Health < Model.State.lastHealth - 0.5)
+    Model.State.lastHealth = humanoid.Health
+    
+    local inCombat = (Model.State.botMode == "MAZE_COMBAT" or Model.State.botMode == "ROOM_COMBAT" or currentEnemy ~= nil)
+    if (tookDamage or isStunned or isRagdolled) and inCombat then
+        if Model.State.hitDisengageTimer <= 0 then
+            print("[AutoFarm] ⚡ Hit/Stun detected! Disengaging 25 studs horizontally to drop enemy combo...")
+        end
+        Model.State.hitDisengageTimer = 1.0 -- Disengage 25 studs horizontally for 1.0s to let the boss combo drop
+    end
+    
+    if Model.State.hitDisengageTimer > 0 then
+        Model.State.hitDisengageTimer = Model.State.hitDisengageTimer - deltaTime
+    end
     
     if isDead then
         if not Model.State.wasDead then
@@ -388,9 +410,9 @@ function Model.UpdateTracking(deltaTime)
     end
     
     if isRagdolled or isStunned then
-        if Model.State.botMode == "MAZE_COMBAT" or Model.State.botMode == "ROOM_COMBAT" or currentEnemy then
+        if inCombat then
             -- Combat Combo-Breaker: DO NOT freeze/anchor the character when hit or stunned!
-            -- Keeping rootPart unanchored allows our positioning loop to drift behind the boss or evade,
+            -- Keeping rootPart unanchored allows our positioning loop to disengage 25 studs horizontally,
             -- breaking the boss's combo string and preventing permastun!
             rootPart.Anchored = false
         else
@@ -1141,42 +1163,52 @@ function Model.UpdateTracking(deltaTime)
             -- CRITICAL: When following macro paths, we MUST fly to their exact Y altitude!
             desiredY = targetDest.Y
             targetSpot = Vector3.new(targetDest.X, desiredY, targetDest.Z)
-        else
-            if isCloseToArrival then
-                -- Height set to 7.5 per user request!
-                local baseCombatHeight = 7.5
-                -- If stunned by an attack, temporarily add +1.5 studs to evade follow-up ground combos!
-                if isStunned or isRagdolled then
-                    baseCombatHeight = 9.0
-                end
-                desiredY = (currentEnemy and targetDest.Y + baseCombatHeight) or targetDest.Y
+        elseif currentEnemy then
+            -- Combat Height strictly maintained at 7.5 per user request! (No vertical lift above 7.5!)
+            desiredY = targetDest.Y + 7.5
+            
+            local eHrp = currentEnemy:FindFirstChild("HumanoidRootPart")
+            if eHrp then
+                local isEvadingHit = (Model.State.hitDisengageTimer > 0 or isStunned or isRagdolled)
+                local horizontalDist = isEvadingHit and 25.0 or 4.0
+                local offsetDir
                 
-                -- Position behind the enemy's back instead of orbiting across their front face!
-                local eHrp = currentEnemy and currentEnemy:FindFirstChild("HumanoidRootPart")
-                if eHrp then
-                    local behindDir = -eHrp.CFrame.LookVector
-                    -- Gentle side-weave (+- 1.5 studs) so attacks register dynamically while remaining behind the back
-                    local sideWeave = eHrp.CFrame.RightVector * (math.sin(tick() * 3) * 1.5)
-                    local behindOffset = (behindDir * 4.0) + sideWeave
-                    local candidateSpot = Vector3.new(eHrp.Position.X, desiredY, eHrp.Position.Z) + behindOffset
-                    
-                    -- Prevent backing into walls behind the enemy
-                    local rayParams = RaycastParams.new()
-                    rayParams.FilterDescendantsInstances = {character, currentEnemy}
-                    rayParams.FilterType = Enum.RaycastFilterType.Exclude
-                    
-                    local wallRay = Workspace:Raycast(Vector3.new(eHrp.Position.X, desiredY, eHrp.Position.Z), behindOffset, rayParams)
-                    if wallRay then
-                        targetSpot = wallRay.Position - (behindOffset.Unit * 1.2)
+                if isEvadingHit then
+                    -- User requested: Disengage 25 studs horizontally away from the enemy instead of above!
+                    local diff = (rootPart.Position - eHrp.Position)
+                    local flatDiff = Vector3.new(diff.X, 0, diff.Z)
+                    if flatDiff.Magnitude > 0.1 then
+                        offsetDir = flatDiff.Unit
                     else
-                        targetSpot = candidateSpot
+                        offsetDir = -eHrp.CFrame.LookVector
                     end
                 else
-                    targetSpot = Vector3.new(targetDest.X, desiredY, targetDest.Z)
+                    -- Normal combat: 4.0 studs behind the enemy's back
+                    local behindDir = -eHrp.CFrame.LookVector
+                    local sideWeave = eHrp.CFrame.RightVector * (math.sin(tick() * 3) * 1.5)
+                    offsetDir = (behindDir + (sideWeave * 0.3)).Unit
+                end
+                
+                local targetOffset = offsetDir * horizontalDist
+                local candidateSpot = Vector3.new(eHrp.Position.X, desiredY, eHrp.Position.Z) + targetOffset
+                
+                -- Prevent backing into walls
+                local rayParams = RaycastParams.new()
+                rayParams.FilterDescendantsInstances = {character, currentEnemy}
+                rayParams.FilterType = Enum.RaycastFilterType.Exclude
+                
+                local wallRay = Workspace:Raycast(Vector3.new(eHrp.Position.X, desiredY, eHrp.Position.Z), targetOffset, rayParams)
+                if wallRay then
+                    targetSpot = wallRay.Position - (offsetDir * 1.5)
+                else
+                    targetSpot = candidateSpot
                 end
             else
                 targetSpot = Vector3.new(targetDest.X, desiredY, targetDest.Z)
             end
+        else
+            desiredY = targetDest.Y + 4
+            targetSpot = Vector3.new(targetDest.X, desiredY, targetDest.Z)
         end
         
         local wallCheckCFrame = rootPart.CFrame + Vector3.new(0, 3, 0)
