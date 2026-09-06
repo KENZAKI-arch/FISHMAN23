@@ -202,6 +202,31 @@ end
       return false
   end
 
+local function getEnemyDimensions(npc)
+    if not npc or not npc:IsA("Model") then
+        return 2.5, 5.0
+    end
+    
+    local success, _, boxSize = pcall(function()
+        return npc:GetBoundingBox()
+    end)
+    
+    if success and boxSize then
+        local rawRadius = math.max(boxSize.X, boxSize.Z) * 0.5
+        local radius = math.clamp(rawRadius, 1.5, 30.0)
+        local height = math.clamp(boxSize.Y, 3.0, 50.0)
+        return radius, height
+    end
+    
+    local hrp = npc:FindFirstChild("HumanoidRootPart")
+    if hrp then
+        local rawRadius = math.max(hrp.Size.X, hrp.Size.Z) * 0.5
+        return math.clamp(rawRadius, 1.5, 30.0), math.clamp(hrp.Size.Y, 3.0, 50.0)
+    end
+    
+    return 2.5, 5.0
+end
+
 local function isStage2PriorityBoss(npc)
     if not npc or not npc.Name then return false end
     local name = string.lower(npc.Name)
@@ -361,9 +386,9 @@ function Model.UpdateTracking(deltaTime)
     local inCombat = (Model.State.botMode == "MAZE_COMBAT" or Model.State.botMode == "ROOM_COMBAT" or currentEnemy ~= nil)
     if (tookDamage or isStunned or isRagdolled) and inCombat then
         if Model.State.hitDisengageTimer <= 0 then
-            print("[AutoFarm] ⚡ Hit/Stun detected! Disengaging 25 studs horizontally to drop enemy combo...")
+            print("[AutoFarm] ⚡ Hit/Stun detected! Dynamically disengaging horizontally (scaled to opponent size) to drop combo...")
         end
-        Model.State.hitDisengageTimer = 1.0 -- Disengage 25 studs horizontally for 1.0s to let the boss combo drop
+        Model.State.hitDisengageTimer = 1.0 -- Disengage horizontally for 1.0s to let the enemy combo drop
     end
     
     if Model.State.hitDisengageTimer > 0 then
@@ -1170,7 +1195,18 @@ function Model.UpdateTracking(deltaTime)
             local eHrp = currentEnemy:FindFirstChild("HumanoidRootPart")
             if eHrp then
                 local isEvadingHit = (Model.State.hitDisengageTimer > 0 or isStunned or isRagdolled)
-                local horizontalDist = isEvadingHit and 25.0 or 4.0
+                local enemyRadius, enemyHeight = getEnemyDimensions(currentEnemy)
+                
+                -- Smart opponent-based scaling:
+                -- Disengage distance scales dynamically with opponent's physical size & attack reach:
+                -- Small mob (radius ~2.0): disengages ~10.4 studs (outside short melee swings)
+                -- Elite Guard (radius ~5.0): disengages ~17.0 studs
+                -- Giant Boss (radius ~8.0): disengages ~23.6 studs (outside massive weapon swings)
+                local smartDisengageDist = math.clamp(enemyRadius * 2.2 + 6.0, 10.0, 35.0)
+                -- Normal combat positioning: stay right behind back (prevents clipping inside large boss models)
+                local smartBehindDist = math.clamp(enemyRadius + 2.0, 3.5, 12.0)
+                
+                local horizontalDist = isEvadingHit and smartDisengageDist or smartBehindDist
                 local origin = Vector3.new(eHrp.Position.X, desiredY, eHrp.Position.Z)
                 
                 local rayParams = RaycastParams.new()
@@ -1178,12 +1214,12 @@ function Model.UpdateTracking(deltaTime)
                 rayParams.FilterType = Enum.RaycastFilterType.Exclude
                 
                 if isEvadingHit then
-                    -- User requested: Disengage 25 studs horizontally away from the enemy instead of above!
+                    -- Smart Disengage: dynamically scales to opponent size horizontally away from enemy
                     local diff = (rootPart.Position - eHrp.Position)
                     local flatDiff = Vector3.new(diff.X, 0, diff.Z)
                     local baseDir = (flatDiff.Magnitude > 0.1) and flatDiff.Unit or -eHrp.CFrame.LookVector
                     
-                    -- Check multiple horizontal angles to find the direction with maximum clear distance away from the enemy (up to 25 studs)
+                    -- Check multiple horizontal angles to find direction with maximum clear distance away from enemy
                     local testAngles = {0, 45, -45, 90, -90, 135, -135}
                     local bestDir = baseDir
                     local bestDist = 0
@@ -1205,7 +1241,7 @@ function Model.UpdateTracking(deltaTime)
                     local finalDist = math.max(0, math.min(horizontalDist, bestDist))
                     targetSpot = origin + (bestDir * finalDist)
                 else
-                    -- Normal combat: 4.0 studs behind the enemy's back
+                    -- Normal combat: smart distance behind the enemy's back (prevents clipping inside large boss models)
                     local behindDir = -eHrp.CFrame.LookVector
                     local sideWeave = eHrp.CFrame.RightVector * (math.sin(tick() * 3) * 1.5)
                     local offsetDir = (behindDir + (sideWeave * 0.3)).Unit
@@ -1358,7 +1394,8 @@ function Model.GetEnemiesInRange()
     -- Stage 2 Boss Priority: Only attack the boss if it's present and in range
     local stage2Boss = findStage2Boss(allEnemies)
     if stage2Boss then
-        local attackRange = 18
+        local bossRadius = getEnemyDimensions(stage2Boss)
+        local attackRange = math.max(18, bossRadius + 10)
         local bHrp = stage2Boss:FindFirstChild("HumanoidRootPart")
         if bHrp and (character.HumanoidRootPart.Position - bHrp.Position).Magnitude <= attackRange then
             return { stage2Boss }
@@ -1368,7 +1405,8 @@ function Model.GetEnemiesInRange()
 
     for _, npc in pairs(allEnemies) do
         if isValidTarget(npc) then
-            local attackRange = 18
+            local enemyRadius = getEnemyDimensions(npc)
+            local attackRange = math.max(18, enemyRadius + 10)
             if (character.HumanoidRootPart.Position - npc.HumanoidRootPart.Position).Magnitude <= attackRange then
                 table.insert(enemiesList, npc)
             end
