@@ -1379,6 +1379,10 @@ local function DoFishingCycle()
             end
         else
             pcall(function()
+                actionRemote:InvokeServer({ Action = "Reel", SessionKey = sessionKey, ActionKey = actionKey })
+            end)
+            task.wait()
+            pcall(function()
                 actionRemote:InvokeServer({ Action = "Cancel", SessionKey = sessionKey, ActionKey = actionKey })
             end)
             if hook then hook:Destroy() end
