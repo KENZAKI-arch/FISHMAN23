@@ -230,7 +230,9 @@ end)
 -- ============================================================================
 -- 6. COMBAT & TRAVEL LOGIC
 -- ============================================================================
-local function startCombatFarming()
+local stopAll, startAll, startCombatFarming, startTravelSequence
+
+function startCombatFarming()
     isTraveling = false
     Model.State.isAutoFarming = true
     
@@ -244,7 +246,35 @@ local function startCombatFarming()
     end)
 end
 
-local function startTravelSequence()
+function stopAll()
+    isActionActive = false
+    isTraveling = false
+    Model.State.isAutoFarming = false
+    
+    if travelHeartbeatConnection then
+        travelHeartbeatConnection:Disconnect()
+        travelHeartbeatConnection = nil
+    end
+    
+    if LocalPlayer.Character then
+        disableFlight(LocalPlayer.Character)
+    end
+    Model.ResetPhysics()
+    
+    toggleBtn.Text = "AUTO FARM: OFF"
+    toggleBtn.BackgroundColor3 = Color3.fromRGB(255, 85, 85)
+end
+
+function startAll()
+    isActionActive = true
+    if isAtFishmanIsland() then
+        startCombatFarming()
+    else
+        startTravelSequence()
+    end
+end
+
+function startTravelSequence()
     isTraveling = true
     Model.State.isAutoFarming = false
     
@@ -257,8 +287,6 @@ local function startTravelSequence()
     
     local phase = 1
     local roboPos = Vector3.new(7978, -2153, -17074)
-    local walkPath = nil
-    local walkWaypointIndex = 2
     
     travelHeartbeatConnection = RunService.Heartbeat:Connect(function(deltaTime)
         if not isActionActive or not isTraveling then
@@ -306,69 +334,27 @@ local function startTravelSequence()
         
         if phase == 4 then
             if tick() >= getgenv().roboWaitTime then
-                phase = 5
-                toggleBtn.Text = "PATHFINDING TO ENEMIES..."
-                disableFlight(character)
+                -- Checkpoint to Robo complete: Turn off and on in the UI
+                phase = 99
+                if travelHeartbeatConnection then
+                    travelHeartbeatConnection:Disconnect()
+                    travelHeartbeatConnection = nil
+                end
+                
+                task.spawn(function()
+                    stopAll()
+                    task.wait(1)
+                    if isRunning and not isActionActive then
+                        startAll()
+                    end
+                end)
+                return
             else
                 nextPoint = roboPos
             end
         end
         
-        if phase == 5 then
-            -- Use Pathfinding to walk to finalTarget
-            if not walkPath then
-                local path = PathfindingService:CreatePath({
-                    AgentRadius = 3,
-                    AgentHeight = 5,
-                    AgentCanJump = true,
-                    WaypointSpacing = 4,
-                })
-                path:ComputeAsync(currentPos, finalTarget)
-                if path.Status == Enum.PathStatus.Success then
-                    walkPath = path:GetWaypoints()
-                else
-                    phase = 6
-                end
-            end
-            
-            if walkPath and walkWaypointIndex <= #walkPath then
-                local wp = walkPath[walkWaypointIndex]
-                local humanoid = character:FindFirstChild("Humanoid")
-                if humanoid then
-                    humanoid:MoveTo(wp.Position)
-                    if wp.Action == Enum.PathWaypointAction.Jump then
-                        humanoid.Jump = true
-                    end
-                    local flatDist = Vector3.new(currentPos.X - wp.Position.X, 0, currentPos.Z - wp.Position.Z).Magnitude
-                    if flatDist < 4 then
-                        walkWaypointIndex = walkWaypointIndex + 1
-                    end
-                end
-                -- Prevent CFrame lerping since we are walking
-                return 
-            else
-                phase = 6
-            end
-        end
-        
-        if phase == 6 then
-            -- Finished all travel
-            isTraveling = false
-            if travelHeartbeatConnection then
-                travelHeartbeatConnection:Disconnect()
-                travelHeartbeatConnection = nil
-            end
-            
-            task.spawn(function()
-                task.wait(0.5)
-                if isActionActive and isRunning then
-                    startCombatFarming()
-                end
-            end)
-            return
-        end
-        
-        -- Only execute this if we are flying (Phases 1-4)
+        -- Flight lerping (Phases 1-4)
         if nextPoint then
             local distance = (currentPos - nextPoint).Magnitude
             if distance > 0 then
@@ -382,36 +368,12 @@ local function startTravelSequence()
     end)
 end
 
-local function stopAll()
-    isActionActive = false
-    isTraveling = false
-    Model.State.isAutoFarming = false
-    
-    if travelHeartbeatConnection then
-        travelHeartbeatConnection:Disconnect()
-        travelHeartbeatConnection = nil
-    end
-    
-    if LocalPlayer.Character then
-        disableFlight(LocalPlayer.Character)
-    end
-    Model.ResetPhysics()
-    
-    toggleBtn.Text = "AUTO FARM: OFF"
-    toggleBtn.BackgroundColor3 = Color3.fromRGB(255, 85, 85)
-end
-
 -- Toggle Click Event
 toggleBtn.MouseButton1Click:Connect(function()
     if isActionActive then
         stopAll()
     else
-        isActionActive = true
-        if isAtFishmanIsland() then
-            startCombatFarming()
-        else
-            startTravelSequence()
-        end
+        startAll()
     end
 end)
 
