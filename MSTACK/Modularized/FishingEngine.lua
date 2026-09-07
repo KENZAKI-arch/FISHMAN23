@@ -1171,6 +1171,21 @@ local function DoFishingCycle()
     
     local throwGoal = Vector3.new(104.38, -7.99, -72.01)
     
+    local hookName = LocalPlayer.Name .. "'s hook"
+    local hook = workspace.Effects:FindFirstChild(hookName)
+    local hookConn = nil
+    local spawnThread = coroutine.running()
+    
+    if not hook then
+        hookConn = workspace.Effects.ChildAdded:Connect(function(child)
+            if child.Name == hookName then
+                hook = child
+                if hookConn then hookConn:Disconnect(); hookConn = nil end
+                task.spawn(spawnThread)
+            end
+        end)
+    end
+    
     local success, throwResponse = pcall(function()
         return actionRemote:InvokeServer({ 
             Bait = "Common Fish Bait", 
@@ -1180,17 +1195,26 @@ local function DoFishingCycle()
     end)
     
     if not success or type(throwResponse) ~= "table" or not throwResponse.Accepted then
+        if hookConn then hookConn:Disconnect() end
         pcall(function() actionRemote:InvokeServer({ Action = "Cancel" }) end)
         return true 
     end
     
     local sessionKey = throwResponse.SessionKey
     local actionKey = throwResponse.ActionKey
-
-    local hookName = LocalPlayer.Name .. "'s hook"
-    local hook = workspace.Effects:WaitForChild(hookName, 3)
     
-    if not hook then return true end
+    if not hook then
+        local timeout = task.delay(3, function()
+            if hookConn and hookConn.Connected then
+                hookConn:Disconnect()
+                task.spawn(spawnThread)
+            end
+        end)
+        coroutine.yield()
+        pcall(task.cancel, timeout)
+    end
+    if hookConn then hookConn:Disconnect() end
+    if not hook or not hook.Parent then return true end
     
     local falls = workspace:FindFirstChild("Env") and workspace.Env:FindFirstChild("WaterStuff") and workspace.Env.WaterStuff:FindFirstChild("Falls")
     local waterLevelY = falls and falls.Position.Y or -7.99
@@ -1213,6 +1237,7 @@ local function DoFishingCycle()
     end)
     
     if not landSuccess or type(landedResponse) ~= "table" or not landedResponse.Accepted then
+        if hook then hook:Destroy() end
         return true
     end
     
@@ -1220,23 +1245,53 @@ local function DoFishingCycle()
         actionKey = landedResponse.ActionKey
     end
     
-    local maxWait = 30 
-    local waited = 0
     local fishBitten = false
-    
-    while waited < maxWait do
-        if not (getgenv().FishmanState.Model.State.isFishing or getgenv().FishmanState.Model.State.isDeepSeaCatcher) then
-            pcall(function() actionRemote:InvokeServer({ Action = "Cancel", SessionKey = sessionKey, ActionKey = actionKey }) end)
-            if hook then hook:Destroy() end
-            return true
+    if hook:GetAttribute("Caught") == true or hook:FindFirstChild("ReelLoop") then
+        fishBitten = true
+    else
+        local biteThread = coroutine.running()
+        local biteConn
+        local loopConn
+        local isStopped = false
+        
+        local function onBite()
+            if not isStopped and (hook:GetAttribute("Caught") == true or hook:FindFirstChild("ReelLoop")) then
+                isStopped = true
+                if biteConn then biteConn:Disconnect(); biteConn = nil end
+                if loopConn then loopConn:Disconnect(); loopConn = nil end
+                task.spawn(biteThread, true)
+            end
         end
         
-        if hook:GetAttribute("Caught") == true or hook:FindFirstChild("ReelLoop") then
-            fishBitten = true
-            break
-        end
-        task.wait(0.1)
-        waited = waited + 0.1
+        biteConn = hook:GetAttributeChangedSignal("Caught"):Connect(onBite)
+        loopConn = hook.ChildAdded:Connect(function(child)
+            if child.Name == "ReelLoop" then onBite() end
+        end)
+        
+        local abortThread = task.spawn(function()
+            local elapsed = 0
+            while elapsed < 30 and not isStopped and hook.Parent do
+                if not (getgenv().FishmanState.Model.State.isFishing or getgenv().FishmanState.Model.State.isDeepSeaCatcher) then
+                    isStopped = true
+                    if biteConn then biteConn:Disconnect() end
+                    if loopConn then loopConn:Disconnect() end
+                    pcall(function() actionRemote:InvokeServer({ Action = "Cancel", SessionKey = sessionKey, ActionKey = actionKey }) end)
+                    task.spawn(biteThread, false)
+                    return
+                end
+                task.wait(0.25)
+                elapsed += 0.25
+            end
+            if not isStopped then
+                isStopped = true
+                if biteConn then biteConn:Disconnect() end
+                if loopConn then loopConn:Disconnect() end
+                task.spawn(biteThread, false)
+            end
+        end)
+        
+        fishBitten = coroutine.yield()
+        pcall(task.cancel, abortThread)
     end
     
     if fishBitten then
