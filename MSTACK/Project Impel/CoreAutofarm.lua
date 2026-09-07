@@ -122,7 +122,7 @@ Model.State = {
     lastHealth = nil
 }
 
-getgenv().AutoDodge = (getgenv().AutoDodge ~= false)
+getgenv().AutoDodge = false
 
 -- ==========================================
 -- AUTO-RESUME LOGIC (FOR RE-EXECUTING HALFWAY)
@@ -313,7 +313,7 @@ local function triggerAutoEvasive(char)
 end
 
 function Model.OnPlayerHit(source, details)
-    if getgenv().AutoDodge == false then return end
+    if getgenv().AutoDodge ~= true then return end
     if not Model.State.isAutoFarming then return end
     
     local now = tick()
@@ -658,14 +658,19 @@ function Model.UpdateTracking(deltaTime)
         end
     end
     
+    local inCombat = (currentEnemy ~= nil or Model.State.botMode == "MAZE_COMBAT" or Model.State.botMode == "ROOM_COMBAT")
+
     if isRagdolled or isStunned then
         if inCombat then
             -- Combat Combo-Breaker: DO NOT freeze/anchor the character when hit or stunned!
             rootPart.Anchored = false
-            if getgenv().AutoDodge ~= false then
-                triggerAutoEvasive(character)
+            triggerAutoEvasive(character)
+            if getgenv().AutoDodge == true then
                 Model.State.isDodgingAttack = true
                 Model.State.dodgeTimer = 1.3
+            else
+                Model.State.isDodgingAttack = false
+                Model.State.dodgeTimer = 0
             end
         else
             rootPart.Anchored = true
@@ -676,7 +681,7 @@ function Model.UpdateTracking(deltaTime)
         rootPart.Anchored = false
     end
 
-    if inCombat and getgenv().AutoDodge ~= false then
+    if inCombat then
         maintainCombatHaki(character)
     end
 
@@ -1485,8 +1490,8 @@ function Model.UpdateTracking(deltaTime)
             desiredY = math.max(headTopY + 4.5, eHrp.Position.Y + 7.5)
             local origin = Vector3.new(eHrp.Position.X, desiredY, eHrp.Position.Z)
             
-            -- Check for active enemy attack for Auto-Dodge
-            local autoDodgeEnabled = (getgenv().AutoDodge ~= false)
+            -- Check for active enemy attack for Auto-Dodge (disabled by default; stays head-above-enemy)
+            local autoDodgeEnabled = (getgenv().AutoDodge == true)
             local isAttacking, attackTrack = false, nil
             local distToEnemy = (rootPart.Position - eHrp.Position).Magnitude
             
@@ -1526,7 +1531,7 @@ function Model.UpdateTracking(deltaTime)
             rayParams.FilterDescendantsInstances = {character, currentEnemy}
             rayParams.FilterType = Enum.RaycastFilterType.Exclude
             
-            if Model.State.isDodgingAttack then
+            if autoDodgeEnabled and Model.State.isDodgingAttack then
                 -- ========================================================
                 -- ACTIVE AUTO-DODGE: OUTBOXER FARAWAY SPIN (28-32 STUDS)
                 -- ========================================================
@@ -1688,7 +1693,7 @@ end
         if not character or not character:FindFirstChild("HumanoidRootPart") then return {} end
         local rootPart = character.HumanoidRootPart
         -- Outboxer: when actively avoiding/disengaging 32 studs away, do not swing melee at thin air
-        if Model.State.isDodgingAttack then return {} end
+        if getgenv().AutoDodge == true and Model.State.isDodgingAttack then return {} end
         local enemiesList = {}
         local allEnemies = getAllEnemies()
         
@@ -1745,8 +1750,8 @@ end
         local combatRegister = ReplicatedStorage:FindFirstChild("Events") and ReplicatedStorage.Events:FindFirstChild("CombatRegister")
         if not combatRegister then return end
         
-        -- If currently in the faraway spin phase, wait for spin duration to elapse
-        if Model.State.isDodgingAttack then
+        -- If currently in the faraway spin phase, wait for spin duration to elapse (only when AutoDodge is active)
+        if getgenv().AutoDodge == true and Model.State.isDodgingAttack then
             task.wait(0.05)
             return
         end
@@ -1762,12 +1767,11 @@ end
         end
         
         -- ========================================================
-        -- RUBBERBAND SNAP-IN: RUSH TO ENEMY HEAD FAST
+        -- POSITION LOCK: FAST HOVER DIRECTLY OVER ENEMY HEAD
         -- ========================================================
-        -- High speed snap onto the enemy's head (waits until horizontally within 14 studs and vertically near head)
         local snapStart = tick()
         while tick() - snapStart < 0.4 do
-            if not Model.State.isAutoFarming or Model.State.isDodgingAttack or Model.State.cancelCombo then break end
+            if not Model.State.isAutoFarming or (getgenv().AutoDodge == true and Model.State.isDodgingAttack) or Model.State.cancelCombo then break end
             local flatDist = (Vector2.new(rootPart.Position.X, rootPart.Position.Z) - Vector2.new(eHrp.Position.X, eHrp.Position.Z)).Magnitude
             local headTopY = getEnemyHeadTopY(currentEnemy) or (eHrp.Position.Y + 4)
             local vertDist = math.abs(rootPart.Position.Y - (headTopY + 4.5))
@@ -1775,7 +1779,7 @@ end
             task.wait(0.02)
         end
         
-        if not Model.State.isAutoFarming or Model.State.isDodgingAttack or Model.State.cancelCombo then
+        if not Model.State.isAutoFarming or (getgenv().AutoDodge == true and Model.State.isDodgingAttack) or Model.State.cancelCombo then
             Model.State.cancelCombo = false
             return
         end
@@ -1798,10 +1802,10 @@ end
             end
         end
 
-        print("[AutoFarm] ⚡ Rubberband Dash In! Sneaking in combo with " .. equippedToolName)
+        print("[AutoFarm] ⚔️ Attacking directly above enemy with " .. equippedToolName)
         for currentHit = 1, 4 do
             if not Model.State.isAutoFarming then break end
-            if Model.State.isDodgingAttack or Model.State.cancelCombo then
+            if (getgenv().AutoDodge == true and Model.State.isDodgingAttack) or Model.State.cancelCombo then
                 Model.State.cancelCombo = false
                 break
             end
@@ -1846,7 +1850,7 @@ end
             
             task.wait(0.24) -- Fast, crisp hit pacing
             
-            if not Model.State.isAutoFarming or Model.State.isDodgingAttack or Model.State.cancelCombo then
+            if not Model.State.isAutoFarming or (getgenv().AutoDodge == true and Model.State.isDodgingAttack) or Model.State.cancelCombo then
                 Model.State.cancelCombo = false
                 break
             end
@@ -1873,24 +1877,24 @@ end
                 task.spawn(function() pcall(function() combatRegister:InvokeServer(unpack(damageArgs)) end) end)
             end
             task.wait(0.12)
-            if Model.State.isDodgingAttack or Model.State.cancelCombo then
+            if (getgenv().AutoDodge == true and Model.State.isDodgingAttack) or Model.State.cancelCombo then
                 Model.State.cancelCombo = false
                 break
             end
         end
     
-    -- ========================================================
-    -- RUBBERBAND SNAP-OUT: CATAPULT BACK TO SAFE AREA & SPIN!
-    -- ========================================================
-    -- Immediately snaps back out 30 studs away into safe faraway spin
-    if getgenv().AutoDodge ~= false and currentEnemy and Model.State.isAutoFarming then
-        Model.State.isDodgingAttack = true
-        Model.State.dodgeTimer = 1.05 -- Spin faraway for 1.05 seconds
-        print("[AutoFarm] 🪀 Rubberband Snap-Out! Catapulting back 30 studs to spin from faraway!")
-        task.wait(0.25)
-    elseif Model.State.isAutoFarming then
-        task.wait(0.1)
-    end
+        -- ========================================================
+        -- COMBO COMPLETION: STAY DIRECTLY ABOVE ENEMY HEAD
+        -- ========================================================
+        if getgenv().AutoDodge == true and currentEnemy and Model.State.isAutoFarming then
+            Model.State.isDodgingAttack = true
+            Model.State.dodgeTimer = 1.05
+            print("[AutoFarm] 🪀 Auto-Dodge Snap-Out: Catapulting back 30 studs to spin from faraway!")
+            task.wait(0.25)
+        elseif Model.State.isAutoFarming then
+            -- Stay positioned directly above enemy's head, briefly pause between combo rotations
+            task.wait(0.08)
+        end
 end
 
 -- ==========================================
@@ -2373,7 +2377,7 @@ function View.Build(onToggleCallback)
     autoDodgeBtn.Size = UDim2.new(1, 0, 0, 30)
     autoDodgeBtn.Position = UDim2.new(0, 0, 1, 110)
     
-    local isAutoDodgeEnabled = (getgenv().AutoDodge ~= false)
+    local isAutoDodgeEnabled = (getgenv().AutoDodge == true)
     autoDodgeBtn.BackgroundColor3 = isAutoDodgeEnabled and Color3.fromRGB(50, 150, 50) or Color3.fromRGB(40, 40, 40)
     autoDodgeBtn.Text = isAutoDodgeEnabled and "AUTO DODGE: ON" or "AUTO DODGE: OFF"
     autoDodgeBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
@@ -2383,11 +2387,13 @@ function View.Build(onToggleCallback)
     Instance.new("UICorner", autoDodgeBtn).CornerRadius = UDim.new(0, 5)
     
     autoDodgeBtn.MouseButton1Click:Connect(function()
-        if getgenv().AutoDodge ~= false then
+        if getgenv().AutoDodge == true then
             getgenv().AutoDodge = false
+            Model.State.isDodgingAttack = false
+            Model.State.dodgeTimer = 0
             autoDodgeBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
             autoDodgeBtn.Text = "AUTO DODGE: OFF"
-            print("[AutoFarm UI] Auto Dodge Disabled")
+            print("[AutoFarm UI] Auto Dodge Disabled - Staying directly above enemy head")
         else
             getgenv().AutoDodge = true
             autoDodgeBtn.BackgroundColor3 = Color3.fromRGB(50, 150, 50)

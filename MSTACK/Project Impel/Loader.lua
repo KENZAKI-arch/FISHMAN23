@@ -15,6 +15,7 @@ end
 getgenv().CURRENT_STAGE = nil
 getgenv().MACRO_WAYPOINTS = nil
 getgenv().AUTO_START_ON_LOAD = true
+getgenv().AutoDodge = false
 
 local TARGET_STAGE = 1
 
