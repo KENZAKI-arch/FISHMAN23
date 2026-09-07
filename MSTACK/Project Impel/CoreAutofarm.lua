@@ -2402,6 +2402,32 @@ function View.Build(onToggleCallback)
         end
     end)
 
+    local checkHpBtn = Instance.new("TextButton")
+    checkHpBtn.Size = UDim2.new(1, 0, 0, 30)
+    checkHpBtn.Position = UDim2.new(0, 0, 1, 145)
+    checkHpBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    checkHpBtn.Text = "CHECK HP"
+    checkHpBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+    checkHpBtn.Font = Enum.Font.GothamBold
+    checkHpBtn.TextSize = 10
+    checkHpBtn.Parent = toggleBtn
+    Instance.new("UICorner", checkHpBtn).CornerRadius = UDim.new(0, 5)
+
+    checkHpBtn.MouseButton1Click:Connect(function()
+        if getgenv().CheckHP then
+            local hpText = getgenv().CheckHP()
+            if hpText then
+                local oldText = checkHpBtn.Text
+                checkHpBtn.Text = hpText
+                checkHpBtn.TextColor3 = Color3.fromRGB(85, 255, 85)
+                task.delay(1.5, function()
+                    checkHpBtn.Text = oldText
+                    checkHpBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+                end)
+            end
+        end
+    end)
+
     local closeBtn = Instance.new("TextButton")
     closeBtn.Size = UDim2.new(0, 18, 0, 18)
     closeBtn.Position = UDim2.new(1, -21, 0, 3)
@@ -2590,6 +2616,10 @@ getgenv().hotkeyConn = UserInputService.InputBegan:Connect(function(input, gpe)
             print("[AutoFarm Debug] Toggling via F4")
             getgenv().ToggleAutofarm()
         end
+    elseif input.KeyCode == Enum.KeyCode.F6 then
+        if getgenv().CheckHP then
+            getgenv().CheckHP()
+        end
     end
 end)
 
@@ -2601,6 +2631,8 @@ getgenv().StopAutofarm = function()
     if Model._childAddedConn then pcall(function() Model._childAddedConn:Disconnect() end) end
     if Model._clientDmgConn then pcall(function() Model._clientDmgConn:Disconnect() end) end
     if Model._combatTagConn then pcall(function() Model._combatTagConn:Disconnect() end) end
+    if Model._chatConn then pcall(function() Model._chatConn:Disconnect() end) end
+    if Model._textChatConn then pcall(function() Model._textChatConn:Disconnect() end) end
     
     if steppedConn then steppedConn:Disconnect() end
     if heartbeatConn then heartbeatConn:Disconnect() end
@@ -2625,6 +2657,54 @@ if LocalPlayer.Character then
     hookPlayerHitDetection(LocalPlayer.Character)
 end
 hookRemoteDamageEvents()
+
+-- ==========================================
+-- HEALTH CHECK COMMAND
+-- ==========================================
+getgenv().CheckHP = function()
+    local char = LocalPlayer.Character
+    local hum = char and (char:FindFirstChildOfClass("Humanoid") or char:FindFirstChild("Humanoid"))
+    if hum then
+        local hpText = string.format("You have %d HP!", math.floor(hum.Health + 0.5))
+        print(hpText)
+        pcall(function()
+            game:GetService("StarterGui"):SetCore("SendNotification", {
+                Title = "Health Status",
+                Text = hpText,
+                Duration = 3
+            })
+        end)
+        return hpText
+    else
+        warn("Humanoid not found!")
+    end
+end
+getgenv().PrintHP = getgenv().CheckHP
+
+local function handleChatCommand(message)
+    if not message then return end
+    local clean = string.lower(string.gsub(message, "^%s*(.-)%s*$", "%1"))
+    if clean == "/hp" or clean == "!hp" or clean == ":hp" or clean == "/health" or clean == "!health" or clean == "hp" or clean == "/checkhp" then
+        getgenv().CheckHP()
+    end
+end
+
+if Model._chatConn then pcall(function() Model._chatConn:Disconnect() end) end
+Model._chatConn = LocalPlayer.Chatted:Connect(handleChatCommand)
+
+pcall(function()
+    local TextChatService = game:GetService("TextChatService")
+    if TextChatService and TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
+        if Model._textChatConn then pcall(function() Model._textChatConn:Disconnect() end) end
+        Model._textChatConn = TextChatService.MessageReceived:Connect(function(textChatMessage)
+            if textChatMessage.TextSource and textChatMessage.TextSource.UserId == LocalPlayer.UserId then
+                handleChatCommand(textChatMessage.Text)
+            end
+        end)
+    end
+end)
+
+print("[Project Impel] 💡 Health Check Command Ready! Type '/hp' in chat, press F6, or run getgenv().CheckHP()")
 
 
 
