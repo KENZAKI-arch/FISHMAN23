@@ -17,28 +17,6 @@ getgenv().MACRO_WAYPOINTS = nil
 getgenv().AUTO_START_ON_LOAD = true
 getgenv().AutoDodge = false
 
--- Global Health Check Command
-getgenv().CheckHP = function()
-    local player = game:GetService("Players").LocalPlayer
-    local char = player and player.Character
-    local hum = char and (char:FindFirstChildOfClass("Humanoid") or char:FindFirstChild("Humanoid"))
-    if hum then
-        local hpText = string.format("You have %d HP!", math.floor(hum.Health + 0.5))
-        print(hpText)
-        pcall(function()
-            game:GetService("StarterGui"):SetCore("SendNotification", {
-                Title = "Health Status",
-                Text = hpText,
-                Duration = 3
-            })
-        end)
-        return hpText
-    else
-        warn("Humanoid not found!")
-    end
-end
-getgenv().PrintHP = getgenv().CheckHP
-
 local TARGET_STAGE = 1
 
 pcall(function()
