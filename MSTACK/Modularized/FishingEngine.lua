@@ -99,6 +99,7 @@ local craftFlyTarget = nil
 
     getgenv().FishmanState.Model.State = {
         isFishing             = false,
+        strictReel            = false,
         autoBuy               = not isLobby,
         autoSell              = false,
         isBuying              = false,
@@ -1191,8 +1192,6 @@ local function DoFishingCycle()
     
     if not hook then return true end
     
-    task.wait()
-    
     local falls = workspace:FindFirstChild("Env") and workspace.Env:FindFirstChild("WaterStuff") and workspace.Env.WaterStuff:FindFirstChild("Falls")
     local waterLevelY = falls and falls.Position.Y or -7.99
     local surfacePosition = Vector3.new(throwGoal.X, waterLevelY, throwGoal.Z)
@@ -1204,8 +1203,6 @@ local function DoFishingCycle()
     bp.MaxForce = Vector3.new(0, 2000000000, 0)
     bp.Position = surfacePosition
     bp.Parent = hook
-    
-    task.wait()
     
     local landSuccess, landedResponse = pcall(function()
         return actionRemote:InvokeServer({
@@ -1311,11 +1308,27 @@ local function DoFishingCycle()
             else
                 print("🔥 REELING IN THE BEAST! 🔥")
             end
+        else
+            local diffMult = hook:GetAttribute("MoveMultiplier")
+            if diffMult == nil then
+                task.wait(0.05)
+                diffMult = hook:GetAttribute("MoveMultiplier") or 1.0
+            end
+            print("🐟 Fish caught! MoveMultiplier:", diffMult)
+            
+            if getgenv().FishmanState.Model.State.strictReel then
+                if diffMult <= 1.0 then
+                    print("⏩ Skipping fish: Multiplier (" .. tostring(diffMult) .. ") <= 1.0 (Strict Reel active)")
+                    isBeast = false
+                else
+                    print("🔥 Reeling rare/legendary fish! Multiplier:", diffMult)
+                end
+            end
         end
         
         if isBeast then
             local w = 0
-            while w < 7.5 do
+            while w < 5.6 do
                 if not (getgenv().FishmanState.Model.State.isFishing or getgenv().FishmanState.Model.State.isDeepSeaCatcher) then
                     pcall(function() actionRemote:InvokeServer({ Action = "Cancel", SessionKey = sessionKey, ActionKey = actionKey }) end)
                     if hook then hook:Destroy() end
@@ -1362,13 +1375,9 @@ local function DoFishingCycle()
                 hook:PivotTo(CFrame.new(targetPos))
                 
                 -- Wait just 1/10th of a second for the fish reward script to catch up
-                task.wait(0.1)
+                task.wait()
             end
         else
-            pcall(function()
-                actionRemote:InvokeServer({ Action = "Reel", SessionKey = sessionKey, ActionKey = actionKey })
-            end)
-            task.wait()
             pcall(function()
                 actionRemote:InvokeServer({ Action = "Cancel", SessionKey = sessionKey, ActionKey = actionKey })
             end)
@@ -1378,7 +1387,6 @@ local function DoFishingCycle()
     end
     
     if hook then hook:Destroy() end
-    task.wait()
     
     pcall(function()
         actionRemote:InvokeServer({

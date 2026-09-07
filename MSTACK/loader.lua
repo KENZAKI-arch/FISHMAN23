@@ -72,12 +72,19 @@ local AccountConfigs = {
     ["LumpiangChina"] = { code = "gVKAsClzbt", dest = "Second Sea" },
     ["BeeswarmTensei"] = { code = "UO4gc2IyTY", dest = "Second Sea" },
 
+    -- Trade Hub Accounts
+    ["GibokJang6"] = { code = "qj1ttW4JG1", dest = "tradeHub" },
+
     -- First Sea Accounts
-    ["Clarity14563"] = { code = "qj1ttW4JG1", dest = "First Sea" },
-    ["SiomeowMaster12"] = { code = "vcvq1Xp6GC", dest = "First Sea" },
-    ["TemperedGamer123"] = { code = "dmNfaqsjjj", dest = "First Sea" },
-    ["Brainstorm689"] = { code = "MCVwx2gvJv", dest = "First Sea" },
-    ["FourArms00X"] = { code = "tirAZ2rx2s", dest = "First Sea" }
+    ["KingmakerJ1"] = { code = "CnHpO5Kwa9", dest = "First Sea" },
+    ["KingmakerJ3"] = { code = "IxM1NarToN", dest = "First Sea" },
+    ["KingmakerJ4"] = { code = "Ay5J7LqxL4", dest = "First Sea" },
+    ["Oggai001"] = { code = "tirAZ2rx2s", dest = "First Sea" },
+    ["Oggai002"] = { code = "dTuByY1k0O", dest = "First Sea" },
+    ["Oggai003"] = { code = "IxM1NarToN", dest = "First Sea" },
+    ["Oggai004"] = { code = "CnHpO5Kwa9", dest = "First Sea" },
+    ["Oggai005"] = { code = "gVKAsClzbt", dest = "First Sea" },
+    ["RinkakuWarrior"] = { code = "UO4gc2IyTY", dest = "First Sea" }
 }
 
 -- ⚙️ GLOBAL SETTINGS
@@ -89,6 +96,7 @@ local playerName = LocalPlayer.Name
 local chosenConfig = AccountConfigs[playerName]
 local chosenCode = chosenConfig and chosenConfig.code or DefaultPSCode
 local chosenDest = chosenConfig and chosenConfig.dest or DefaultDestination
+if chosenDest == "Trade Hub" then chosenDest = "tradeHub" end
 
 getgenv().FishmanDefaultPSCode = chosenCode
 getgenv().FishmanDefaultDestination = chosenDest
