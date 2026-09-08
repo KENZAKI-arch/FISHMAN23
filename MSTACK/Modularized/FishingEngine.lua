@@ -1295,17 +1295,14 @@ local function GetWaterLevel(targetPos)
     end
     rayParams.IgnoreWater = false
     
-    local rayY = (targetPos and targetPos.Y or 10) + 20
+    local rayY = (targetPos and targetPos.Y or 10) + 30
     local rayStart = Vector3.new(targetPos.X, rayY, targetPos.Z)
-    local hit = workspace:Raycast(rayStart, Vector3.new(0, -100, 0), rayParams)
+    local hit = workspace:Raycast(rayStart, Vector3.new(0, -150, 0), rayParams)
     if hit then
         if hit.Material == Enum.Material.Water or string.find(string.lower(hit.Instance.Name), "water") or string.find(string.lower(hit.Instance.Name), "sea") or string.find(string.lower(hit.Instance.Name), "ocean") then
             return hit.Position.Y
         end
     end
-    
-    local falls = workspace:FindFirstChild("Env") and workspace.Env:FindFirstChild("WaterStuff") and workspace.Env.WaterStuff:FindFirstChild("Falls")
-    if falls then return falls.Position.Y end
     
     local ocean = workspace:FindFirstChild("Ocean")
     if ocean then
@@ -1316,7 +1313,8 @@ local function GetWaterLevel(targetPos)
         end
     end
     
-    return -7.99
+    if hit then return hit.Position.Y end
+    return targetPos and targetPos.Y or 0
 end
 
 local function DoFishingCycle()
@@ -1329,7 +1327,7 @@ local function DoFishingCycle()
     end
     
     local rootPart = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-    local castDistance = 25
+    local castDistance = 5
     local forwardVec = rootPart and rootPart.CFrame.LookVector or Vector3.new(0, 0, -1)
     local flatForward = Vector3.new(forwardVec.X, 0, forwardVec.Z)
     if flatForward.Magnitude > 0.01 then
