@@ -801,7 +801,7 @@ if not isLobby then
         if not getgenv().FishmanState.Model.State.autoCraft then return end
 
         getgenv().FishmanState.Model.EnableFlight()
-        getgenv().FishmanState.Model.CraftFlyPath({ Vector3.new(162.85, originalPos.Y, -55.34) })
+        getgenv().FishmanState.Model.CraftFlyPath({ Vector3.new(162, 9, -54) })
         if not getgenv().FishmanState.Model.State.autoCraft then getgenv().FishmanState.Model.DisableFlight(); return end
         
         task.wait(0.5)
@@ -875,7 +875,7 @@ if not isLobby then
         local wasAutoCraft = getgenv().FishmanState.Model.State.autoCraft
         getgenv().FishmanState.Model.State.autoCraft = true 
         
-        getgenv().FishmanState.Model.CraftFlyPath({ Vector3.new(162.85, originalPos.Y, -55.34) })
+        getgenv().FishmanState.Model.CraftFlyPath({ Vector3.new(162, 9, -54) })
         task.wait(0.5)
         SafeInvokeQuest(true)
         task.wait(0.5)
