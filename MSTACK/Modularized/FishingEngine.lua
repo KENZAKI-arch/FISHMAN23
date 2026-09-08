@@ -679,46 +679,87 @@ if not isLobby then
     local function CraftFlyToAndWait(targetVector)
         local character = LocalPlayer.Character
         local rootPart = character and character:FindFirstChild("HumanoidRootPart")
-        if not rootPart then return end
+        local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+        if not rootPart or not humanoid then return end
         
         getgenv().FishmanState.Model.State.isCraftFlying = true
-        local speed = getgenv().FishmanState.Model.State.shipSpeed or 175 
+        local speed = getgenv().FishmanState.Model.State.shipSpeed or 150
         
-        local function TweenTo(point, customSpeed)
-            local currentSpeed = customSpeed or speed
-            if not getgenv().FishmanState.Model.State.isCraftFlying then return end
-            local dist = (rootPart.Position - point).Magnitude
-            if dist < 1 then return end
-            
-            local tweenInfo = TweenInfo.new(dist / currentSpeed, Enum.EasingStyle.Linear)
-            local tween = TweenService:Create(rootPart, tweenInfo, {CFrame = CFrame.new(point) * rootPart.CFrame.Rotation})
-            tween:Play()
-            
-            while tween.PlaybackState == Enum.PlaybackState.Playing do
-                if not getgenv().FishmanState.Model.State.autoCraft and not getgenv().FishmanState.Model.State.isRefillingMegBait and not getgenv().FishmanState.Model.State.isManualTraveling then 
-                    tween:Cancel()
-                    getgenv().FishmanState.Model.State.isCraftFlying = false
-                    break 
-                end
-                PlayGeppoEffect(character, rootPart)
-                task.wait(0.1)
+        print(string.format("[AutoCraft] going to %d %d %d...", math.round(targetVector.X), math.round(targetVector.Y), math.round(targetVector.Z)))
+        
+        humanoid.PlatformStand = true
+        local bg = rootPart:FindFirstChild("AutoTravel_Gyro") or Instance.new("BodyGyro")
+        bg.Name = "AutoTravel_Gyro"
+        bg.P = 9e4
+        bg.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
+        bg.CFrame = rootPart.CFrame
+        bg.Parent = rootPart
+        
+        local bv = rootPart:FindFirstChild("AutoTravel_Velocity") or Instance.new("BodyVelocity")
+        bv.Name = "AutoTravel_Velocity"
+        bv.Velocity = Vector3.zero
+        bv.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+        bv.Parent = rootPart
+        
+        local rayParams = RaycastParams.new()
+        rayParams.FilterType = Enum.RaycastFilterType.Exclude
+        rayParams.FilterDescendantsInstances = {character}
+        
+        local maxDuration = 30
+        local startTime = tick()
+        
+        while getgenv().FishmanState.Model.State.isCraftFlying and (tick() - startTime) < maxDuration do
+            if not getgenv().FishmanState.Model.State.autoCraft and not getgenv().FishmanState.Model.State.isRefillingMegBait and not getgenv().FishmanState.Model.State.isManualTraveling and not getgenv().FishmanState.Model.State.isCurrentlyCrafting then
+                break
             end
+            
+            local currentPos = rootPart.Position
+            local flatDiff = Vector3.new(targetVector.X - currentPos.X, 0, targetVector.Z - currentPos.Z)
+            local flatDist = flatDiff.Magnitude
+            local totalDist = (targetVector - currentPos).Magnitude
+            
+            if totalDist <= 4 or (flatDist <= 3 and math.abs(targetVector.Y - currentPos.Y) <= 5) then
+                break
+            end
+            
+            -- Raycast down to keep on ground dynamically
+            local groundRay = workspace:Raycast(currentPos + Vector3.new(0, 5, 0), Vector3.new(0, -30, 0), rayParams)
+            local groundY = groundRay and (groundRay.Position.Y + 3.5) or targetVector.Y
+            
+            local targetPos = Vector3.new(targetVector.X, groundY, targetVector.Z)
+            local moveDir = (targetPos - currentPos)
+            local moveDist = moveDir.Magnitude
+            
+            if moveDist > 0.5 then
+                local unitDir = moveDir.Unit
+                bv.Velocity = unitDir * math.min(speed, moveDist * 15 + 10)
+                bg.CFrame = CFrame.lookAt(currentPos, currentPos + Vector3.new(unitDir.X, 0, unitDir.Z))
+            else
+                bv.Velocity = Vector3.zero
+            end
+            
+            for _, part in ipairs(character:GetDescendants()) do
+                if part:IsA("BasePart") and part.CanCollide then
+                    part.CanCollide = false
+                end
+            end
+            
+            PlayGeppoEffect(character, rootPart)
+            task.wait(0.03)
         end
         
-        local cur = rootPart.Position
-        local upPoint = Vector3.new(cur.X, math.max(cur.Y, targetVector.Y) + 500, cur.Z)
-        local overPoint = Vector3.new(targetVector.X, upPoint.Y, targetVector.Z)
+        bv.Velocity = Vector3.zero
+        rootPart.CFrame = CFrame.new(targetVector) * rootPart.CFrame.Rotation
+        rootPart.AssemblyLinearVelocity = Vector3.zero
+        rootPart.AssemblyAngularVelocity = Vector3.zero
         
-        TweenTo(upPoint, speed * 0.5) -- 50% slower for going up
-        TweenTo(overPoint)
-        TweenTo(targetVector)
-        
+        print(string.format("[AutoCraft] Arrived at %d %d %d!", math.round(targetVector.X), math.round(targetVector.Y), math.round(targetVector.Z)))
         getgenv().FishmanState.Model.State.isCraftFlying = false
     end
 
     getgenv().FishmanState.Model.CraftFlyPath = function(pathTable)
         for _, targetPos in ipairs(pathTable) do 
-            if not getgenv().FishmanState.Model.State.autoCraft and not getgenv().FishmanState.Model.State.isRefillingMegBait and not getgenv().FishmanState.Model.State.isManualTraveling then break end
+            if not getgenv().FishmanState.Model.State.autoCraft and not getgenv().FishmanState.Model.State.isRefillingMegBait and not getgenv().FishmanState.Model.State.isManualTraveling and not getgenv().FishmanState.Model.State.isCurrentlyCrafting then break end
             CraftFlyToAndWait(targetPos) 
         end
     end
@@ -788,28 +829,36 @@ if not isLobby then
         local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
         if not hrp then return end
         local originalPos = hrp.Position
+        local craftPos = Vector3.new(162, 9, -54)
+        
+        print("[AutoCraft] going to 162 9 -54 to craft legendary bait...")
+        if getgenv().FishmanState.Fluent then
+            getgenv().FishmanState.Fluent:Notify({ Title = "Auto Craft", Content = "Going to 162, 9, -54 to craft Legendary Bait...", Duration = 4 })
+        end
         
         getgenv().FishmanState.Model.State.isFishing = false
-        -- getgenv().FishmanState.Model.State.autoBuy = false
+        getgenv().FishmanState.Model.State.isDeepSeaCatcher = false
         getgenv().FishmanState.Model.State.autoSell = false
         getgenv().FishmanState.Model.State.isAutoTraveling = false
-        getgenv().FishmanState.Model.State.travelMessage = "Crafting..."
+        getgenv().FishmanState.Model.State.travelMessage = "Going to 162 9 -54 (Crafting)..."
         
         getgenv().FishmanState.Model.DisableFlight()
         getgenv().FishmanState.Model.UnequipRod()
-        task.wait(3)
+        task.wait(1)
         if not getgenv().FishmanState.Model.State.autoCraft then return end
 
         getgenv().FishmanState.Model.EnableFlight()
-        getgenv().FishmanState.Model.CraftFlyPath({ Vector3.new(162, 9, -54) })
+        getgenv().FishmanState.Model.CraftFlyPath({ craftPos })
         if not getgenv().FishmanState.Model.State.autoCraft then getgenv().FishmanState.Model.DisableFlight(); return end
         
+        print("[AutoCraft] Arrived at 162 9 -54! Talking to Sen and crafting...")
         task.wait(0.5)
         SafeInvokeQuest(true)
         task.wait(0.5)
         
         for _, craftItem in ipairs(craftQueue) do
             if not getgenv().FishmanState.Model.State.autoCraft then break end
+            print(string.format("[AutoCraft] Crafting %d batch(es) of %s...", craftItem.Batches, craftItem.Name))
             for i = 1, craftItem.Batches do
                 if not getgenv().FishmanState.Model.State.autoCraft then break end
                 pcall(function()
@@ -822,6 +871,8 @@ if not isLobby then
         task.wait(0.3)
         
         if not getgenv().FishmanState.Model.State.autoCraft then getgenv().FishmanState.Model.DisableFlight(); return end
+        print(string.format("[AutoCraft] Finished crafting! Returning to original position (%d %d %d)...", math.round(originalPos.X), math.round(originalPos.Y), math.round(originalPos.Z)))
+        getgenv().FishmanState.Model.State.travelMessage = "Returning to fishing spot..."
         getgenv().FishmanState.Model.CraftFlyPath({ originalPos })
         getgenv().FishmanState.Model.DisableFlight()
         
@@ -829,80 +880,153 @@ if not isLobby then
         getgenv().FishmanState.Model.StartTraveling()
         getgenv().FishmanState.Model.State.autoSell = true
         getgenv().FishmanState.Model.State.waitingForArrivalToFish = true 
+        print("[AutoCraft] ✅ Returned to fishing spot and resumed fishing!")
     end
 
     getgenv().FishmanState.Model.GetInventoryData = function()
-        if inventoryObj then
+        if inventoryObj and inventoryObj.Value and inventoryObj.Value ~= "" then
             local ok, data = pcall(function() return HttpService:JSONDecode(inventoryObj.Value) end)
+            if ok and type(data) == "table" then return data end
+        end
+        local pguiObj = LocalPlayer:FindFirstChild("PlayerGui") and LocalPlayer.PlayerGui:FindFirstChild("ui") and LocalPlayer.PlayerGui.ui:FindFirstChild("inventoryObj")
+        if pguiObj and pguiObj.Value and pguiObj.Value ~= "" then
+            local ok, data = pcall(function() return HttpService:JSONDecode(pguiObj.Value) end)
             if ok and type(data) == "table" then return data end
         end
         return nil
     end
 
     getgenv().FishmanState.Model.ForceCraftAll = function()
-        if getgenv().FishmanState.Model.State.isCurrentlyCrafting then return end
+        if getgenv().FishmanState.Model.State.isCurrentlyCrafting then 
+            print("[AutoCraft] Crafting is already in progress!")
+            return 
+        end
         
+        print("[AutoCraft] Checking inventory for Legendary Fish...")
         local inventoryData = getgenv().FishmanState.Model.GetInventoryData()
-        if not inventoryData then return end
+        if not inventoryData then
+            print("[AutoCraft] ⚠️ Could not retrieve inventory data!")
+            if getgenv().FishmanState.Fluent then
+                getgenv().FishmanState.Fluent:Notify({ Title = "Craft All", Content = "Could not load inventory data!", Duration = 3 })
+            end
+            return
+        end
         
         local craftQueue = {}
+        local totalBatches = 0
         for _, legFish in ipairs(LEGENDARY_FISHES) do
             local fishCount = inventoryData[legFish] or 0
             if fishCount > 0 then
-                table.insert(craftQueue, { Name = legFish, Count = fishCount })
+                local batches = math.floor(fishCount / 40)
+                table.insert(craftQueue, { Name = legFish, Count = fishCount, Batches = batches })
+                totalBatches = totalBatches + batches
+                print(string.format("[AutoCraft] Found %s: %d (Batches of 40: %d)", legFish, fishCount, batches))
             end
         end
         
         if #craftQueue == 0 then
-            getgenv().FishmanState.Fluent:Notify({ Title = "Craft All", Content = "No Legendary Fish to craft!", Duration = 3 })
+            print("[AutoCraft] ❌ No Legendary Fish found in inventory!")
+            if getgenv().FishmanState.Fluent then
+                getgenv().FishmanState.Fluent:Notify({ Title = "Craft All", Content = "No Legendary Fish to craft!", Duration = 3 })
+            end
             return
+        end
+        
+        local craftPos = Vector3.new(162, 9, -54)
+        print("[AutoCraft] going to 162 9 -54 to craft legendary bait...")
+        if getgenv().FishmanState.Fluent then
+            getgenv().FishmanState.Fluent:Notify({ Title = "Craft All", Content = "Going to 162, 9, -54 to craft Legendary Bait...", Duration = 4 })
         end
         
         getgenv().FishmanState.Model.State.isCurrentlyCrafting = true
         local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-        if not hrp then getgenv().FishmanState.Model.State.isCurrentlyCrafting = false; return end
+        if not hrp then 
+            getgenv().FishmanState.Model.State.isCurrentlyCrafting = false 
+            return 
+        end
         local originalPos = hrp.Position
         
-        getgenv().FishmanState.Model.State.travelMessage = "Force Crafting..."
+        -- Preserve previous states
+        local wasFishing = getgenv().FishmanState.Model.State.isFishing
+        local wasDeepSea = getgenv().FishmanState.Model.State.isDeepSeaCatcher
+        local wasAutoBuy = getgenv().FishmanState.Model.State.autoBuy
+        local wasAutoSell = getgenv().FishmanState.Model.State.autoSell
+        local wasAutoTravel = getgenv().FishmanState.Model.State.isAutoTraveling
+        local wasAutoCraft = getgenv().FishmanState.Model.State.autoCraft
+        
+        -- Temporarily suspend fishing, selling, and normal auto-travel
+        getgenv().FishmanState.Model.State.isFishing = false
+        getgenv().FishmanState.Model.State.isDeepSeaCatcher = false
+        getgenv().FishmanState.Model.State.autoSell = false
+        getgenv().FishmanState.Model.State.isAutoTraveling = false
+        getgenv().FishmanState.Model.State.autoCraft = true
+        getgenv().FishmanState.Model.State.travelMessage = "Going to 162 9 -54..."
         
         getgenv().FishmanState.Model.DisableFlight()
         getgenv().FishmanState.Model.UnequipRod()
         task.wait(1)
         
         getgenv().FishmanState.Model.EnableFlight()
+        getgenv().FishmanState.Model.CraftFlyPath({ craftPos })
         
-        -- Temporarily hook `craftFlyTarget` check bypass for ForceCraftAll since we don't rely on `autoCraft` variable
-        local wasAutoCraft = getgenv().FishmanState.Model.State.autoCraft
-        getgenv().FishmanState.Model.State.autoCraft = true 
-        
-        getgenv().FishmanState.Model.CraftFlyPath({ Vector3.new(162, 9, -54) })
+        print("[AutoCraft] Arrived at 162 9 -54! Talking to Sen and crafting Legendary Bait...")
         task.wait(0.5)
         SafeInvokeQuest(true)
         task.wait(0.5)
         
+        local craftedBatches = 0
         for _, craftItem in ipairs(craftQueue) do
             local remaining = craftItem.Count
-            while remaining > 0 do
-                local batch = math.min(remaining, 40)
+            while remaining >= 40 do
+                print(string.format("[AutoCraft] Crafting 40x %s into Legendary Bait...", craftItem.Name))
                 pcall(function()
-                    craftingRemote:InvokeServer({ Count = batch, ExtraData = { ["Legendary Fish"] = craftItem.Name }, Method = "Craft", BlueprintItem = "Legendary Fish Bait" })
+                    craftingRemote:InvokeServer({
+                        Count = 40,
+                        ExtraData = { ["Legendary Fish"] = craftItem.Name },
+                        Method = "Craft",
+                        BlueprintItem = "Legendary Fish Bait"
+                    })
                 end)
-                remaining = remaining - batch
+                remaining = remaining - 40
+                craftedBatches = craftedBatches + 1
+                task.wait(0.5)
+            end
+            if remaining > 0 and craftItem.Batches == 0 then
+                print(string.format("[AutoCraft] ⚠️ Less than 40 %s (%d available), attempting single craft...", craftItem.Name, remaining))
+                pcall(function()
+                    craftingRemote:InvokeServer({
+                        Count = remaining,
+                        ExtraData = { ["Legendary Fish"] = craftItem.Name },
+                        Method = "Craft",
+                        BlueprintItem = "Legendary Fish Bait"
+                    })
+                end)
                 task.wait(0.5)
             end
         end
         
         SafeInvokeQuest(false)
         task.wait(0.3)
+        
+        print(string.format("[AutoCraft] Crafting completed! Returning to original position (%d %d %d)...", math.round(originalPos.X), math.round(originalPos.Y), math.round(originalPos.Z)))
+        getgenv().FishmanState.Model.State.travelMessage = "Returning to fishing spot..."
         getgenv().FishmanState.Model.CraftFlyPath({ originalPos })
         
         getgenv().FishmanState.Model.State.autoCraft = wasAutoCraft
-        
         getgenv().FishmanState.Model.DisableFlight()
         getgenv().FishmanState.Model.EquipRod()
+        
         getgenv().FishmanState.Model.State.isCurrentlyCrafting = false
         getgenv().FishmanState.Model.State.travelMessage = ""
-        getgenv().FishmanState.Fluent:Notify({ Title = "Craft All", Content = "Finished crafting all legendary fishes!", Duration = 3 })
+        getgenv().FishmanState.Model.State.autoSell = wasAutoSell
+        getgenv().FishmanState.Model.State.isAutoTraveling = wasAutoTravel
+        getgenv().FishmanState.Model.State.isDeepSeaCatcher = wasDeepSea
+        getgenv().FishmanState.Model.State.isFishing = wasFishing
+        
+        print(string.format("[AutoCraft] ✅ Successfully crafted legendary bait and returned! (Resumed Fishing: %s)", tostring(wasFishing)))
+        if getgenv().FishmanState.Fluent then
+            getgenv().FishmanState.Fluent:Notify({ Title = "Craft All", Content = "Finished crafting Legendary Bait and returned!", Duration = 4 })
+        end
     end
     
     -- ======================================================================
@@ -1164,6 +1288,9 @@ local function EquipRod()
 end
 
 local function DoFishingCycle()
+    if getgenv().FishmanState.Model.State.isCurrentlyCrafting or getgenv().FishmanState.Model.State.isCraftFlying then
+        return true
+    end
     if not EquipRod() then
         warn("No Fishing Rod equipped! Stopping auto-fish.")
         return false 
@@ -1407,7 +1534,7 @@ end
 task.spawn(function()
     print("Auto-Fisher started without UI.")
     while getgenv().FishmanState._running do
-        if getgenv().FishmanState.Model.State.isFishing or getgenv().FishmanState.Model.State.isDeepSeaCatcher then
+        if (getgenv().FishmanState.Model.State.isFishing or getgenv().FishmanState.Model.State.isDeepSeaCatcher) and not getgenv().FishmanState.Model.State.isCurrentlyCrafting and not getgenv().FishmanState.Model.State.isCraftFlying then
             DoFishingCycle()
         end
         task.wait() -- Delay between casts
