@@ -1327,7 +1327,7 @@ local function DoFishingCycle()
     end
     
     local rootPart = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-    local castDistance = 5
+    local castDistance = 10
     local forwardVec = rootPart and rootPart.CFrame.LookVector or Vector3.new(0, 0, -1)
     local flatForward = Vector3.new(forwardVec.X, 0, forwardVec.Z)
     if flatForward.Magnitude > 0.01 then
