@@ -1287,6 +1287,38 @@ local function EquipRod()
     return false
 end
 
+local function GetWaterLevel(targetPos)
+    local rayParams = RaycastParams.new()
+    rayParams.FilterType = Enum.RaycastFilterType.Exclude
+    if LocalPlayer.Character then
+        rayParams.FilterDescendantsInstances = { LocalPlayer.Character }
+    end
+    rayParams.IgnoreWater = false
+    
+    local rayY = (targetPos and targetPos.Y or 10) + 20
+    local rayStart = Vector3.new(targetPos.X, rayY, targetPos.Z)
+    local hit = workspace:Raycast(rayStart, Vector3.new(0, -100, 0), rayParams)
+    if hit then
+        if hit.Material == Enum.Material.Water or string.find(string.lower(hit.Instance.Name), "water") or string.find(string.lower(hit.Instance.Name), "sea") or string.find(string.lower(hit.Instance.Name), "ocean") then
+            return hit.Position.Y
+        end
+    end
+    
+    local falls = workspace:FindFirstChild("Env") and workspace.Env:FindFirstChild("WaterStuff") and workspace.Env.WaterStuff:FindFirstChild("Falls")
+    if falls then return falls.Position.Y end
+    
+    local ocean = workspace:FindFirstChild("Ocean")
+    if ocean then
+        for _, part in ipairs(ocean:GetDescendants()) do
+            if part:IsA("BasePart") then
+                return part.Position.Y + (part.Size.Y / 2)
+            end
+        end
+    end
+    
+    return -7.99
+end
+
 local function DoFishingCycle()
     if getgenv().FishmanState.Model.State.isCurrentlyCrafting or getgenv().FishmanState.Model.State.isCraftFlying then
         return true
@@ -1296,7 +1328,22 @@ local function DoFishingCycle()
         return false 
     end
     
-    local throwGoal = Vector3.new(104.38, -7.99, -72.01)
+    local rootPart = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    local castDistance = 25
+    local forwardVec = rootPart and rootPart.CFrame.LookVector or Vector3.new(0, 0, -1)
+    local flatForward = Vector3.new(forwardVec.X, 0, forwardVec.Z)
+    if flatForward.Magnitude > 0.01 then
+        flatForward = flatForward.Unit
+    else
+        flatForward = Vector3.new(0, 0, -1)
+    end
+    
+    local castOrigin = rootPart and rootPart.Position or Vector3.new(101.53, 9.31, -55.77)
+    local targetX = castOrigin.X + (flatForward.X * castDistance)
+    local targetZ = castOrigin.Z + (flatForward.Z * castDistance)
+    local waterLevelY = GetWaterLevel(Vector3.new(targetX, castOrigin.Y, targetZ))
+    
+    local throwGoal = Vector3.new(targetX, waterLevelY, targetZ)
     
     local success, throwResponse = pcall(function()
         return actionRemote:InvokeServer({ 
@@ -1319,8 +1366,6 @@ local function DoFishingCycle()
     
     if not hook then return true end
     
-    local falls = workspace:FindFirstChild("Env") and workspace.Env:FindFirstChild("WaterStuff") and workspace.Env.WaterStuff:FindFirstChild("Falls")
-    local waterLevelY = falls and falls.Position.Y or -7.99
     local surfacePosition = Vector3.new(throwGoal.X, waterLevelY, throwGoal.Z)
     
     hook:PivotTo(CFrame.new(surfacePosition))
