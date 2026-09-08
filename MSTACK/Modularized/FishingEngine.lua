@@ -825,62 +825,8 @@ if not isLobby then
         pcall(function() questEvent:InvokeServer({ [1] = "npcChat", [2] = chatState }) end)
     end
     
-    getgenv().FishmanState.Model.ExecuteLegendaryCraft = function(craftQueue)
-        local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-        if not hrp then return end
-        local originalPos = hrp.Position
-        local craftPos = Vector3.new(162, 9, -54)
-        
-        print("[AutoCraft] going to 162 9 -54 to craft legendary bait...")
-        if getgenv().FishmanState.Fluent then
-            getgenv().FishmanState.Fluent:Notify({ Title = "Auto Craft", Content = "Going to 162, 9, -54 to craft Legendary Bait...", Duration = 4 })
-        end
-        
-        getgenv().FishmanState.Model.State.isFishing = false
-        getgenv().FishmanState.Model.State.isDeepSeaCatcher = false
-        getgenv().FishmanState.Model.State.autoSell = false
-        getgenv().FishmanState.Model.State.isAutoTraveling = false
-        getgenv().FishmanState.Model.State.travelMessage = "Going to 162 9 -54 (Crafting)..."
-        
-        getgenv().FishmanState.Model.DisableFlight()
-        getgenv().FishmanState.Model.UnequipRod()
-        task.wait(1)
-        if not getgenv().FishmanState.Model.State.autoCraft then return end
-
-        getgenv().FishmanState.Model.EnableFlight()
-        getgenv().FishmanState.Model.CraftFlyPath({ craftPos })
-        if not getgenv().FishmanState.Model.State.autoCraft then getgenv().FishmanState.Model.DisableFlight(); return end
-        
-        print("[AutoCraft] Arrived at 162 9 -54! Talking to Sen and crafting...")
-        task.wait(0.5)
-        SafeInvokeQuest(true)
-        task.wait(0.5)
-        
-        for _, craftItem in ipairs(craftQueue) do
-            if not getgenv().FishmanState.Model.State.autoCraft then break end
-            print(string.format("[AutoCraft] Crafting %d batch(es) of %s...", craftItem.Batches, craftItem.Name))
-            for i = 1, craftItem.Batches do
-                if not getgenv().FishmanState.Model.State.autoCraft then break end
-                pcall(function()
-                    craftingRemote:InvokeServer({ Count = 40, ExtraData = { ["Legendary Fish"] = craftItem.Name }, Method = "Craft", BlueprintItem = "Legendary Fish Bait" })
-                end)
-                task.wait(0.5)
-            end
-        end
-        SafeInvokeQuest(false)
-        task.wait(0.3)
-        
-        if not getgenv().FishmanState.Model.State.autoCraft then getgenv().FishmanState.Model.DisableFlight(); return end
-        print(string.format("[AutoCraft] Finished crafting! Returning to original position (%d %d %d)...", math.round(originalPos.X), math.round(originalPos.Y), math.round(originalPos.Z)))
-        getgenv().FishmanState.Model.State.travelMessage = "Returning to fishing spot..."
-        getgenv().FishmanState.Model.CraftFlyPath({ originalPos })
-        getgenv().FishmanState.Model.DisableFlight()
-        
-        getgenv().FishmanState.Model.EquipRod()
-        getgenv().FishmanState.Model.StartTraveling()
-        getgenv().FishmanState.Model.State.autoSell = true
-        getgenv().FishmanState.Model.State.waitingForArrivalToFish = true 
-        print("[AutoCraft] ✅ Returned to fishing spot and resumed fishing!")
+    getgenv().FishmanState.Model.ExecuteLegendaryCraft = function()
+        getgenv().FishmanState.Model.ForceCraftAll()
     end
 
     getgenv().FishmanState.Model.GetInventoryData = function()
@@ -912,19 +858,16 @@ if not isLobby then
             return
         end
         
-        local craftQueue = {}
-        local totalBatches = 0
+        local hasAnyLegendary = false
         for _, legFish in ipairs(LEGENDARY_FISHES) do
             local fishCount = inventoryData[legFish] or 0
             if fishCount > 0 then
-                local batches = math.floor(fishCount / 40)
-                table.insert(craftQueue, { Name = legFish, Count = fishCount, Batches = batches })
-                totalBatches = totalBatches + batches
-                print(string.format("[AutoCraft] Found %s: %d (Batches of 40: %d)", legFish, fishCount, batches))
+                hasAnyLegendary = true
+                print(string.format("[AutoCraft] Found %s: %d", legFish, fishCount))
             end
         end
         
-        if #craftQueue == 0 then
+        if not hasAnyLegendary then
             print("[AutoCraft] ❌ No Legendary Fish found in inventory!")
             if getgenv().FishmanState.Fluent then
                 getgenv().FishmanState.Fluent:Notify({ Title = "Craft All", Content = "No Legendary Fish to craft!", Duration = 3 })
@@ -933,7 +876,7 @@ if not isLobby then
         end
         
         local craftPos = Vector3.new(162, 9, -54)
-        print("[AutoCraft] going to 162 9 -54 to craft legendary bait...")
+        print("[AutoCraft] Going to 162, 9, -54 to craft legendary bait...")
         if getgenv().FishmanState.Fluent then
             getgenv().FishmanState.Fluent:Notify({ Title = "Craft All", Content = "Going to 162, 9, -54 to craft Legendary Bait...", Duration = 4 })
         end
@@ -974,29 +917,15 @@ if not isLobby then
         SafeInvokeQuest(true)
         task.wait(0.5)
         
-        local craftedBatches = 0
-        for _, craftItem in ipairs(craftQueue) do
-            local remaining = craftItem.Count
-            while remaining >= 40 do
-                print(string.format("[AutoCraft] Crafting 40x %s into Legendary Bait...", craftItem.Name))
+        local currentInv = getgenv().FishmanState.Model.GetInventoryData() or inventoryData
+        for _, legFish in ipairs(LEGENDARY_FISHES) do
+            local count = currentInv[legFish] or 0
+            if count > 0 then
+                print(string.format("[AutoCraft] Crafting %dx %s into Legendary Bait...", count, legFish))
                 pcall(function()
                     craftingRemote:InvokeServer({
-                        Count = 40,
-                        ExtraData = { ["Legendary Fish"] = craftItem.Name },
-                        Method = "Craft",
-                        BlueprintItem = "Legendary Fish Bait"
-                    })
-                end)
-                remaining = remaining - 40
-                craftedBatches = craftedBatches + 1
-                task.wait(0.5)
-            end
-            if remaining > 0 and craftItem.Batches == 0 then
-                print(string.format("[AutoCraft] ⚠️ Less than 40 %s (%d available), attempting single craft...", craftItem.Name, remaining))
-                pcall(function()
-                    craftingRemote:InvokeServer({
-                        Count = remaining,
-                        ExtraData = { ["Legendary Fish"] = craftItem.Name },
+                        Count = count,
+                        ExtraData = { ["Legendary Fish"] = legFish },
                         Method = "Craft",
                         BlueprintItem = "Legendary Fish Bait"
                     })
@@ -1619,20 +1548,18 @@ end)
             if not getgenv().FishmanState.Model.State.autoCraft or getgenv().FishmanState.Model.State.isCurrentlyCrafting then continue end
             local inventoryData = getgenv().FishmanState.Model.GetInventoryData()
             if not inventoryData then continue end
-            local craftQueue = {}
-            local totalBatches = 0
+            
+            local shouldCraft = false
             for _, legFish in ipairs(LEGENDARY_FISHES) do
-                local fishCount = inventoryData[legFish] or 0
-                if fishCount >= 40 then
-                    local timesToCraft = math.floor(fishCount / 40)
-                    table.insert(craftQueue, { Name = legFish, Batches = timesToCraft })
-                    totalBatches += timesToCraft
+                if (inventoryData[legFish] or 0) >= 40 then
+                    shouldCraft = true
+                    break
                 end
             end
-            if totalBatches > 0 then
-                getgenv().FishmanState.Model.State.isCurrentlyCrafting = true
-                getgenv().FishmanState.Model.ExecuteLegendaryCraft(craftQueue)
-                getgenv().FishmanState.Model.State.isCurrentlyCrafting = false
+            
+            if shouldCraft then
+                print("[AutoCraft] 40 cap reached on a legendary fish! Auto-crafting all legendary fish...")
+                getgenv().FishmanState.Model.ForceCraftAll()
             end
         end
     end)
