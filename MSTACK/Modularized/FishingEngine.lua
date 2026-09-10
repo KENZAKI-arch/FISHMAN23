@@ -692,6 +692,7 @@ if not isLobby then
         if humanoid then 
             humanoid.PlatformStand = false 
             pcall(function()
+                humanoid:Move(Vector3.zero, false)
                 humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, true)
                 humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, true)
             end)
@@ -731,34 +732,22 @@ if not isLobby then
             humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
         end)
 
-        -- Continuous noclip connection to prevent getting wedged in fences/obstacles
-        local cachedParts = {}
+        -- Enable natural CanCollide on character body parts (Torso, Head, limbs)
         for _, part in ipairs(char:GetDescendants()) do
             if part:IsA("BasePart") then
-                table.insert(cachedParts, part)
-                part.CanCollide = false
-            end
-        end
-        spotDescAddedConn = char.DescendantAdded:Connect(function(part)
-            if part:IsA("BasePart") then
-                table.insert(cachedParts, part)
-                part.CanCollide = false
-            end
-        end)
-        spotNoclipConn = RunService.Stepped:Connect(function()
-            if not isMovingToSpot or not getgenv().FishmanState._running then return end
-            for _, part in ipairs(cachedParts) do
-                if part and part.Parent and part.CanCollide then
-                    part.CanCollide = false
+                if part.Name == "HumanoidRootPart" then
+                    part.CanCollide = false -- Standard Roblox: HRP non-collidable to prevent seam snagging
+                else
+                    part.CanCollide = true
                 end
             end
-        end)
+        end
 
         spotMoveThread = task.spawn(function()
             if getgenv().FishmanState.Fluent and getgenv().FishmanState.Fluent.Notify then
                 getgenv().FishmanState.Fluent:Notify({
                     Title = "Move to Fishing Spot",
-                    Content = "Pathfinding at ground level to (104, 9, -55)...",
+                    Content = "Walking naturally to (104, 9, -55)...",
                     Duration = 3
                 })
             end
@@ -845,8 +834,9 @@ if not isLobby then
 
             local bg = hrp:FindFirstChild("FishingSpotBG") or Instance.new("BodyGyro")
             bg.Name = "FishingSpotBG"
-            bg.MaxTorque = Vector3.new(9e5, 9e5, 9e5)
-            bg.P = 9e4
+            bg.MaxTorque = Vector3.new(0, 9e5, 0) -- Only yaw: keeps character upright and turns naturally
+            bg.P = 2e4
+            bg.D = 500
             bg.CFrame = hrp.CFrame
             bg.Parent = hrp
 
@@ -907,9 +897,15 @@ if not isLobby then
 
                     if (curPos - lastPos).Magnitude < 0.25 then
                         stuckTimer = stuckTimer + dt
+                        -- Natural jump attempt when approaching small fences or curbs
+                        if stuckTimer > 0.12 and stuckTimer < 0.25 then
+                            pcall(function()
+                                humanoid.Jump = true
+                            end)
+                        end
                         if stuckTimer > 0.35 then
                             -- Teleport 2 studs forward past obstacle, preserving altitude but at least minFloorY 8
-                            local teleY = math.max(curPos.Y, minFloorY)
+                            local teleY = math.max(curPos.Y, minFloorY) + 0.5
                             hrp.CFrame = CFrame.new(curPos.X + (moveDir.X * 2.0), teleY, curPos.Z + (moveDir.Z * 2.0)) * hrp.CFrame.Rotation
                             hrp.AssemblyLinearVelocity = Vector3.zero
                             hrp.Velocity = Vector3.zero
@@ -934,14 +930,25 @@ if not isLobby then
                     -- Target altitude: ground surface + hip standing offset (feet right on the ground), floor limit at least minFloorY
                     local desiredY = math.max(groundY + hipOffset, minFloorY)
                     local yDiff = desiredY - curPos.Y
-                    local yVelocity = math.clamp(yDiff * 15, -20, 25)
 
-                    -- If at or below minimum floor limit, do not allow downward force
-                    if curPos.Y <= minFloorY and yVelocity < 0 then
-                        yVelocity = 0
+                    -- Natural walking & climbing:
+                    -- When walking on ground, let Roblox natural gravity and footstep physics handle Y
+                    -- Only apply vertical lift when climbing up steep elevation (yDiff > 1.2) or recovering from below floor limit
+                    if yDiff > 1.2 then
+                        bv.MaxForce = Vector3.new(9e5, 9e5, 9e5)
+                        bv.Velocity = Vector3.new(moveDir.X * moveSpeed, math.clamp(yDiff * 15, 5, 25), moveDir.Z * moveSpeed)
+                    elseif curPos.Y < minFloorY then
+                        bv.MaxForce = Vector3.new(9e5, 9e5, 9e5)
+                        bv.Velocity = Vector3.new(moveDir.X * moveSpeed, 15, moveDir.Z * moveSpeed)
+                    else
+                        bv.MaxForce = Vector3.new(9e5, 0, 9e5)
+                        bv.Velocity = Vector3.new(moveDir.X * moveSpeed, 0, moveDir.Z * moveSpeed)
                     end
 
-                    bv.Velocity = Vector3.new(moveDir.X * moveSpeed, yVelocity, moveDir.Z * moveSpeed)
+                    -- Play natural walking/running animation
+                    pcall(function()
+                        humanoid:Move(moveDir, false)
+                    end)
 
                     if horizDist > 0.5 then
                         bg.CFrame = CFrame.lookAt(curPos, curPos + Vector3.new(moveDir.X, 0, moveDir.Z))
