@@ -1233,6 +1233,37 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
         if isLobby then if Value then getgenv().FishmanState.Fluent:Notify({ Title = "Error", Content = "Cannot fish in Lobby!", Duration = 3 }); getgenv().FishmanState.Fluent.Options.T_Fish:SetValue(false) end return end
         getgenv().FishmanState.Model.State.isFishing = Value 
     end })
+    getgenv().FishmanState.Tabs.Fishing:AddButton({
+        Title = "✨ Auto Leg Bait",
+        Description = "Turns ON Auto Fish, Only Reel > 1.0, Auto Buy Bait, Auto Craft, and Disables 3D Rendering",
+        Callback = function()
+            if isLobby then
+                if getgenv().FishmanState.Fluent then
+                    getgenv().FishmanState.Fluent:Notify({ Title = "Error", Content = "Cannot start in Lobby!", Duration = 3 })
+                end
+                return
+            end
+            local opts = getgenv().FishmanState.Fluent and getgenv().FishmanState.Fluent.Options
+            if opts then
+                if opts.T_Fish then opts.T_Fish:SetValue(true) end
+                if opts.T_StrictReel then opts.T_StrictReel:SetValue(true) end
+                if opts.T_Buy then opts.T_Buy:SetValue(true) end
+                if opts.T_Craft then opts.T_Craft:SetValue(true) end
+                if opts.T_AntiLag then
+                    opts.T_AntiLag:SetValue(true)
+                else
+                    pcall(function() RunService:Set3dRenderingEnabled(false) end)
+                end
+                if getgenv().FishmanState.Fluent.Notify then
+                    getgenv().FishmanState.Fluent:Notify({
+                        Title = "Auto Leg Bait",
+                        Content = "Enabled: Auto Fish, Strict Reel, Auto Buy, Auto Craft, & Disabled 3D Rendering!",
+                        Duration = 3
+                    })
+                end
+            end
+        end
+    })
     getgenv().FishmanState.Tabs.Fishing:AddToggle("T_DeepSea", { Title = "Deep Sea Catcher (ONLY Beasts)", Default = false, Callback = function(Value) 
         if isLobby then if Value then getgenv().FishmanState.Fluent:Notify({ Title = "Error", Content = "Cannot fish in Lobby!", Duration = 3 }); getgenv().FishmanState.Fluent.Options.T_DeepSea:SetValue(false) end return end
         task.spawn(function()
