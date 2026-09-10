@@ -645,9 +645,20 @@ if not isLobby then
 
     local isMovingToSpot = false
     local spotMoveThread = nil
+    local spotNoclipConn = nil
+    local spotDescAddedConn = nil
 
     getgenv().FishmanState.Model.StopMovingToFishingSpot = function()
         isMovingToSpot = false
+
+        if spotNoclipConn then
+            spotNoclipConn:Disconnect()
+            spotNoclipConn = nil
+        end
+        if spotDescAddedConn then
+            spotDescAddedConn:Disconnect()
+            spotDescAddedConn = nil
+        end
         
         local char = LocalPlayer.Character
         local hrp = char and char:FindFirstChild("HumanoidRootPart")
@@ -663,9 +674,21 @@ if not isLobby then
             hrp.RotVelocity = Vector3.zero
         end
 
+        if char then
+            for _, p in ipairs(char:GetDescendants()) do
+                if p:IsA("BasePart") and (p.Name == "UpperTorso" or p.Name == "LowerTorso" or p.Name == "Torso" or p.Name == "Head") then
+                    p.CanCollide = true
+                end
+            end
+        end
+
         local humanoid = char and char:FindFirstChildOfClass("Humanoid")
         if humanoid then 
             humanoid.PlatformStand = false 
+            pcall(function()
+                humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, true)
+                humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, true)
+            end)
         end
 
         local fluent = getgenv().FishmanState.Fluent
@@ -696,6 +719,35 @@ if not isLobby then
         end
 
         isMovingToSpot = true
+
+        pcall(function()
+            humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
+            humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
+        end)
+
+        -- Continuous noclip connection to prevent getting wedged in fences/obstacles
+        local cachedParts = {}
+        for _, part in ipairs(char:GetDescendants()) do
+            if part:IsA("BasePart") then
+                table.insert(cachedParts, part)
+                part.CanCollide = false
+            end
+        end
+        spotDescAddedConn = char.DescendantAdded:Connect(function(part)
+            if part:IsA("BasePart") then
+                table.insert(cachedParts, part)
+                part.CanCollide = false
+            end
+        end)
+        spotNoclipConn = RunService.Stepped:Connect(function()
+            if not isMovingToSpot or not getgenv().FishmanState._running then return end
+            for _, part in ipairs(cachedParts) do
+                if part and part.Parent and part.CanCollide then
+                    part.CanCollide = false
+                end
+            end
+        end)
+
         spotMoveThread = task.spawn(function()
             if getgenv().FishmanState.Fluent and getgenv().FishmanState.Fluent.Notify then
                 getgenv().FishmanState.Fluent:Notify({
@@ -715,13 +767,23 @@ if not isLobby then
             groundParams.FilterDescendantsInstances = {char}
             groundParams.IgnoreWater = true
 
-            local function getGroundY(pos)
-                local rayStart = pos + Vector3.new(0, 5, 0)
-                local rayRes = workspace:Raycast(rayStart, Vector3.new(0, -25, 0), groundParams)
-                if rayRes then
-                    return rayRes.Position.Y + 3.0
+            local function getGroundY(pos, forwardDir)
+                local rayStart = pos + Vector3.new(0, 6, 0)
+                local rayRes = workspace:Raycast(rayStart, Vector3.new(0, -30, 0), groundParams)
+                local currentGroundY = rayRes and (rayRes.Position.Y + 3.0) or pos.Y
+
+                if forwardDir and forwardDir.Magnitude > 0.1 then
+                    local aheadStart = pos + (forwardDir.Unit * 2.5) + Vector3.new(0, 6, 0)
+                    local aheadRes = workspace:Raycast(aheadStart, Vector3.new(0, -30, 0), groundParams)
+                    if aheadRes then
+                        local aheadY = aheadRes.Position.Y + 3.0
+                        if aheadY > currentGroundY and (aheadY - currentGroundY) <= 4.5 then
+                            return aheadY
+                        end
+                    end
                 end
-                return pos.Y
+
+                return currentGroundY
             end
 
             local path = PathfindingService:CreatePath({
@@ -772,8 +834,9 @@ if not isLobby then
                 local wpPos = wp.Position
                 local isLast = (idx == #waypoints)
                 local wpThreshold = isLast and 2.0 or 3.5
+                local isJumpWp = (wp.Action == Enum.PathWaypointAction.Jump)
 
-                if wp.Action == Enum.PathWaypointAction.Jump and humanoid then
+                if isJumpWp and humanoid then
                     humanoid.Jump = true
                 end
 
@@ -781,6 +844,8 @@ if not isLobby then
                 local lastPos = hrp.Position
 
                 while isMovingToSpot and getgenv().FishmanState._running and hrp.Parent do
+                    if humanoid.Health <= 0 then break end
+
                     local curPos = hrp.Position
 
                     local distToFinal = (Vector3.new(curPos.X, 0, curPos.Z) - Vector3.new(targetPos.X, 0, targetPos.Z)).Magnitude
@@ -797,29 +862,30 @@ if not isLobby then
                     end
 
                     local dt = RunService.Heartbeat:Wait()
+                    local moveDir = horizDiff.Unit
 
-                    if (curPos - lastPos).Magnitude < 0.2 then
+                    if (curPos - lastPos).Magnitude < 0.25 then
                         stuckTimer = stuckTimer + dt
-                        if stuckTimer > 0.6 then
-                            for _, part in ipairs(char:GetDescendants()) do
-                                if part:IsA("BasePart") then part.CanCollide = false end
-                            end
-                            if humanoid then humanoid.Jump = true end
-                        end
                     else
                         stuckTimer = 0
                         lastPos = curPos
                     end
 
-                    local targetGroundY = getGroundY(curPos)
+                    local targetGroundY = getGroundY(curPos, moveDir)
+                    if isJumpWp then
+                        targetGroundY = targetGroundY + 2.5
+                    end
                     if isLast then
                         targetGroundY = (targetGroundY + targetPos.Y) / 2
+                    end
+                    if stuckTimer > 0.25 then
+                        targetGroundY = targetGroundY + math.min(stuckTimer * 10, 5)
+                        if humanoid then humanoid.Jump = true end
                     end
 
                     local yDiff = targetGroundY - curPos.Y
                     local yVelocity = math.clamp(yDiff * 20, -35, 35)
 
-                    local moveDir = horizDiff.Unit
                     bv.Velocity = Vector3.new(moveDir.X * moveSpeed, yVelocity, moveDir.Z * moveSpeed)
 
                     if horizDist > 0.5 then
