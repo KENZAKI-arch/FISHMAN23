@@ -760,36 +760,47 @@ if not isLobby then
             if getgenv().FishmanState.Model.DisableFlight then
                 pcall(getgenv().FishmanState.Model.DisableFlight)
             end
+            for _, child in ipairs(hrp:GetChildren()) do
+                if child.Name == "AutoTravel_Velocity" or child.Name == "AutoTravel_Gyro" or child.Name == "AntiRotation" or child.Name == "AntiGravity" then
+                    pcall(function() child:Destroy() end)
+                end
+            end
             humanoid.PlatformStand = false
+            pcall(function()
+                humanoid:ChangeState(Enum.HumanoidStateType.Running)
+            end)
+
+            -- Cancel any existing upward momentum immediately so we drop to ground level right away
+            if hrp.AssemblyLinearVelocity.Y > 0 then
+                hrp.AssemblyLinearVelocity = Vector3.new(hrp.AssemblyLinearVelocity.X, 0, hrp.AssemblyLinearVelocity.Z)
+            end
 
             local groundParams = RaycastParams.new()
             groundParams.FilterType = Enum.RaycastFilterType.Exclude
             groundParams.FilterDescendantsInstances = {char}
             groundParams.IgnoreWater = true
 
-            local function getGroundY(pos, forwardDir)
-                local rayStart = pos + Vector3.new(0, 6, 0)
-                local rayRes = workspace:Raycast(rayStart, Vector3.new(0, -30, 0), groundParams)
-                local currentGroundY = rayRes and (rayRes.Position.Y + 3.0) or pos.Y
-
-                if forwardDir and forwardDir.Magnitude > 0.1 then
-                    local aheadStart = pos + (forwardDir.Unit * 2.5) + Vector3.new(0, 6, 0)
-                    local aheadRes = workspace:Raycast(aheadStart, Vector3.new(0, -30, 0), groundParams)
-                    if aheadRes then
-                        local aheadY = aheadRes.Position.Y + 3.0
-                        if aheadY > currentGroundY and (aheadY - currentGroundY) <= 4.5 then
-                            return aheadY
-                        end
+            local function getGroundY(pos, fallbackGroundY)
+                fallbackGroundY = fallbackGroundY or (targetPos.Y + 3.0)
+                -- Cast downward from well above the player and down deep into the map to reliably find the real ground
+                local castOriginY = math.max(pos.Y + 5, fallbackGroundY + 15)
+                local rayStart = Vector3.new(pos.X, castOriginY, pos.Z)
+                local rayRes = workspace:Raycast(rayStart, Vector3.new(0, -400, 0), groundParams)
+                if rayRes then
+                    local candidateY = rayRes.Position.Y + 3.0
+                    -- Avoid locking onto overhead canopies, roofs, or high tree branches
+                    if candidateY <= (fallbackGroundY + 6) then
+                        return candidateY
                     end
                 end
-
-                return currentGroundY
+                -- Fallback to waypoint ground level
+                return fallbackGroundY
             end
 
             local path = PathfindingService:CreatePath({
                 AgentRadius = 2.5,
                 AgentHeight = 5,
-                AgentCanJump = true,
+                AgentCanJump = false,
                 WaypointSpacing = 3.5,
                 Costs = { Water = 50 }
             })
@@ -834,11 +845,7 @@ if not isLobby then
                 local wpPos = wp.Position
                 local isLast = (idx == #waypoints)
                 local wpThreshold = isLast and 2.0 or 3.5
-                local isJumpWp = (wp.Action == Enum.PathWaypointAction.Jump)
-
-                if isJumpWp and humanoid then
-                    humanoid.Jump = true
-                end
+                local fallbackY = (isLast and (targetPos.Y + 3.0)) or (wpPos.Y + 3.0)
 
                 local stuckTimer = 0
                 local lastPos = hrp.Position
@@ -866,25 +873,24 @@ if not isLobby then
 
                     if (curPos - lastPos).Magnitude < 0.25 then
                         stuckTimer = stuckTimer + dt
+                        if stuckTimer > 0.35 then
+                            -- Nudge horizontally forward at ground level without lifting into the sky
+                            hrp.CFrame = hrp.CFrame + (moveDir * 1.5)
+                            stuckTimer = 0
+                        end
                     else
                         stuckTimer = 0
                         lastPos = curPos
                     end
 
-                    local targetGroundY = getGroundY(curPos, moveDir)
-                    if isJumpWp then
-                        targetGroundY = targetGroundY + 2.5
-                    end
+                    local targetGroundY = getGroundY(curPos, fallbackY)
                     if isLast then
-                        targetGroundY = (targetGroundY + targetPos.Y) / 2
-                    end
-                    if stuckTimer > 0.25 then
-                        targetGroundY = targetGroundY + math.min(stuckTimer * 10, 5)
-                        if humanoid then humanoid.Jump = true end
+                        targetGroundY = targetPos.Y + 3.0
                     end
 
                     local yDiff = targetGroundY - curPos.Y
-                    local yVelocity = math.clamp(yDiff * 20, -35, 35)
+                    -- Aggressively pull down (-120 studs/s) as soon as above ground to immediately return to ground level
+                    local yVelocity = math.clamp(yDiff * 35, -120, 25)
 
                     bv.Velocity = Vector3.new(moveDir.X * moveSpeed, yVelocity, moveDir.Z * moveSpeed)
 
