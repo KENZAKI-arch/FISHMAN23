@@ -1233,31 +1233,39 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
         if isLobby then if Value then getgenv().FishmanState.Fluent:Notify({ Title = "Error", Content = "Cannot fish in Lobby!", Duration = 3 }); getgenv().FishmanState.Fluent.Options.T_Fish:SetValue(false) end return end
         getgenv().FishmanState.Model.State.isFishing = Value 
     end })
-    getgenv().FishmanState.Tabs.Fishing:AddButton({
-        Title = "✨ Auto Leg Bait",
-        Description = "Turns ON Auto Fish, Only Reel > 1.0, Auto Buy Bait, Auto Craft, and Disables 3D Rendering",
-        Callback = function()
+    local legBaitInit = false
+    getgenv().FishmanState.Tabs.Fishing:AddToggle("T_AutoLegBait", {
+        Title = "Auto Leg Bait (All-In-One)",
+        Default = false,
+        Callback = function(Value)
+            if not legBaitInit then
+                legBaitInit = true
+                return
+            end
             if isLobby then
-                if getgenv().FishmanState.Fluent then
-                    getgenv().FishmanState.Fluent:Notify({ Title = "Error", Content = "Cannot start in Lobby!", Duration = 3 })
+                if Value and getgenv().FishmanState.Fluent then
+                    getgenv().FishmanState.Fluent:Notify({ Title = "Error", Content = "Cannot fish/craft in Lobby!", Duration = 3 })
+                    if getgenv().FishmanState.Fluent.Options and getgenv().FishmanState.Fluent.Options.T_AutoLegBait then
+                        getgenv().FishmanState.Fluent.Options.T_AutoLegBait:SetValue(false)
+                    end
                 end
                 return
             end
             local opts = getgenv().FishmanState.Fluent and getgenv().FishmanState.Fluent.Options
             if opts then
-                if opts.T_Fish then opts.T_Fish:SetValue(true) end
-                if opts.T_StrictReel then opts.T_StrictReel:SetValue(true) end
-                if opts.T_Buy then opts.T_Buy:SetValue(true) end
-                if opts.T_Craft then opts.T_Craft:SetValue(true) end
+                if opts.T_Fish and opts.T_Fish.Value ~= Value then opts.T_Fish:SetValue(Value) end
+                if opts.T_StrictReel and opts.T_StrictReel.Value ~= Value then opts.T_StrictReel:SetValue(Value) end
+                if opts.T_Buy and opts.T_Buy.Value ~= Value then opts.T_Buy:SetValue(Value) end
+                if opts.T_Craft and opts.T_Craft.Value ~= Value then opts.T_Craft:SetValue(Value) end
                 if opts.T_AntiLag then
-                    opts.T_AntiLag:SetValue(true)
+                    if opts.T_AntiLag.Value ~= Value then opts.T_AntiLag:SetValue(Value) end
                 else
-                    pcall(function() RunService:Set3dRenderingEnabled(false) end)
+                    pcall(function() RunService:Set3dRenderingEnabled(not Value) end)
                 end
-                if getgenv().FishmanState.Fluent.Notify then
+                if getgenv().FishmanState.Fluent and getgenv().FishmanState.Fluent.Notify then
                     getgenv().FishmanState.Fluent:Notify({
                         Title = "Auto Leg Bait",
-                        Content = "Enabled: Auto Fish, Strict Reel, Auto Buy, Auto Craft, & Disabled 3D Rendering!",
+                        Content = Value and "Turned ON: Auto Fish, Strict Reel, Auto Buy, Auto Craft, & Anti-Lag" or "Turned OFF: Auto Fish, Strict Reel, Auto Buy, Auto Craft, & Anti-Lag",
                         Duration = 3
                     })
                 end
