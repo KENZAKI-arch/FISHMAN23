@@ -1541,7 +1541,7 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
     getgenv().FishmanState.Tabs.Fishing:AddSlider("S_ShipSpeed", {
         Title = "Return To Ship Speed",
         Description = "Adjusts flight speed (300 is recommended)",
-        Default = 90,
+        Default = 60,
         Min = 50,
         Max = 1000,
         Rounding = 0,
@@ -2077,7 +2077,7 @@ getgenv().FishmanState.Tabs.Autofarm:AddButton({
 -- ======================================================================
 getgenv().FishmanState.Tabs.Settings:AddToggle("T_AutoReconnect", { 
     Title = "Auto Reconnect on Disconnect", 
-    Default = GlobalMem.FishmanAutoReconnect, 
+    Default = GlobalMem.FishmanAutoReconnect or false, 
     Callback = function(Value)
         GlobalMem.FishmanAutoReconnect = Value
         getgenv().FishmanState.SaveConfig()

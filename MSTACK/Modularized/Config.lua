@@ -178,7 +178,7 @@ end
 GlobalMem.FishmanDestination = GlobalMem.FishmanDestination or GlobalMem.FishmanDefaultDestination or "tradeHub" 
 GlobalMem.FishmanAutoTeleport = GlobalMem.FishmanAutoTeleport or false 
 GlobalMem.FishmanAutoJoin = GlobalMem.FishmanAutoJoin or false
-if GlobalMem.FishmanAutoReconnect == nil then GlobalMem.FishmanAutoReconnect = true end
+if GlobalMem.FishmanAutoReconnect == nil then GlobalMem.FishmanAutoReconnect = false end
 if GlobalMem.FishmanAutoRouteLobby == nil then GlobalMem.FishmanAutoRouteLobby = true end
 
 getgenv().FishmanState.SaveConfig = function()

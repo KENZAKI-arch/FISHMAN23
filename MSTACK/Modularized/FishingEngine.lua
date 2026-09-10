@@ -114,6 +114,7 @@ local craftFlyTarget = nil
         waitingForArrivalToFish = false,
         isCraftFlying         = false,
         activeNavigation      = nil,
+        shipSpeed             = 60,
     }
 
 if not isLobby then
@@ -786,7 +787,7 @@ if not isLobby then
         getgenv().FishmanState.Model.DisableFlight()
         task.wait(0.1)
         getgenv().FishmanState.Model.EnableFlight()
-        local speed = getgenv().FishmanState.Model.State.shipSpeed or 300 
+        local speed = getgenv().FishmanState.Model.State.shipSpeed or 60 
         
         local function TweenTo(point, customSpeed)
             local currentSpeed = customSpeed or speed
