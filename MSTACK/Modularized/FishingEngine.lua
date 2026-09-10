@@ -648,23 +648,34 @@ if not isLobby then
 
     getgenv().FishmanState.Model.StopMovingToFishingSpot = function()
         isMovingToSpot = false
-        if spotMoveThread then
-            task.cancel(spotMoveThread)
-            spotMoveThread = nil
-        end
+        
         local char = LocalPlayer.Character
         local hrp = char and char:FindFirstChild("HumanoidRootPart")
         if hrp then
-            local bv = hrp:FindFirstChild("FishingSpotBV")
-            if bv then bv:Destroy() end
-            local bg = hrp:FindFirstChild("FishingSpotBG")
-            if bg then bg:Destroy() end
+            for _, child in ipairs(hrp:GetChildren()) do
+                if child.Name == "FishingSpotBV" or child.Name == "FishingSpotBG" then
+                    child:Destroy()
+                end
+            end
             hrp.AssemblyLinearVelocity = Vector3.zero
+            hrp.AssemblyAngularVelocity = Vector3.zero
+            hrp.Velocity = Vector3.zero
+            hrp.RotVelocity = Vector3.zero
         end
+
         local humanoid = char and char:FindFirstChildOfClass("Humanoid")
-        if humanoid then humanoid.PlatformStand = false end
-        if getgenv().FishmanState.Fluent and getgenv().FishmanState.Fluent.Options and getgenv().FishmanState.Fluent.Options.T_MoveToFishingSpot and getgenv().FishmanState.Fluent.Options.T_MoveToFishingSpot.Value == true then
-            getgenv().FishmanState.Fluent.Options.T_MoveToFishingSpot:SetValue(false)
+        if humanoid then 
+            humanoid.PlatformStand = false 
+        end
+
+        local fluent = getgenv().FishmanState.Fluent
+        if fluent and fluent.Options and fluent.Options.T_MoveToFishingSpot and fluent.Options.T_MoveToFishingSpot.Value == true then
+            fluent.Options.T_MoveToFishingSpot:SetValue(false)
+        end
+
+        if spotMoveThread and spotMoveThread ~= coroutine.running() then
+            task.cancel(spotMoveThread)
+            spotMoveThread = nil
         end
     end
 
@@ -753,13 +764,14 @@ if not isLobby then
             bg.Parent = hrp
 
             local moveSpeed = 60
+            local reachedTarget = false
 
             for idx, wp in ipairs(waypoints) do
                 if not isMovingToSpot or not getgenv().FishmanState._running then break end
 
                 local wpPos = wp.Position
                 local isLast = (idx == #waypoints)
-                local wpThreshold = isLast and 1.5 or 3.0
+                local wpThreshold = isLast and 2.0 or 3.5
 
                 if wp.Action == Enum.PathWaypointAction.Jump and humanoid then
                     humanoid.Jump = true
@@ -770,6 +782,13 @@ if not isLobby then
 
                 while isMovingToSpot and getgenv().FishmanState._running and hrp.Parent do
                     local curPos = hrp.Position
+
+                    local distToFinal = (Vector3.new(curPos.X, 0, curPos.Z) - Vector3.new(targetPos.X, 0, targetPos.Z)).Magnitude
+                    if distToFinal <= 3.0 then
+                        reachedTarget = true
+                        break
+                    end
+
                     local horizDiff = Vector3.new(wpPos.X - curPos.X, 0, wpPos.Z - curPos.Z)
                     local horizDist = horizDiff.Magnitude
 
@@ -807,17 +826,18 @@ if not isLobby then
                         bg.CFrame = CFrame.lookAt(curPos, curPos + Vector3.new(moveDir.X, 0, moveDir.Z))
                     end
                 end
+
+                if reachedTarget then break end
             end
 
             getgenv().FishmanState.Model.StopMovingToFishingSpot()
 
-            local finalDist = (hrp.Position - targetPos).Magnitude
-            if finalDist <= 6 then
-                print("[Fishman] Arrived at Fishing Spot (104, 9, -55)!")
+            if reachedTarget or (hrp and (hrp.Position - targetPos).Magnitude <= 5) then
+                print("[Fishman] Arrived at Fishing Spot (104, 9, -55)! Stopping completely.")
                 if getgenv().FishmanState.Fluent and getgenv().FishmanState.Fluent.Notify then
                     getgenv().FishmanState.Fluent:Notify({
                         Title = "Move to Fishing Spot",
-                        Content = "Arrived at Fishing Spot (104, 9, -55)!",
+                        Content = "Arrived at Fishing Spot (104, 9, -55)! Movement stopped.",
                         Duration = 4
                     })
                 end
