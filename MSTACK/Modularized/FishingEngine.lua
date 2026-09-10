@@ -663,6 +663,9 @@ if not isLobby then
         end
         local humanoid = char and char:FindFirstChildOfClass("Humanoid")
         if humanoid then humanoid.PlatformStand = false end
+        if getgenv().FishmanState.Fluent and getgenv().FishmanState.Fluent.Options and getgenv().FishmanState.Fluent.Options.T_MoveToFishingSpot and getgenv().FishmanState.Fluent.Options.T_MoveToFishingSpot.Value == true then
+            getgenv().FishmanState.Fluent.Options.T_MoveToFishingSpot:SetValue(false)
+        end
     end
 
     getgenv().FishmanState.Model.MoveToFishingSpot = function(targetPos)
@@ -670,10 +673,7 @@ if not isLobby then
         
         if isMovingToSpot then
             getgenv().FishmanState.Model.StopMovingToFishingSpot()
-            if getgenv().FishmanState.Fluent and getgenv().FishmanState.Fluent.Notify then
-                getgenv().FishmanState.Fluent:Notify({ Title = "Move to Fishing Spot", Content = "Movement halted.", Duration = 2 })
-            end
-            return false
+            task.wait(0.05)
         end
 
         local char = LocalPlayer.Character
@@ -752,7 +752,7 @@ if not isLobby then
             bg.CFrame = hrp.CFrame
             bg.Parent = hrp
 
-            local moveSpeed = 45
+            local moveSpeed = 60
 
             for idx, wp in ipairs(waypoints) do
                 if not isMovingToSpot or not getgenv().FishmanState._running then break end

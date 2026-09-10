@@ -1272,18 +1272,32 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
             end
         end
     })
-    getgenv().FishmanState.Tabs.Fishing:AddButton({
+    local moveSpotInit = false
+    getgenv().FishmanState.Tabs.Fishing:AddToggle("T_MoveToFishingSpot", {
         Title = "Move to Fishing Spot",
-        Description = "Autopathfinds at ground level using BodyVelocity to (104, 9, -55)",
-        Callback = function()
+        Default = false,
+        Callback = function(Value)
+            if not moveSpotInit then
+                moveSpotInit = true
+                return
+            end
             if isLobby then
-                if getgenv().FishmanState.Fluent then
+                if Value and getgenv().FishmanState.Fluent then
                     getgenv().FishmanState.Fluent:Notify({ Title = "Error", Content = "Cannot move in Lobby!", Duration = 3 })
+                    if getgenv().FishmanState.Fluent.Options and getgenv().FishmanState.Fluent.Options.T_MoveToFishingSpot then
+                        getgenv().FishmanState.Fluent.Options.T_MoveToFishingSpot:SetValue(false)
+                    end
                 end
                 return
             end
-            if getgenv().FishmanState.Model and getgenv().FishmanState.Model.MoveToFishingSpot then
-                getgenv().FishmanState.Model.MoveToFishingSpot(Vector3.new(104, 9, -55))
+            if Value then
+                if getgenv().FishmanState.Model and getgenv().FishmanState.Model.MoveToFishingSpot then
+                    getgenv().FishmanState.Model.MoveToFishingSpot(Vector3.new(104, 9, -55))
+                end
+            else
+                if getgenv().FishmanState.Model and getgenv().FishmanState.Model.StopMovingToFishingSpot then
+                    getgenv().FishmanState.Model.StopMovingToFishingSpot()
+                end
             end
         end
     })
