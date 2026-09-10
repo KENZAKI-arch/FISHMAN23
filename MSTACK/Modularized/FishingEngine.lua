@@ -780,14 +780,16 @@ if not isLobby then
             groundParams.FilterDescendantsInstances = {char}
             groundParams.IgnoreWater = true
 
+            local standingOffset = (humanoid and (humanoid.HipHeight + (hrp.Size.Y / 2))) or 3.0
+
             local function getGroundY(pos, fallbackGroundY)
-                fallbackGroundY = fallbackGroundY or (targetPos.Y + 3.0)
+                fallbackGroundY = fallbackGroundY or (targetPos.Y + standingOffset)
                 -- Cast downward from well above the player and down deep into the map to reliably find the real ground
                 local castOriginY = math.max(pos.Y + 5, fallbackGroundY + 15)
                 local rayStart = Vector3.new(pos.X, castOriginY, pos.Z)
                 local rayRes = workspace:Raycast(rayStart, Vector3.new(0, -400, 0), groundParams)
                 if rayRes then
-                    local candidateY = rayRes.Position.Y + 3.0
+                    local candidateY = rayRes.Position.Y + standingOffset
                     -- Avoid locking onto overhead canopies, roofs, or high tree branches
                     if candidateY <= (fallbackGroundY + 6) then
                         return candidateY
@@ -843,13 +845,14 @@ if not isLobby then
 
             local waypoints = computeWaypoints(hrp.Position)
             local currentWpIndex = 1
+            local smoothedGroundY = nil
 
             while isMovingToSpot and getgenv().FishmanState._running and hrp.Parent and currentWpIndex <= #waypoints do
                 local wp = waypoints[currentWpIndex]
                 local wpPos = wp.Position
                 local isLast = (currentWpIndex == #waypoints)
                 local wpThreshold = isLast and 2.0 or 3.5
-                local fallbackY = (isLast and (targetPos.Y + 3.0)) or (wpPos.Y + 3.0)
+                local fallbackY = (isLast and (targetPos.Y + standingOffset)) or (wpPos.Y + standingOffset)
 
                 local stuckTimer = 0
                 local lastPos = hrp.Position
@@ -884,6 +887,7 @@ if not isLobby then
                             hrp.CFrame = CFrame.new(curPos.X + (moveDir.X * 2.0), groundY, curPos.Z + (moveDir.Z * 2.0)) * hrp.CFrame.Rotation
                             hrp.AssemblyLinearVelocity = Vector3.zero
                             hrp.Velocity = Vector3.zero
+                            smoothedGroundY = groundY
 
                             -- Re-pathfind from the new position 2 studs away
                             waypoints = computeWaypoints(hrp.Position)
@@ -895,14 +899,30 @@ if not isLobby then
                         lastPos = curPos
                     end
 
-                    local targetGroundY = getGroundY(curPos, fallbackY)
+                    local rawGroundY = getGroundY(curPos, fallbackY)
                     if isLast then
-                        targetGroundY = targetPos.Y + 3.0
+                        rawGroundY = targetPos.Y + standingOffset
                     end
 
-                    local yDiff = targetGroundY - curPos.Y
-                    -- Aggressively pull down (-120 studs/s) as soon as above ground to immediately return to ground level
-                    local yVelocity = math.clamp(yDiff * 35, -120, 25)
+                    -- Smooth ground height to eliminate dribbling, vibration, and bouncing on uneven terrain
+                    if not smoothedGroundY then
+                        smoothedGroundY = rawGroundY
+                    else
+                        smoothedGroundY = smoothedGroundY + (rawGroundY - smoothedGroundY) * math.clamp(dt * 12, 0.05, 0.4)
+                    end
+
+                    local yDiff = smoothedGroundY - curPos.Y
+                    local yVelocity = 0
+                    if math.abs(yDiff) <= 0.35 then
+                        -- Soft micro-leveling inside natural standing zone (no bouncing or slamming)
+                        yVelocity = yDiff * 3
+                    elseif yDiff < -0.35 then
+                        -- Above ground: smoothly glide down without slamming into the floor
+                        yVelocity = math.clamp(yDiff * 6, -35, 0)
+                    else
+                        -- Below ground: smoothly glide up
+                        yVelocity = math.clamp(yDiff * 6, 0, 20)
+                    end
 
                     bv.Velocity = Vector3.new(moveDir.X * moveSpeed, yVelocity, moveDir.Z * moveSpeed)
 
