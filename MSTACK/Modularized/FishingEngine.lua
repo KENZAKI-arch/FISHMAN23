@@ -850,11 +850,20 @@ if not isLobby then
             bg.CFrame = hrp.CFrame
             bg.Parent = hrp
 
+            local hipOffset = 3.0
+            if humanoid and humanoid.HipHeight and humanoid.HipHeight > 0 then
+                hipOffset = humanoid.HipHeight + (hrp.Size.Y / 2)
+            end
+
             local moveSpeed = 60
             local reachedTarget = false
 
             local waypoints = computeWaypoints(hrp.Position)
             local currentWpIndex = 1
+
+            local rpParams = RaycastParams.new()
+            rpParams.FilterDescendantsInstances = {char}
+            rpParams.FilterType = Enum.RaycastFilterType.Exclude
 
             while isMovingToSpot and getgenv().FishmanState._running and hrp.Parent and currentWpIndex <= #waypoints do
                 local wp = waypoints[currentWpIndex]
@@ -915,8 +924,15 @@ if not isLobby then
                         lastPos = curPos
                     end
 
-                    -- Altitude target: waypoint altitude, but minimum floor limit is 8 (can still go up higher)
-                    local desiredY = math.max(wpPos.Y, minFloorY)
+                    -- Find true ground surface below player or use waypoint ground height
+                    local groundY = wpPos.Y
+                    local groundHit = workspace:Raycast(curPos + Vector3.new(0, 3, 0), Vector3.new(0, -20, 0), rpParams)
+                    if groundHit and groundHit.Position and math.abs(groundHit.Position.Y - wpPos.Y) < 5 then
+                        groundY = groundHit.Position.Y
+                    end
+
+                    -- Target altitude: ground surface + hip standing offset (feet right on the ground), floor limit at least minFloorY
+                    local desiredY = math.max(groundY + hipOffset, minFloorY)
                     local yDiff = desiredY - curPos.Y
                     local yVelocity = math.clamp(yDiff * 15, -20, 25)
 
