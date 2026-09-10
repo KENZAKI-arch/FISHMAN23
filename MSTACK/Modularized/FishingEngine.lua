@@ -797,30 +797,32 @@ if not isLobby then
                 return fallbackGroundY
             end
 
-            local path = PathfindingService:CreatePath({
-                AgentRadius = 2.5,
-                AgentHeight = 5,
-                AgentCanJump = false,
-                WaypointSpacing = 3.5,
-                Costs = { Water = 50 }
-            })
+            local function computeWaypoints(fromPos)
+                local path = PathfindingService:CreatePath({
+                    AgentRadius = 2.0,
+                    AgentHeight = 5,
+                    AgentCanJump = false,
+                    WaypointSpacing = 3.5,
+                    Costs = { Water = 50 }
+                })
 
-            local pathSuccess = pcall(function()
-                path:ComputeAsync(hrp.Position, targetPos)
-            end)
+                local pathSuccess = pcall(function()
+                    path:ComputeAsync(fromPos, targetPos)
+                end)
 
-            local waypoints = {}
-            if pathSuccess and path.Status == Enum.PathStatus.Success then
-                waypoints = path:GetWaypoints()
-            else
-                print("[Fishman] PathfindingService unreachable; using direct ground waypoints fallback.")
-                local dist = (hrp.Position - targetPos).Magnitude
-                local steps = math.max(2, math.floor(dist / 4))
-                for i = 1, steps do
-                    local alpha = i / steps
-                    local p = hrp.Position:Lerp(targetPos, alpha)
-                    table.insert(waypoints, { Position = p, Action = Enum.PathWaypointAction.Walk })
+                local pts = {}
+                if pathSuccess and path.Status == Enum.PathStatus.Success then
+                    pts = path:GetWaypoints()
+                else
+                    local dist = (fromPos - targetPos).Magnitude
+                    local steps = math.max(2, math.floor(dist / 4))
+                    for i = 1, steps do
+                        local alpha = i / steps
+                        local p = fromPos:Lerp(targetPos, alpha)
+                        table.insert(pts, { Position = p, Action = Enum.PathWaypointAction.Walk })
+                    end
                 end
+                return pts
             end
 
             local bv = hrp:FindFirstChild("FishingSpotBV") or Instance.new("BodyVelocity")
@@ -839,11 +841,13 @@ if not isLobby then
             local moveSpeed = 60
             local reachedTarget = false
 
-            for idx, wp in ipairs(waypoints) do
-                if not isMovingToSpot or not getgenv().FishmanState._running then break end
+            local waypoints = computeWaypoints(hrp.Position)
+            local currentWpIndex = 1
 
+            while isMovingToSpot and getgenv().FishmanState._running and hrp.Parent and currentWpIndex <= #waypoints do
+                local wp = waypoints[currentWpIndex]
                 local wpPos = wp.Position
-                local isLast = (idx == #waypoints)
+                local isLast = (currentWpIndex == #waypoints)
                 local wpThreshold = isLast and 2.0 or 3.5
                 local fallbackY = (isLast and (targetPos.Y + 3.0)) or (wpPos.Y + 3.0)
 
@@ -865,18 +869,26 @@ if not isLobby then
                     local horizDist = horizDiff.Magnitude
 
                     if horizDist <= wpThreshold then
+                        currentWpIndex = currentWpIndex + 1
                         break
                     end
 
                     local dt = RunService.Heartbeat:Wait()
-                    local moveDir = horizDiff.Unit
+                    local moveDir = (horizDist > 0.1) and horizDiff.Unit or (Vector3.new(targetPos.X - curPos.X, 0, targetPos.Z - curPos.Z).Unit)
 
                     if (curPos - lastPos).Magnitude < 0.25 then
                         stuckTimer = stuckTimer + dt
                         if stuckTimer > 0.35 then
-                            -- Nudge horizontally forward at ground level without lifting into the sky
-                            hrp.CFrame = hrp.CFrame + (moveDir * 1.5)
-                            stuckTimer = 0
+                            -- Teleport 2 studs away/forward past the obstacle to pathfind
+                            local groundY = getGroundY(curPos + (moveDir * 2.0), fallbackY)
+                            hrp.CFrame = CFrame.new(curPos.X + (moveDir.X * 2.0), groundY, curPos.Z + (moveDir.Z * 2.0)) * hrp.CFrame.Rotation
+                            hrp.AssemblyLinearVelocity = Vector3.zero
+                            hrp.Velocity = Vector3.zero
+
+                            -- Re-pathfind from the new position 2 studs away
+                            waypoints = computeWaypoints(hrp.Position)
+                            currentWpIndex = 1
+                            break
                         end
                     else
                         stuckTimer = 0
