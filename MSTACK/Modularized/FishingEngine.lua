@@ -737,16 +737,28 @@ if not isLobby then
             humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
         end)
 
-        -- Enable natural CanCollide on character body parts (Torso, Head, limbs)
+        -- Disable CanCollide (Noclip) on character body parts to prevent obstacle snagging
+        local cachedParts = {}
         for _, part in ipairs(char:GetDescendants()) do
             if part:IsA("BasePart") then
-                if part.Name == "HumanoidRootPart" then
-                    part.CanCollide = false -- Standard Roblox: HRP non-collidable to prevent seam snagging
-                else
-                    part.CanCollide = true
-                end
+                table.insert(cachedParts, part)
+                part.CanCollide = false
             end
         end
+        spotDescAddedConn = char.DescendantAdded:Connect(function(part)
+            if part:IsA("BasePart") then
+                table.insert(cachedParts, part)
+                part.CanCollide = false
+            end
+        end)
+        spotNoclipConn = RunService.Stepped:Connect(function()
+            if not isMovingToSpot or not getgenv().FishmanState._running then return end
+            for _, part in ipairs(cachedParts) do
+                if part and part.Parent and part.CanCollide then
+                    part.CanCollide = false
+                end
+            end
+        end)
 
         -- Suppress running/walking animations
         local animator = humanoid:FindFirstChildOfClass("Animator")
@@ -958,19 +970,13 @@ if not isLobby then
                     local desiredY = math.max(groundY + hipOffset, minFloorY)
                     local yDiff = desiredY - curPos.Y
 
-                    -- Natural walking & climbing:
-                    -- When walking on ground, let Roblox natural gravity and footstep physics handle Y
-                    -- Only apply vertical lift when climbing up steep elevation (yDiff > 1.2) or recovering from below floor limit
-                    if yDiff > 1.2 then
-                        bv.MaxForce = Vector3.new(9e5, 9e5, 9e5)
-                        bv.Velocity = Vector3.new(moveDir.X * moveSpeed, math.clamp(yDiff * 15, 5, 25), moveDir.Z * moveSpeed)
-                    elseif curPos.Y < minFloorY then
-                        bv.MaxForce = Vector3.new(9e5, 9e5, 9e5)
-                        bv.Velocity = Vector3.new(moveDir.X * moveSpeed, 15, moveDir.Z * moveSpeed)
-                    else
-                        bv.MaxForce = Vector3.new(9e5, 0, 9e5)
-                        bv.Velocity = Vector3.new(moveDir.X * moveSpeed, 0, moveDir.Z * moveSpeed)
+                    local yVelocity = math.clamp(yDiff * 15, -20, 25)
+                    if curPos.Y <= minFloorY and yVelocity < 0 then
+                        yVelocity = 0
                     end
+
+                    bv.MaxForce = Vector3.new(9e5, 9e5, 9e5)
+                    bv.Velocity = Vector3.new(moveDir.X * moveSpeed, yVelocity, moveDir.Z * moveSpeed)
 
                     -- Suppress running/walking animation
                     pcall(function()
