@@ -648,6 +648,7 @@ if not isLobby then
     local spotNoclipConn = nil
     local spotDescAddedConn = nil
     local spotAnimConn = nil
+    local spotSeatedConn = nil
 
     getgenv().FishmanState.Model.StopMovingToFishingSpot = function()
         isMovingToSpot = false
@@ -658,6 +659,10 @@ if not isLobby then
             pcall(function() oldPlat:Destroy() end)
         end
 
+        if spotSeatedConn then
+            spotSeatedConn:Disconnect()
+            spotSeatedConn = nil
+        end
         if spotAnimConn then
             spotAnimConn:Disconnect()
             spotAnimConn = nil
@@ -700,6 +705,7 @@ if not isLobby then
                 humanoid:Move(Vector3.zero, false)
                 humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, true)
                 humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, true)
+                humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, true)
             end)
         end
 
@@ -735,6 +741,22 @@ if not isLobby then
         pcall(function()
             humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
             humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
+            humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, false)
+            humanoid.Sit = false
+        end)
+
+        spotSeatedConn = humanoid.Seated:Connect(function(isSeated, seat)
+            if isMovingToSpot and isSeated then
+                task.defer(function()
+                    if isMovingToSpot and humanoid then
+                        humanoid.Sit = false
+                        pcall(function() humanoid:ChangeState(Enum.HumanoidStateType.Running) end)
+                        if seat and seat:FindFirstChild("SeatWeld") then
+                            pcall(function() seat.SeatWeld:Destroy() end)
+                        end
+                    end
+                end)
+            end
         end)
 
         -- Disable CanCollide (Noclip) on character body parts to prevent obstacle snagging
@@ -905,6 +927,19 @@ if not isLobby then
 
                 while isMovingToSpot and getgenv().FishmanState._running and hrp.Parent do
                     if humanoid.Health <= 0 then break end
+
+                    -- Prevent getting seated on chairs/benches while traveling
+                    if humanoid.Sit or humanoid:GetState() == Enum.HumanoidStateType.Seated then
+                        humanoid.Sit = false
+                        pcall(function()
+                            humanoid:ChangeState(Enum.HumanoidStateType.Running)
+                        end)
+                        for _, child in ipairs(char:GetDescendants()) do
+                            if child:IsA("Weld") and (child.Name == "SeatWeld" or string.find(child.Name:lower(), "seat")) then
+                                pcall(function() child:Destroy() end)
+                            end
+                        end
+                    end
 
                     local curPos = hrp.Position
 
