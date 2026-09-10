@@ -1,6 +1,6 @@
 -- Config & State Setup
 getgenv().FishmanState = getgenv().FishmanState or {}
--- Version 3.8
+-- Version 3.9
 -- ======================================================================
 -- 🛑 GLOBAL SETUP & DUPLICATE PREVENTION
 -- ======================================================================
