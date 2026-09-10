@@ -1272,6 +1272,21 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
             end
         end
     })
+    getgenv().FishmanState.Tabs.Fishing:AddButton({
+        Title = "Move to Fishing Spot",
+        Description = "Autopathfinds at ground level using BodyVelocity to (104, 9, -55)",
+        Callback = function()
+            if isLobby then
+                if getgenv().FishmanState.Fluent then
+                    getgenv().FishmanState.Fluent:Notify({ Title = "Error", Content = "Cannot move in Lobby!", Duration = 3 })
+                end
+                return
+            end
+            if getgenv().FishmanState.Model and getgenv().FishmanState.Model.MoveToFishingSpot then
+                getgenv().FishmanState.Model.MoveToFishingSpot(Vector3.new(104, 9, -55))
+            end
+        end
+    })
     getgenv().FishmanState.Tabs.Fishing:AddToggle("T_DeepSea", { Title = "Deep Sea Catcher (ONLY Beasts)", Default = false, Callback = function(Value) 
         if isLobby then if Value then getgenv().FishmanState.Fluent:Notify({ Title = "Error", Content = "Cannot fish in Lobby!", Duration = 3 }); getgenv().FishmanState.Fluent.Options.T_DeepSea:SetValue(false) end return end
         task.spawn(function()

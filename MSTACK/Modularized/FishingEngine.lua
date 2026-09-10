@@ -9,6 +9,7 @@ local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local GuiService = game:GetService("GuiService")
 local VirtualInputManager = game:GetService("VirtualInputManager")
+local PathfindingService = game:GetService("PathfindingService")
 local LocalPlayer = Players.LocalPlayer
 local env = getgenv and getgenv() or shared
 local GlobalMem = env
@@ -107,7 +108,7 @@ local craftFlyTarget = nil
         travelStage           = 1,
         waypoint1             = Vector3.new(406.69, 48.32, -32.21),
         waypoint2             = Vector3.new(174.10, 10.32, -48.09),
-        finalTarget           = Vector3.new(101.53, 9.31, -55.77),
+        finalTarget           = Vector3.new(104, 9, -55),
         travelMessage         = "",
         autoCraft             = false,
         isCurrentlyCrafting   = false,
@@ -641,6 +642,193 @@ if not isLobby then
         getgenv().FishmanState.Model.State.isAutoTraveling = true
         getgenv().FishmanState.Model.EnableFlight()
     end
+
+    local isMovingToSpot = false
+    local spotMoveThread = nil
+
+    getgenv().FishmanState.Model.StopMovingToFishingSpot = function()
+        isMovingToSpot = false
+        if spotMoveThread then
+            task.cancel(spotMoveThread)
+            spotMoveThread = nil
+        end
+        local char = LocalPlayer.Character
+        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+        if hrp then
+            local bv = hrp:FindFirstChild("FishingSpotBV")
+            if bv then bv:Destroy() end
+            local bg = hrp:FindFirstChild("FishingSpotBG")
+            if bg then bg:Destroy() end
+            hrp.AssemblyLinearVelocity = Vector3.zero
+        end
+        local humanoid = char and char:FindFirstChildOfClass("Humanoid")
+        if humanoid then humanoid.PlatformStand = false end
+    end
+
+    getgenv().FishmanState.Model.MoveToFishingSpot = function(targetPos)
+        targetPos = targetPos or Vector3.new(104, 9, -55)
+        
+        if isMovingToSpot then
+            getgenv().FishmanState.Model.StopMovingToFishingSpot()
+            if getgenv().FishmanState.Fluent and getgenv().FishmanState.Fluent.Notify then
+                getgenv().FishmanState.Fluent:Notify({ Title = "Move to Fishing Spot", Content = "Movement halted.", Duration = 2 })
+            end
+            return false
+        end
+
+        local char = LocalPlayer.Character
+        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+        local humanoid = char and char:FindFirstChildOfClass("Humanoid")
+        if not hrp or not humanoid then
+            warn("[Fishman] Character or HumanoidRootPart missing.")
+            return false
+        end
+
+        isMovingToSpot = true
+        spotMoveThread = task.spawn(function()
+            if getgenv().FishmanState.Fluent and getgenv().FishmanState.Fluent.Notify then
+                getgenv().FishmanState.Fluent:Notify({
+                    Title = "Move to Fishing Spot",
+                    Content = "Pathfinding at ground level to (104, 9, -55)...",
+                    Duration = 3
+                })
+            end
+
+            if getgenv().FishmanState.Model.DisableFlight then
+                pcall(getgenv().FishmanState.Model.DisableFlight)
+            end
+            humanoid.PlatformStand = false
+
+            local groundParams = RaycastParams.new()
+            groundParams.FilterType = Enum.RaycastFilterType.Exclude
+            groundParams.FilterDescendantsInstances = {char}
+            groundParams.IgnoreWater = true
+
+            local function getGroundY(pos)
+                local rayStart = pos + Vector3.new(0, 5, 0)
+                local rayRes = workspace:Raycast(rayStart, Vector3.new(0, -25, 0), groundParams)
+                if rayRes then
+                    return rayRes.Position.Y + 3.0
+                end
+                return pos.Y
+            end
+
+            local path = PathfindingService:CreatePath({
+                AgentRadius = 2.5,
+                AgentHeight = 5,
+                AgentCanJump = true,
+                WaypointSpacing = 3.5,
+                Costs = { Water = 50 }
+            })
+
+            local pathSuccess = pcall(function()
+                path:ComputeAsync(hrp.Position, targetPos)
+            end)
+
+            local waypoints = {}
+            if pathSuccess and path.Status == Enum.PathStatus.Success then
+                waypoints = path:GetWaypoints()
+            else
+                print("[Fishman] PathfindingService unreachable; using direct ground waypoints fallback.")
+                local dist = (hrp.Position - targetPos).Magnitude
+                local steps = math.max(2, math.floor(dist / 4))
+                for i = 1, steps do
+                    local alpha = i / steps
+                    local p = hrp.Position:Lerp(targetPos, alpha)
+                    table.insert(waypoints, { Position = p, Action = Enum.PathWaypointAction.Walk })
+                end
+            end
+
+            local bv = hrp:FindFirstChild("FishingSpotBV") or Instance.new("BodyVelocity")
+            bv.Name = "FishingSpotBV"
+            bv.MaxForce = Vector3.new(9e5, 9e5, 9e5)
+            bv.Velocity = Vector3.zero
+            bv.Parent = hrp
+
+            local bg = hrp:FindFirstChild("FishingSpotBG") or Instance.new("BodyGyro")
+            bg.Name = "FishingSpotBG"
+            bg.MaxTorque = Vector3.new(9e5, 9e5, 9e5)
+            bg.P = 9e4
+            bg.CFrame = hrp.CFrame
+            bg.Parent = hrp
+
+            local moveSpeed = 45
+
+            for idx, wp in ipairs(waypoints) do
+                if not isMovingToSpot or not getgenv().FishmanState._running then break end
+
+                local wpPos = wp.Position
+                local isLast = (idx == #waypoints)
+                local wpThreshold = isLast and 1.5 or 3.0
+
+                if wp.Action == Enum.PathWaypointAction.Jump and humanoid then
+                    humanoid.Jump = true
+                end
+
+                local stuckTimer = 0
+                local lastPos = hrp.Position
+
+                while isMovingToSpot and getgenv().FishmanState._running and hrp.Parent do
+                    local curPos = hrp.Position
+                    local horizDiff = Vector3.new(wpPos.X - curPos.X, 0, wpPos.Z - curPos.Z)
+                    local horizDist = horizDiff.Magnitude
+
+                    if horizDist <= wpThreshold then
+                        break
+                    end
+
+                    local dt = RunService.Heartbeat:Wait()
+
+                    if (curPos - lastPos).Magnitude < 0.2 then
+                        stuckTimer = stuckTimer + dt
+                        if stuckTimer > 0.6 then
+                            for _, part in ipairs(char:GetDescendants()) do
+                                if part:IsA("BasePart") then part.CanCollide = false end
+                            end
+                            if humanoid then humanoid.Jump = true end
+                        end
+                    else
+                        stuckTimer = 0
+                        lastPos = curPos
+                    end
+
+                    local targetGroundY = getGroundY(curPos)
+                    if isLast then
+                        targetGroundY = (targetGroundY + targetPos.Y) / 2
+                    end
+
+                    local yDiff = targetGroundY - curPos.Y
+                    local yVelocity = math.clamp(yDiff * 20, -35, 35)
+
+                    local moveDir = horizDiff.Unit
+                    bv.Velocity = Vector3.new(moveDir.X * moveSpeed, yVelocity, moveDir.Z * moveSpeed)
+
+                    if horizDist > 0.5 then
+                        bg.CFrame = CFrame.lookAt(curPos, curPos + Vector3.new(moveDir.X, 0, moveDir.Z))
+                    end
+                end
+            end
+
+            getgenv().FishmanState.Model.StopMovingToFishingSpot()
+
+            local finalDist = (hrp.Position - targetPos).Magnitude
+            if finalDist <= 6 then
+                print("[Fishman] Arrived at Fishing Spot (104, 9, -55)!")
+                if getgenv().FishmanState.Fluent and getgenv().FishmanState.Fluent.Notify then
+                    getgenv().FishmanState.Fluent:Notify({
+                        Title = "Move to Fishing Spot",
+                        Content = "Arrived at Fishing Spot (104, 9, -55)!",
+                        Duration = 4
+                    })
+                end
+            end
+        end)
+
+        return true
+    end
+
+    getgenv().MoveToFishingSpot = getgenv().FishmanState.Model.MoveToFishingSpot
+
     
     -- ======================================================================
     -- 🔨 CRAFTING SUBSYSTEM
