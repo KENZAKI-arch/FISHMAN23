@@ -654,7 +654,7 @@ if not isLobby then
             plat = Instance.new("Part")
             plat.Name = "FishingSafetyPlatform"
             plat.Size = Vector3.new(3000, 2, 3000)
-            plat.CFrame = CFrame.new(104, -7, -55) -- Top face exactly at Y = -6
+            plat.CFrame = CFrame.new(104, 8, -55) -- Top face exactly at Y = 9
             plat.Anchored = true
             plat.CanCollide = true
             plat.Material = Enum.Material.SmoothPlastic
@@ -663,7 +663,7 @@ if not isLobby then
             plat.Parent = workspace
         else
             plat.Size = Vector3.new(3000, 2, 3000)
-            plat.CFrame = CFrame.new(104, -7, -55)
+            plat.CFrame = CFrame.new(104, 8, -55)
             plat.Anchored = true
             plat.CanCollide = true
         end
@@ -697,7 +697,7 @@ if not isLobby then
 
             local hum = char:FindFirstChildOfClass("Humanoid")
             local standingOffset = (hum and (hum.HipHeight + (hrp.Size.Y / 2))) or 3.0
-            local minAllowedY = -6 + standingOffset
+            local minAllowedY = 9 + standingOffset
             if hrp.Position.Y < minAllowedY then
                 hrp.CFrame = CFrame.new(hrp.Position.X, minAllowedY, hrp.Position.Z) * hrp.CFrame.Rotation
             end
@@ -812,7 +812,7 @@ if not isLobby then
             groundParams.IgnoreWater = true
 
             local standingOffset = (humanoid and (humanoid.HipHeight + (hrp.Size.Y / 2))) or 3.0
-            local ABSOLUTE_MIN_Y = -6 + standingOffset
+            local ABSOLUTE_MIN_Y = 9 + standingOffset
 
             local function getGroundY(pos, fallbackGroundY)
                 fallbackGroundY = math.max(fallbackGroundY or (targetPos.Y + standingOffset), ABSOLUTE_MIN_Y)
@@ -894,7 +894,7 @@ if not isLobby then
 
                     local curPos = hrp.Position
 
-                    -- Hard safety clamp: Never allow character to go down below Y = -6
+                    -- Hard safety clamp: Never allow character to go down below Y = 9
                     if curPos.Y < ABSOLUTE_MIN_Y then
                         hrp.CFrame = CFrame.new(curPos.X, ABSOLUTE_MIN_Y, curPos.Z) * hrp.CFrame.Rotation
                         if hrp.AssemblyLinearVelocity.Y < 0 then
@@ -926,7 +926,7 @@ if not isLobby then
                     if (curPos - lastPos).Magnitude < 0.25 then
                         stuckTimer = stuckTimer + dt
                         if stuckTimer > 0.35 then
-                            -- Teleport 2 studs away/forward past the obstacle to pathfind, never below platform -6
+                            -- Teleport 2 studs away/forward past the obstacle to pathfind, never below platform Y = 9
                             local groundY = math.max(getGroundY(curPos + (moveDir * 2.0), fallbackY), ABSOLUTE_MIN_Y)
                             hrp.CFrame = CFrame.new(curPos.X + (moveDir.X * 2.0), groundY, curPos.Z + (moveDir.Z * 2.0)) * hrp.CFrame.Rotation
                             hrp.AssemblyLinearVelocity = Vector3.zero
@@ -969,7 +969,7 @@ if not isLobby then
                         yVelocity = math.clamp(yDiff * 6, 0, 20)
                     end
 
-                    -- Never push downward if at or near the platform -6 floor limit
+                    -- Never push downward if at or near the platform Y = 9 floor limit
                     if curPos.Y <= (ABSOLUTE_MIN_Y + 0.1) and yVelocity < 0 then
                         yVelocity = 0
                     end
