@@ -648,6 +648,28 @@ if not isLobby then
     local spotNoclipConn = nil
     local spotDescAddedConn = nil
 
+    local function ensureSafetyPlatform()
+        local plat = workspace:FindFirstChild("FishingSafetyPlatform")
+        if not plat then
+            plat = Instance.new("Part")
+            plat.Name = "FishingSafetyPlatform"
+            plat.Size = Vector3.new(3000, 2, 3000)
+            plat.CFrame = CFrame.new(104, -7, -55) -- Top face exactly at Y = -6
+            plat.Anchored = true
+            plat.CanCollide = true
+            plat.Material = Enum.Material.SmoothPlastic
+            plat.Transparency = 0.6
+            plat.Color = Color3.fromRGB(0, 170, 255)
+            plat.Parent = workspace
+        else
+            plat.Size = Vector3.new(3000, 2, 3000)
+            plat.CFrame = CFrame.new(104, -7, -55)
+            plat.Anchored = true
+            plat.CanCollide = true
+        end
+        return plat
+    end
+
     getgenv().FishmanState.Model.StopMovingToFishingSpot = function()
         isMovingToSpot = false
 
@@ -672,6 +694,13 @@ if not isLobby then
             hrp.AssemblyAngularVelocity = Vector3.zero
             hrp.Velocity = Vector3.zero
             hrp.RotVelocity = Vector3.zero
+
+            local hum = char:FindFirstChildOfClass("Humanoid")
+            local standingOffset = (hum and (hum.HipHeight + (hrp.Size.Y / 2))) or 3.0
+            local minAllowedY = -6 + standingOffset
+            if hrp.Position.Y < minAllowedY then
+                hrp.CFrame = CFrame.new(hrp.Position.X, minAllowedY, hrp.Position.Z) * hrp.CFrame.Rotation
+            end
         end
 
         if char then
@@ -775,21 +804,24 @@ if not isLobby then
                 hrp.AssemblyLinearVelocity = Vector3.new(hrp.AssemblyLinearVelocity.X, 0, hrp.AssemblyLinearVelocity.Z)
             end
 
+            ensureSafetyPlatform()
+
             local groundParams = RaycastParams.new()
             groundParams.FilterType = Enum.RaycastFilterType.Exclude
             groundParams.FilterDescendantsInstances = {char}
             groundParams.IgnoreWater = true
 
             local standingOffset = (humanoid and (humanoid.HipHeight + (hrp.Size.Y / 2))) or 3.0
+            local ABSOLUTE_MIN_Y = -6 + standingOffset
 
             local function getGroundY(pos, fallbackGroundY)
-                fallbackGroundY = fallbackGroundY or (targetPos.Y + standingOffset)
+                fallbackGroundY = math.max(fallbackGroundY or (targetPos.Y + standingOffset), ABSOLUTE_MIN_Y)
                 -- Cast downward from well above the player and down deep into the map to reliably find the real ground
                 local castOriginY = math.max(pos.Y + 5, fallbackGroundY + 15)
                 local rayStart = Vector3.new(pos.X, castOriginY, pos.Z)
                 local rayRes = workspace:Raycast(rayStart, Vector3.new(0, -400, 0), groundParams)
                 if rayRes then
-                    local candidateY = rayRes.Position.Y + standingOffset
+                    local candidateY = math.max(rayRes.Position.Y + standingOffset, ABSOLUTE_MIN_Y)
                     -- Avoid locking onto overhead canopies, roofs, or high tree branches
                     if candidateY <= (fallbackGroundY + 6) then
                         return candidateY
@@ -852,7 +884,7 @@ if not isLobby then
                 local wpPos = wp.Position
                 local isLast = (currentWpIndex == #waypoints)
                 local wpThreshold = isLast and 2.0 or 3.5
-                local fallbackY = (isLast and (targetPos.Y + standingOffset)) or (wpPos.Y + standingOffset)
+                local fallbackY = (isLast and math.max(targetPos.Y + standingOffset, ABSOLUTE_MIN_Y)) or math.max(wpPos.Y + standingOffset, ABSOLUTE_MIN_Y)
 
                 local stuckTimer = 0
                 local lastPos = hrp.Position
@@ -861,6 +893,18 @@ if not isLobby then
                     if humanoid.Health <= 0 then break end
 
                     local curPos = hrp.Position
+
+                    -- Hard safety clamp: Never allow character to go down below Y = -6
+                    if curPos.Y < ABSOLUTE_MIN_Y then
+                        hrp.CFrame = CFrame.new(curPos.X, ABSOLUTE_MIN_Y, curPos.Z) * hrp.CFrame.Rotation
+                        if hrp.AssemblyLinearVelocity.Y < 0 then
+                            hrp.AssemblyLinearVelocity = Vector3.new(hrp.AssemblyLinearVelocity.X, 0, hrp.AssemblyLinearVelocity.Z)
+                        end
+                        if hrp.Velocity.Y < 0 then
+                            hrp.Velocity = Vector3.new(hrp.Velocity.X, 0, hrp.Velocity.Z)
+                        end
+                        curPos = hrp.Position
+                    end
 
                     local distToFinal = (Vector3.new(curPos.X, 0, curPos.Z) - Vector3.new(targetPos.X, 0, targetPos.Z)).Magnitude
                     if distToFinal <= 3.0 then
@@ -882,8 +926,8 @@ if not isLobby then
                     if (curPos - lastPos).Magnitude < 0.25 then
                         stuckTimer = stuckTimer + dt
                         if stuckTimer > 0.35 then
-                            -- Teleport 2 studs away/forward past the obstacle to pathfind
-                            local groundY = getGroundY(curPos + (moveDir * 2.0), fallbackY)
+                            -- Teleport 2 studs away/forward past the obstacle to pathfind, never below platform -6
+                            local groundY = math.max(getGroundY(curPos + (moveDir * 2.0), fallbackY), ABSOLUTE_MIN_Y)
                             hrp.CFrame = CFrame.new(curPos.X + (moveDir.X * 2.0), groundY, curPos.Z + (moveDir.Z * 2.0)) * hrp.CFrame.Rotation
                             hrp.AssemblyLinearVelocity = Vector3.zero
                             hrp.Velocity = Vector3.zero
@@ -899,9 +943,9 @@ if not isLobby then
                         lastPos = curPos
                     end
 
-                    local rawGroundY = getGroundY(curPos, fallbackY)
+                    local rawGroundY = math.max(getGroundY(curPos, fallbackY), ABSOLUTE_MIN_Y)
                     if isLast then
-                        rawGroundY = targetPos.Y + standingOffset
+                        rawGroundY = math.max(targetPos.Y + standingOffset, ABSOLUTE_MIN_Y)
                     end
 
                     -- Smooth ground height to eliminate dribbling, vibration, and bouncing on uneven terrain
@@ -910,6 +954,7 @@ if not isLobby then
                     else
                         smoothedGroundY = smoothedGroundY + (rawGroundY - smoothedGroundY) * math.clamp(dt * 12, 0.05, 0.4)
                     end
+                    smoothedGroundY = math.max(smoothedGroundY, ABSOLUTE_MIN_Y)
 
                     local yDiff = smoothedGroundY - curPos.Y
                     local yVelocity = 0
@@ -922,6 +967,11 @@ if not isLobby then
                     else
                         -- Below ground: smoothly glide up
                         yVelocity = math.clamp(yDiff * 6, 0, 20)
+                    end
+
+                    -- Never push downward if at or near the platform -6 floor limit
+                    if curPos.Y <= (ABSOLUTE_MIN_Y + 0.1) and yVelocity < 0 then
+                        yVelocity = 0
                     end
 
                     bv.Velocity = Vector3.new(moveDir.X * moveSpeed, yVelocity, moveDir.Z * moveSpeed)
