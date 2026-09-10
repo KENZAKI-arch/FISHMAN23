@@ -647,6 +647,7 @@ if not isLobby then
     local spotMoveThread = nil
     local spotNoclipConn = nil
     local spotDescAddedConn = nil
+    local spotAnimConn = nil
 
     getgenv().FishmanState.Model.StopMovingToFishingSpot = function()
         isMovingToSpot = false
@@ -657,6 +658,10 @@ if not isLobby then
             pcall(function() oldPlat:Destroy() end)
         end
 
+        if spotAnimConn then
+            spotAnimConn:Disconnect()
+            spotAnimConn = nil
+        end
         if spotNoclipConn then
             spotNoclipConn:Disconnect()
             spotNoclipConn = nil
@@ -743,11 +748,33 @@ if not isLobby then
             end
         end
 
+        -- Suppress running/walking animations
+        local animator = humanoid:FindFirstChildOfClass("Animator")
+        if animator then
+            for _, track in ipairs(animator:GetPlayingAnimationTracks()) do
+                local name = string.lower(track.Name or (track.Animation and track.Animation.Name) or "")
+                if string.find(name, "run") or string.find(name, "walk") or string.find(name, "swim") then
+                    track:Stop(0)
+                end
+            end
+            spotAnimConn = animator.AnimationPlayed:Connect(function(track)
+                if not isMovingToSpot then return end
+                local name = string.lower(track.Name or (track.Animation and track.Animation.Name) or "")
+                if string.find(name, "run") or string.find(name, "walk") or string.find(name, "swim") then
+                    task.defer(function()
+                        if isMovingToSpot then
+                            track:Stop(0)
+                        end
+                    end)
+                end
+            end)
+        end
+
         spotMoveThread = task.spawn(function()
             if getgenv().FishmanState.Fluent and getgenv().FishmanState.Fluent.Notify then
                 getgenv().FishmanState.Fluent:Notify({
                     Title = "Move to Fishing Spot",
-                    Content = "Walking naturally to (104, 9, -55)...",
+                    Content = "Moving to (104, 9, -55)...",
                     Duration = 3
                 })
             end
@@ -945,9 +972,9 @@ if not isLobby then
                         bv.Velocity = Vector3.new(moveDir.X * moveSpeed, 0, moveDir.Z * moveSpeed)
                     end
 
-                    -- Play natural walking/running animation
+                    -- Suppress running/walking animation
                     pcall(function()
-                        humanoid:Move(moveDir, false)
+                        humanoid:Move(Vector3.zero, false)
                     end)
 
                     if horizDist > 0.5 then
