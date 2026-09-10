@@ -781,7 +781,7 @@ if not isLobby then
                 hrp.AssemblyLinearVelocity = Vector3.new(hrp.AssemblyLinearVelocity.X, 0, hrp.AssemblyLinearVelocity.Z)
             end
 
-            local strictY = 9
+            local minFloorY = 8
 
             -- Destroy any leftover safety platform
             local oldPlat = workspace:FindFirstChild("FishingSafetyPlatform")
@@ -789,12 +789,27 @@ if not isLobby then
                 pcall(function() oldPlat:Destroy() end)
             end
 
-            -- Immediately set altitude strictly to Y = 9 and zero vertical momentum
-            hrp.CFrame = CFrame.new(hrp.Position.X, strictY, hrp.Position.Z) * hrp.CFrame.Rotation
-            hrp.AssemblyLinearVelocity = Vector3.zero
-            hrp.Velocity = Vector3.zero
+            -- If starting below the floor limit (Y=8), immediately raise to Y=8
+            if hrp.Position.Y < minFloorY then
+                hrp.CFrame = CFrame.new(hrp.Position.X, minFloorY, hrp.Position.Z) * hrp.CFrame.Rotation
+                hrp.AssemblyLinearVelocity = Vector3.zero
+                hrp.Velocity = Vector3.zero
+            end
 
             local function computeWaypoints(fromPos)
+                local startPos = fromPos
+                -- If starting in mid-air, raycast down to find ground for pathfinding
+                local rpParams = RaycastParams.new()
+                rpParams.FilterDescendantsInstances = {char}
+                rpParams.FilterType = Enum.RaycastFilterType.Exclude
+                local floorRay = workspace:Raycast(fromPos, Vector3.new(0, -300, 0), rpParams)
+                if floorRay then
+                    startPos = floorRay.Position + Vector3.new(0, 2, 0)
+                end
+                if startPos.Y < minFloorY then
+                    startPos = Vector3.new(startPos.X, minFloorY, startPos.Z)
+                end
+
                 local path = PathfindingService:CreatePath({
                     AgentRadius = 2.0,
                     AgentHeight = 5,
@@ -804,7 +819,7 @@ if not isLobby then
                 })
 
                 local pathSuccess = pcall(function()
-                    path:ComputeAsync(fromPos, targetPos)
+                    path:ComputeAsync(startPos, targetPos)
                 end)
 
                 local pts = {}
@@ -855,10 +870,13 @@ if not isLobby then
 
                     local curPos = hrp.Position
 
-                    -- Strict altitude: lock strictly to Y = 9 during movement
-                    if math.abs(curPos.Y - strictY) > 0.05 then
-                        hrp.CFrame = CFrame.new(curPos.X, strictY, curPos.Z) * hrp.CFrame.Rotation
+                    -- Minimum floor limit: character can never go down below Y = 8
+                    if curPos.Y < minFloorY then
+                        hrp.CFrame = CFrame.new(curPos.X, minFloorY, curPos.Z) * hrp.CFrame.Rotation
                         curPos = hrp.Position
+                        if hrp.AssemblyLinearVelocity.Y < 0 then
+                            hrp.AssemblyLinearVelocity = Vector3.new(hrp.AssemblyLinearVelocity.X, 0, hrp.AssemblyLinearVelocity.Z)
+                        end
                     end
 
                     local distToFinal = (Vector3.new(curPos.X, 0, curPos.Z) - Vector3.new(targetPos.X, 0, targetPos.Z)).Magnitude
@@ -881,8 +899,9 @@ if not isLobby then
                     if (curPos - lastPos).Magnitude < 0.25 then
                         stuckTimer = stuckTimer + dt
                         if stuckTimer > 0.35 then
-                            -- Teleport 2 studs forward past the obstacle strictly at Y = 9 to pathfind
-                            hrp.CFrame = CFrame.new(curPos.X + (moveDir.X * 2.0), strictY, curPos.Z + (moveDir.Z * 2.0)) * hrp.CFrame.Rotation
+                            -- Teleport 2 studs forward past obstacle, preserving altitude but at least minFloorY 8
+                            local teleY = math.max(curPos.Y, minFloorY)
+                            hrp.CFrame = CFrame.new(curPos.X + (moveDir.X * 2.0), teleY, curPos.Z + (moveDir.Z * 2.0)) * hrp.CFrame.Rotation
                             hrp.AssemblyLinearVelocity = Vector3.zero
                             hrp.Velocity = Vector3.zero
 
@@ -896,8 +915,15 @@ if not isLobby then
                         lastPos = curPos
                     end
 
-                    local yDiff = strictY - curPos.Y
-                    local yVelocity = math.clamp(yDiff * 20, -15, 15)
+                    -- Altitude target: waypoint altitude, but minimum floor limit is 8 (can still go up higher)
+                    local desiredY = math.max(wpPos.Y, minFloorY)
+                    local yDiff = desiredY - curPos.Y
+                    local yVelocity = math.clamp(yDiff * 15, -20, 25)
+
+                    -- If at or below minimum floor limit, do not allow downward force
+                    if curPos.Y <= minFloorY and yVelocity < 0 then
+                        yVelocity = 0
+                    end
 
                     bv.Velocity = Vector3.new(moveDir.X * moveSpeed, yVelocity, moveDir.Z * moveSpeed)
 
