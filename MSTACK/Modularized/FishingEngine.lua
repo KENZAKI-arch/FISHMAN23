@@ -1251,13 +1251,48 @@ if not isLobby then
         return nil
     end
 
+    getgenv().FishmanState.Model.GetLegendaryBaitCount = function(inv)
+        inv = inv or getgenv().FishmanState.Model.GetInventoryData()
+        if not inv or type(inv) ~= "table" then return 0 end
+        local val = inv["Legendary Fish Bait"] or inv["Legendary Bait"]
+        if val then return tonumber(val) or 0 end
+        for k, v in pairs(inv) do
+            if type(k) == "string" and string.find(k:lower(), "legendary") and string.find(k:lower(), "bait") then
+                return tonumber(v) or 0
+            end
+        end
+        return 0
+    end
+
+    getgenv().FishmanState.Model.EnsureAtFishingSpot = function()
+        local fishingSpot = getgenv().FishmanState.Model.State.finalTarget or Vector3.new(104, 9, -56)
+        local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if not hrp then return end
+        
+        local craftPos = Vector3.new(162, 9, -54)
+        local distToSpot = (hrp.Position - fishingSpot).Magnitude
+        local distToSen = (hrp.Position - craftPos).Magnitude
+        
+        if distToSpot > 12 or distToSen < 50 then
+            print(string.format("[Fishman Safeguard] Repositioning: Character is %d studs from fishing spot (dist to Sen: %d). Flying to (104, 9, -56)...", math.round(distToSpot), math.round(distToSen)))
+            getgenv().FishmanState.Model.State.isCurrentlyCrafting = true
+            getgenv().FishmanState.Model.EnableFlight()
+            getgenv().FishmanState.Model.CraftFlyPath({ fishingSpot })
+            getgenv().FishmanState.Model.DisableFlight()
+            getgenv().FishmanState.Model.State.isCurrentlyCrafting = false
+            task.wait(0.3)
+        end
+        getgenv().FishmanState.Model.EquipRod()
+        getgenv().FishmanState.Model.State.isFishing = true
+    end
+
     getgenv().FishmanState.Model.ForceCraftAll = function()
         if getgenv().FishmanState.Model.State.isCurrentlyCrafting then 
             print("[AutoCraft] Crafting is already in progress!")
             return 
         end
         
-        print("[AutoCraft] Checking inventory for Legendary Fish...")
+        print("[AutoCraft] Checking inventory for Legendary Fish and Bait status...")
         local inventoryData = getgenv().FishmanState.Model.GetInventoryData()
         if not inventoryData then
             print("[AutoCraft] ⚠️ Could not retrieve inventory data!")
@@ -1267,23 +1302,15 @@ if not isLobby then
             return
         end
         
-        local currentLegBait = inventoryData["Legendary Fish Bait"] or inventoryData["Legendary Bait"] or 0
+        -- SAFEGUARD: If Legendary Bait is full (300/300), do NOT craft, do NOT go to Sen!
+        local currentLegBait = getgenv().FishmanState.Model.GetLegendaryBaitCount(inventoryData)
         if currentLegBait >= 300 then
-            print(string.format("[AutoCraft] ⚠️ Legendary Bait is already full (%d/300)! Skipping craft.", currentLegBait))
+            print(string.format("[AutoCraft Safeguard] ⚠️ Legendary Bait is FULL (%d/300)! Skipping craft. Never going to Sen. Returning to fishing spot.", currentLegBait))
             if getgenv().FishmanState.Fluent then
-                getgenv().FishmanState.Fluent:Notify({ Title = "Craft All", Content = "Legendary Bait is already full (300/300)!", Duration = 3 })
+                getgenv().FishmanState.Fluent:Notify({ Title = "Craft Safeguard", Content = "Legendary Bait full (300/300)! Staying at fishing spot.", Duration = 4 })
             end
-            local fishingSpot = getgenv().FishmanState.Model.State.finalTarget or Vector3.new(104, 9, -56)
-            local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-            if hrp and (hrp.Position - Vector3.new(162, 9, -54)).Magnitude < 45 then
-                print("[AutoCraft] At crafting area with full bait - flying back to fishing spot...")
-                getgenv().FishmanState.Model.State.isCurrentlyCrafting = true
-                getgenv().FishmanState.Model.EnableFlight()
-                getgenv().FishmanState.Model.CraftFlyPath({ fishingSpot })
-                getgenv().FishmanState.Model.DisableFlight()
-                getgenv().FishmanState.Model.State.isCurrentlyCrafting = false
-                getgenv().FishmanState.Model.EquipRod()
-            end
+            getgenv().FishmanState.Model.EnsureAtFishingSpot()
+            getgenv().FishmanState.Model.State.isFishing = true
             return
         end
         
@@ -1367,10 +1394,7 @@ if not isLobby then
         task.wait(0.3)
         
         local returnTarget = getgenv().FishmanState.Model.State.finalTarget or Vector3.new(104, 9, -56)
-        if (originalPos - craftPos).Magnitude > 30 then
-            returnTarget = originalPos
-        end
-        print(string.format("[AutoCraft] Crafting completed! Returning to position (%d %d %d)...", math.round(returnTarget.X), math.round(returnTarget.Y), math.round(returnTarget.Z)))
+        print(string.format("[AutoCraft] Crafting completed! Returning to fishing spot (%d %d %d)...", math.round(returnTarget.X), math.round(returnTarget.Y), math.round(returnTarget.Z)))
         getgenv().FishmanState.Model.State.travelMessage = "Returning to fishing spot..."
         getgenv().FishmanState.Model.CraftFlyPath({ returnTarget })
         
@@ -1383,11 +1407,11 @@ if not isLobby then
         getgenv().FishmanState.Model.State.autoSell = wasAutoSell
         getgenv().FishmanState.Model.State.isAutoTraveling = wasAutoTravel
         getgenv().FishmanState.Model.State.isDeepSeaCatcher = wasDeepSea
-        getgenv().FishmanState.Model.State.isFishing = wasFishing
+        getgenv().FishmanState.Model.State.isFishing = true
         
-        print(string.format("[AutoCraft] ✅ Successfully crafted legendary bait and returned! (Resumed Fishing: %s)", tostring(wasFishing)))
+        print("[AutoCraft] ✅ Successfully crafted legendary bait and returned to fishing spot! Continuing fishing...")
         if getgenv().FishmanState.Fluent then
-            getgenv().FishmanState.Fluent:Notify({ Title = "Craft All", Content = "Finished crafting Legendary Bait and returned!", Duration = 4 })
+            getgenv().FishmanState.Fluent:Notify({ Title = "Craft All", Content = "Finished crafting Legendary Bait and returned to fishing spot!", Duration = 4 })
         end
     end
     
@@ -1687,19 +1711,12 @@ local function DoFishingCycle()
     local rootPart = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
     if not rootPart then return true end
 
-    -- Prevent casting on the wooden dock at NPC Sen (162, 9, -54)
+    -- Safeguard: Prevent casting on the wooden dock at NPC Sen (162, 9, -54) or if away from fishing spot
     local craftPos = Vector3.new(162, 9, -54)
     local fishingSpot = getgenv().FishmanState.Model.State.finalTarget or Vector3.new(104, 9, -56)
-    if (rootPart.Position - craftPos).Magnitude < 45 then
-        print("[Fishman] Character is at crafting area! Returning to fishing spot before casting...")
-        if getgenv().FishmanState.Model.CraftFlyPath then
-            getgenv().FishmanState.Model.State.isCurrentlyCrafting = true
-            getgenv().FishmanState.Model.EnableFlight()
-            getgenv().FishmanState.Model.CraftFlyPath({ fishingSpot })
-            getgenv().FishmanState.Model.DisableFlight()
-            getgenv().FishmanState.Model.State.isCurrentlyCrafting = false
-            task.wait(0.5)
-        end
+    if (rootPart.Position - craftPos).Magnitude < 50 or (rootPart.Position - fishingSpot).Magnitude > 12 then
+        print("[Fishman Safeguard] Character is near crafting dock or away from fishing spot! Returning to (104, 9, -56)...")
+        getgenv().FishmanState.Model.EnsureAtFishingSpot()
         return true
     end
 
@@ -2000,13 +2017,24 @@ end)
             local inventoryData = getgenv().FishmanState.Model.GetInventoryData()
             if not inventoryData then continue end
             
-            -- Skip auto-craft if Legendary Fish Bait is already full at 300
-            local currentLegBait = inventoryData["Legendary Fish Bait"] or inventoryData["Legendary Bait"] or 0
-            if currentLegBait >= 300 then continue end
+            -- SAFEGUARD: If Legendary Fish Bait is full (300/300), NEVER craft, NEVER go to Sen!
+            -- Ensure player stays at the fishing spot and keeps fishing!
+            local currentLegBait = getgenv().FishmanState.Model.GetLegendaryBaitCount(inventoryData)
+            if currentLegBait >= 300 then
+                local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+                local fishingSpot = getgenv().FishmanState.Model.State.finalTarget or Vector3.new(104, 9, -56)
+                local craftPos = Vector3.new(162, 9, -54)
+                if hrp and ((hrp.Position - fishingSpot).Magnitude > 12 or (hrp.Position - craftPos).Magnitude < 50) then
+                    print("[AutoCraft Safeguard] Bait full (300/300) and character is away from fishing spot! Repositioning to (104, 9, -56)...")
+                    getgenv().FishmanState.Model.EnsureAtFishingSpot()
+                end
+                getgenv().FishmanState.Model.State.isFishing = true
+                continue
+            end
             
             local shouldCraft = false
             for _, legFish in ipairs(LEGENDARY_FISHES) do
-                if (inventoryData[legFish] or 0) >= 40 then
+                if (tonumber(inventoryData[legFish]) or 0) >= 40 then
                     shouldCraft = true
                     break
                 end
