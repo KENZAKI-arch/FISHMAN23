@@ -1263,6 +1263,15 @@ if not isLobby then
             return
         end
         
+        local currentLegBait = inventoryData["Legendary Fish Bait"] or inventoryData["Legendary Bait"] or 0
+        if currentLegBait >= 300 then
+            print(string.format("[AutoCraft] ⚠️ Legendary Bait is already full (%d/300)! Skipping craft.", currentLegBait))
+            if getgenv().FishmanState.Fluent then
+                getgenv().FishmanState.Fluent:Notify({ Title = "Craft All", Content = "Legendary Bait is already full (300/300)!", Duration = 3 })
+            end
+            return
+        end
+        
         local hasAnyLegendary = false
         for _, legFish in ipairs(LEGENDARY_FISHES) do
             local fishCount = inventoryData[legFish] or 0
@@ -1953,6 +1962,10 @@ end)
             if not getgenv().FishmanState.Model.State.autoCraft or getgenv().FishmanState.Model.State.isCurrentlyCrafting then continue end
             local inventoryData = getgenv().FishmanState.Model.GetInventoryData()
             if not inventoryData then continue end
+            
+            -- Skip auto-craft if Legendary Fish Bait is already full at 300
+            local currentLegBait = inventoryData["Legendary Fish Bait"] or inventoryData["Legendary Bait"] or 0
+            if currentLegBait >= 300 then continue end
             
             local shouldCraft = false
             for _, legFish in ipairs(LEGENDARY_FISHES) do
