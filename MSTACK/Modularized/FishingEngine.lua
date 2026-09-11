@@ -200,18 +200,20 @@ if not isLobby then
         local rootPart = character:FindFirstChild("HumanoidRootPart")
         local humanoid = character:FindFirstChild("Humanoid")
         if rootPart then
-            local bg = rootPart:FindFirstChild("AutoTravel_Gyro")
-            if bg then bg:Destroy() end
-            local bv = rootPart:FindFirstChild("AutoTravel_Velocity")
-            if bv then bv:Destroy() end
-            
-            -- Also clean up Hoverboard flyToWithGeppo forces
-            local bg2 = rootPart:FindFirstChild("AntiRotation")
-            if bg2 then bg2:Destroy() end
-            local bv2 = rootPart:FindFirstChild("AntiGravity")
-            if bv2 then bv2:Destroy() end
+            for _, child in ipairs(rootPart:GetChildren()) do
+                if child.Name == "AutoTravel_Gyro" or child.Name == "AutoTravel_Velocity" or child.Name == "AntiRotation" or child.Name == "AntiGravity" or child.Name == "FishingSpotBV" or child.Name == "FishingSpotBG" or child:IsA("BodyVelocity") or child:IsA("BodyGyro") then
+                    pcall(function() child:Destroy() end)
+                end
+            end
+            rootPart.AssemblyLinearVelocity = Vector3.zero
+            rootPart.AssemblyAngularVelocity = Vector3.zero
+            rootPart.Velocity = Vector3.zero
+            rootPart.RotVelocity = Vector3.zero
         end
         if humanoid then humanoid.PlatformStand = false end
+        if getgenv().FishmanState.Model.State then
+            getgenv().FishmanState.Model.State.isCraftFlying = false
+        end
     end
     
     getgenv().FishmanState.Model.NavigateTo = function(object, targetPosition, speed, arrivalDistance)
@@ -680,8 +682,8 @@ if not isLobby then
         local hrp = char and char:FindFirstChild("HumanoidRootPart")
         if hrp then
             for _, child in ipairs(hrp:GetChildren()) do
-                if child.Name == "FishingSpotBV" or child.Name == "FishingSpotBG" then
-                    child:Destroy()
+                if child.Name == "FishingSpotBV" or child.Name == "FishingSpotBG" or child.Name == "AutoTravel_Velocity" or child.Name == "AutoTravel_Gyro" or child:IsA("BodyVelocity") or child:IsA("BodyGyro") then
+                    pcall(function() child:Destroy() end)
                 end
             end
             hrp.AssemblyLinearVelocity = Vector3.zero
@@ -714,10 +716,12 @@ if not isLobby then
             fluent.Options.T_MoveToFishingSpot:SetValue(false)
         end
 
-        if spotMoveThread and spotMoveThread ~= coroutine.running() then
-            task.cancel(spotMoveThread)
-            spotMoveThread = nil
-        end
+        pcall(function()
+            if spotMoveThread and spotMoveThread ~= coroutine.running() then
+                task.cancel(spotMoveThread)
+            end
+        end)
+        spotMoveThread = nil
     end
 
     getgenv().FishmanState.Model.MoveToFishingSpot = function(targetPos)
@@ -1269,6 +1273,17 @@ if not isLobby then
             if getgenv().FishmanState.Fluent then
                 getgenv().FishmanState.Fluent:Notify({ Title = "Craft All", Content = "Legendary Bait is already full (300/300)!", Duration = 3 })
             end
+            local fishingSpot = getgenv().FishmanState.Model.State.finalTarget or Vector3.new(104, 9, -56)
+            local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+            if hrp and (hrp.Position - Vector3.new(162, 9, -54)).Magnitude < 45 then
+                print("[AutoCraft] At crafting area with full bait - flying back to fishing spot...")
+                getgenv().FishmanState.Model.State.isCurrentlyCrafting = true
+                getgenv().FishmanState.Model.EnableFlight()
+                getgenv().FishmanState.Model.CraftFlyPath({ fishingSpot })
+                getgenv().FishmanState.Model.DisableFlight()
+                getgenv().FishmanState.Model.State.isCurrentlyCrafting = false
+                getgenv().FishmanState.Model.EquipRod()
+            end
             return
         end
         
@@ -1351,9 +1366,13 @@ if not isLobby then
         SafeInvokeQuest(false)
         task.wait(0.3)
         
-        print(string.format("[AutoCraft] Crafting completed! Returning to original position (%d %d %d)...", math.round(originalPos.X), math.round(originalPos.Y), math.round(originalPos.Z)))
+        local returnTarget = getgenv().FishmanState.Model.State.finalTarget or Vector3.new(104, 9, -56)
+        if (originalPos - craftPos).Magnitude > 30 then
+            returnTarget = originalPos
+        end
+        print(string.format("[AutoCraft] Crafting completed! Returning to position (%d %d %d)...", math.round(returnTarget.X), math.round(returnTarget.Y), math.round(returnTarget.Z)))
         getgenv().FishmanState.Model.State.travelMessage = "Returning to fishing spot..."
-        getgenv().FishmanState.Model.CraftFlyPath({ originalPos })
+        getgenv().FishmanState.Model.CraftFlyPath({ returnTarget })
         
         getgenv().FishmanState.Model.State.autoCraft = wasAutoCraft
         getgenv().FishmanState.Model.DisableFlight()
@@ -1664,12 +1683,30 @@ local function DoFishingCycle()
     if getgenv().FishmanState.Model.State.isCurrentlyCrafting or getgenv().FishmanState.Model.State.isCraftFlying then
         return true
     end
+
+    local rootPart = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if not rootPart then return true end
+
+    -- Prevent casting on the wooden dock at NPC Sen (162, 9, -54)
+    local craftPos = Vector3.new(162, 9, -54)
+    local fishingSpot = getgenv().FishmanState.Model.State.finalTarget or Vector3.new(104, 9, -56)
+    if (rootPart.Position - craftPos).Magnitude < 45 then
+        print("[Fishman] Character is at crafting area! Returning to fishing spot before casting...")
+        if getgenv().FishmanState.Model.CraftFlyPath then
+            getgenv().FishmanState.Model.State.isCurrentlyCrafting = true
+            getgenv().FishmanState.Model.EnableFlight()
+            getgenv().FishmanState.Model.CraftFlyPath({ fishingSpot })
+            getgenv().FishmanState.Model.DisableFlight()
+            getgenv().FishmanState.Model.State.isCurrentlyCrafting = false
+            task.wait(0.5)
+        end
+        return true
+    end
+
     if not EquipRod() then
         warn("No Fishing Rod equipped! Stopping auto-fish.")
         return false 
     end
-    
-    local rootPart = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
     local castDistance = 10
     local forwardVec = rootPart and rootPart.CFrame.LookVector or Vector3.new(0, 0, -1)
     local flatForward = Vector3.new(forwardVec.X, 0, forwardVec.Z)
