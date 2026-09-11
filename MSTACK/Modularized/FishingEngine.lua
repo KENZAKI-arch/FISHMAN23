@@ -1282,8 +1282,15 @@ if not isLobby then
             getgenv().FishmanState.Model.State.isCurrentlyCrafting = false
             task.wait(0.3)
         end
-        getgenv().FishmanState.Model.EquipRod()
-        getgenv().FishmanState.Model.State.isFishing = true
+
+        local opts = getgenv().FishmanState.Fluent and getgenv().FishmanState.Fluent.Options
+        local isFishOn = getgenv().FishmanState.Model.State.isFishing or (opts and opts.T_Fish and opts.T_Fish.Value == true)
+        local isDeepSeaOn = getgenv().FishmanState.Model.State.isDeepSeaCatcher or (opts and opts.T_DeepSea and opts.T_DeepSea.Value == true)
+        if isFishOn or isDeepSeaOn or getgenv().FishmanState.isAFKModeActive then
+            getgenv().FishmanState.Model.EquipRod()
+            if isFishOn then getgenv().FishmanState.Model.State.isFishing = true end
+            if isDeepSeaOn then getgenv().FishmanState.Model.State.isDeepSeaCatcher = true end
+        end
     end
 
     getgenv().FishmanState.Model.ForceCraftAll = function()
@@ -1310,7 +1317,6 @@ if not isLobby then
                 getgenv().FishmanState.Fluent:Notify({ Title = "Craft Safeguard", Content = "Legendary Bait full (300/300)! Staying at fishing spot.", Duration = 4 })
             end
             getgenv().FishmanState.Model.EnsureAtFishingSpot()
-            getgenv().FishmanState.Model.State.isFishing = true
             return
         end
         
@@ -1402,14 +1408,22 @@ if not isLobby then
         getgenv().FishmanState.Model.DisableFlight()
         getgenv().FishmanState.Model.EquipRod()
         
+        local opts = getgenv().FishmanState.Fluent and getgenv().FishmanState.Fluent.Options
+        local resumeFishing = wasFishing or (opts and opts.T_Fish and opts.T_Fish.Value == true)
+        local resumeDeepSea = wasDeepSea or (opts and opts.T_DeepSea and opts.T_DeepSea.Value == true)
+
         getgenv().FishmanState.Model.State.isCurrentlyCrafting = false
         getgenv().FishmanState.Model.State.travelMessage = ""
         getgenv().FishmanState.Model.State.autoSell = wasAutoSell
         getgenv().FishmanState.Model.State.isAutoTraveling = wasAutoTravel
-        getgenv().FishmanState.Model.State.isDeepSeaCatcher = wasDeepSea
-        getgenv().FishmanState.Model.State.isFishing = true
+        getgenv().FishmanState.Model.State.isDeepSeaCatcher = resumeDeepSea
+        getgenv().FishmanState.Model.State.isFishing = resumeFishing
         
-        print("[AutoCraft] ✅ Successfully crafted legendary bait and returned to fishing spot! Continuing fishing...")
+        if resumeFishing or resumeDeepSea or getgenv().FishmanState.isAFKModeActive then
+            getgenv().FishmanState.Model.EquipRod()
+        end
+        
+        print(string.format("[AutoCraft] ✅ Successfully crafted legendary bait and returned to fishing spot! (Resumed AutoFish: %s, DeepSea: %s)", tostring(resumeFishing), tostring(resumeDeepSea)))
         if getgenv().FishmanState.Fluent then
             getgenv().FishmanState.Fluent:Notify({ Title = "Craft All", Content = "Finished crafting Legendary Bait and returned to fishing spot!", Duration = 4 })
         end
@@ -2028,7 +2042,10 @@ end)
                     print("[AutoCraft Safeguard] Bait full (300/300) and character is away from fishing spot! Repositioning to (104, 9, -56)...")
                     getgenv().FishmanState.Model.EnsureAtFishingSpot()
                 end
-                getgenv().FishmanState.Model.State.isFishing = true
+                local opts = getgenv().FishmanState.Fluent and getgenv().FishmanState.Fluent.Options
+                if opts and opts.T_Fish and opts.T_Fish.Value == true then
+                    getgenv().FishmanState.Model.State.isFishing = true
+                end
                 continue
             end
             
