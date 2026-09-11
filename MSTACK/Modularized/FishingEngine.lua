@@ -108,7 +108,7 @@ local craftFlyTarget = nil
         travelStage           = 1,
         waypoint1             = Vector3.new(406.69, 48.32, -32.21),
         waypoint2             = Vector3.new(174.10, 10.32, -48.09),
-        finalTarget           = Vector3.new(104, 9, -55),
+        finalTarget           = Vector3.new(104, 9, -56),
         travelMessage         = "",
         autoCraft             = false,
         isCurrentlyCrafting   = false,
@@ -721,7 +721,7 @@ if not isLobby then
     end
 
     getgenv().FishmanState.Model.MoveToFishingSpot = function(targetPos)
-        targetPos = targetPos or Vector3.new(104, 9, -55)
+        targetPos = targetPos or Vector3.new(104, 9, -56)
         
         if isMovingToSpot then
             getgenv().FishmanState.Model.StopMovingToFishingSpot()
@@ -808,7 +808,7 @@ if not isLobby then
             if getgenv().FishmanState.Fluent and getgenv().FishmanState.Fluent.Notify then
                 getgenv().FishmanState.Fluent:Notify({
                     Title = "Move to Fishing Spot",
-                    Content = "Moving to (104, 9, -55)...",
+                    Content = "Moving to (104, 9, -56)...",
                     Duration = 3
                 })
             end
@@ -1029,11 +1029,11 @@ if not isLobby then
             getgenv().FishmanState.Model.StopMovingToFishingSpot()
 
             if reachedTarget or (hrp and (hrp.Position - targetPos).Magnitude <= 5) then
-                print("[Fishman] Arrived at Fishing Spot (104, 9, -55)! Stopping completely.")
+                print("[Fishman] Arrived at Fishing Spot (104, 9, -56)! Stopping completely.")
                 if getgenv().FishmanState.Fluent and getgenv().FishmanState.Fluent.Notify then
                     getgenv().FishmanState.Fluent:Notify({
                         Title = "Move to Fishing Spot",
-                        Content = "Arrived at Fishing Spot (104, 9, -55)! Movement stopped.",
+                        Content = "Arrived at Fishing Spot (104, 9, -56)! Movement stopped.",
                         Duration = 4
                     })
                 end
@@ -1679,7 +1679,7 @@ local function DoFishingCycle()
         flatForward = Vector3.new(0, 0, -1)
     end
     
-    local castOrigin = rootPart and rootPart.Position or Vector3.new(101.53, 9.31, -55.77)
+    local castOrigin = rootPart and rootPart.Position or Vector3.new(104, 9, -56)
     local targetX = castOrigin.X + (flatForward.X * castDistance)
     local targetZ = castOrigin.Z + (flatForward.Z * castDistance)
     local waterLevelY = GetWaterLevel(Vector3.new(targetX, castOrigin.Y, targetZ))

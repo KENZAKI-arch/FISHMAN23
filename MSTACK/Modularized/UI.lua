@@ -459,7 +459,7 @@ end
 
 local Window = getgenv().FishmanState.Fluent:CreateWindow({
     Title = "🐟 Fishman Hub",
-    SubTitle = "Unified Auto-Fisher 1.0.3 v3.3",
+    SubTitle = "Unified Auto-Fisher 1.0.3 v3.2",
     MinimizeKey = Enum.KeyCode.RightShift
 })
 
@@ -1292,7 +1292,7 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
             end
             if Value then
                 if getgenv().FishmanState.Model and getgenv().FishmanState.Model.MoveToFishingSpot then
-                    getgenv().FishmanState.Model.MoveToFishingSpot(Vector3.new(104, 9, -55))
+                    getgenv().FishmanState.Model.MoveToFishingSpot(Vector3.new(104, 9, -56))
                 end
             else
                 if getgenv().FishmanState.Model and getgenv().FishmanState.Model.StopMovingToFishingSpot then
