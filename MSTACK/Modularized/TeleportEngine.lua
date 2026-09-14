@@ -25,6 +25,8 @@ local SaveConfig = getgenv().FishmanState.SaveConfig
 local isLobby = getgenv().FishmanState.isLobby
 
 
+local mySession = getgenv().FishmanSession or 0
+
 -- ======================================================================
 -- 🚀 TELEPORT MEMORY INJECTION
 -- ======================================================================
@@ -44,9 +46,9 @@ getgenv().FishmanState.addConn(GuiService.ErrorMessageChanged:Connect(function()
             GlobalMem.FishmanAutoTeleport = true
             getgenv().FishmanState.SaveConfig()
             
-            while getgenv().FishmanState._running and task.wait(5) do
+            while getgenv().FishmanSession == mySession and getgenv().FishmanState._running and task.wait(5) do
                 pcall(function()
-                    if UpdateTeleportMemory then getgenv().FishmanState.UpdateTeleportMemory(true) end
+                    if getgenv().FishmanState.UpdateTeleportMemory then getgenv().FishmanState.UpdateTeleportMemory(true) end
                     TeleportService:Teleport(getgenv().FishmanState.targetPlaceId, LocalPlayer)
                 end)
             end
@@ -126,14 +128,16 @@ getgenv().FishmanState.ActivatePotatoGraphics = function()
     end
 
     getgenv().FishmanState.addConn(workspace.DescendantAdded:Connect(function(child)
-        task.spawn(function()
-            if child:IsA("ForceField") or child:IsA("Sparkles") or child:IsA("Smoke") or child:IsA("Fire") or child:IsA("Beam") then
+        if child:IsA("BasePart") then
+            child.CastShadow = false
+        elseif child:IsA("ForceField") or child:IsA("Sparkles") or child:IsA("Smoke") or child:IsA("Fire") or child:IsA("Beam") then
+            task.spawn(function()
                 RunService.Heartbeat:Wait()
-                child:Destroy()
-            elseif child:IsA("BasePart") then
-                child.CastShadow = false
-            end
-        end)
+                if child and child.Parent then
+                    pcall(function() child:Destroy() end)
+                end
+            end)
+        end
     end))
     
     if getgenv().FishmanState.Fluent then getgenv().FishmanState.Fluent:Notify({ Title = "Anti-Lag", Content = "Potato Graphics Active!", Duration = 3 }) end

@@ -25,6 +25,7 @@ local TriggerSafeguardShutdown = getgenv().FishmanState.TriggerSafeguardShutdown
 local SaveConfig = getgenv().FishmanState.SaveConfig
 local isLobby = getgenv().FishmanState.isLobby
 
+local mySession = getgenv().FishmanSession or 0
 
 -- ======================================================================
 -- 🎣 FISHING ENGINE CORE (Only initialized if NOT in lobby)
@@ -41,7 +42,7 @@ local cachedBaitItems = nil
         local timeAtSafezone = 0
         local safezonePos = Vector3.new(-6852, 27, 9233)
         local debugCounter = 0
-        while getgenv().FishmanState._running do
+        while getgenv().FishmanSession == mySession and getgenv().FishmanState._running do
             task.wait(1)
             debugCounter = debugCounter + 1
             local fluent = getgenv().FishmanState.Fluent
@@ -150,7 +151,11 @@ if not isLobby then
         if not character then return nil end
         local humanoid = character:FindFirstChildOfClass("Humanoid")
         if not humanoid then return nil end
-        local animator = humanoid:FindFirstChildOfClass("Animator") or Instance.new("Animator", humanoid)
+        local animator = humanoid:FindFirstChildOfClass("Animator")
+        if not animator then
+            animator = Instance.new("Animator")
+            animator.Parent = humanoid
+        end
 
         local track = loadedAnimations[animationId]
         if track and not track.IsPlaying and not pcall(function() return track.Length end) then
@@ -162,6 +167,7 @@ if not isLobby then
             local anim = Instance.new("Animation")
             anim.AnimationId = animationId
             track = animator:LoadAnimation(anim)
+            anim:Destroy()
             track.Priority = Enum.AnimationPriority.Action
             loadedAnimations[animationId] = track
         end
@@ -332,28 +338,34 @@ if not isLobby then
         end
 
         local function raycastSolid(origin, direction, params)
+            local baseList = params.FilterDescendantsInstances
             local result = workspace:Raycast(origin, direction, params)
             local loops = 0
+            local currentList = nil
             while result and not result.Instance.CanCollide and loops < 10 do
-                local currentList = params.FilterDescendantsInstances
+                if not currentList then currentList = table.clone(baseList) end
                 table.insert(currentList, result.Instance)
                 params.FilterDescendantsInstances = currentList
                 loops = loops + 1
                 result = workspace:Raycast(origin, direction, params)
             end
+            if currentList then params.FilterDescendantsInstances = baseList end
             return result
         end
 
         local function blockcastSolid(cframe, extents, dir, params)
+            local baseList = params.FilterDescendantsInstances
             local result = workspace:Blockcast(cframe, extents, dir, params)
             local loops = 0
+            local currentList = nil
             while result and not result.Instance.CanCollide and loops < 10 do
-                local currentList = params.FilterDescendantsInstances
+                if not currentList then currentList = table.clone(baseList) end
                 table.insert(currentList, result.Instance)
                 params.FilterDescendantsInstances = currentList
                 loops = loops + 1
                 result = workspace:Blockcast(cframe, extents, dir, params)
             end
+            if currentList then params.FilterDescendantsInstances = baseList end
             return result
         end
 
@@ -537,6 +549,12 @@ if not isLobby then
     
     local cachedTravelParams = RaycastParams.new()
     cachedTravelParams.FilterType = Enum.RaycastFilterType.Exclude
+    local travelCharFilter = {LocalPlayer.Character}
+    cachedTravelParams.FilterDescendantsInstances = travelCharFilter
+    getgenv().FishmanState.addConn(LocalPlayer.CharacterAdded:Connect(function(newChar)
+        travelCharFilter[1] = newChar
+        cachedTravelParams.FilterDescendantsInstances = travelCharFilter
+    end))
 
     getgenv().FishmanState.Model.HandleMovement = function(deltaTime)
         local rootPart = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
@@ -585,7 +603,10 @@ if not isLobby then
 
         local newY = cur.Y
         if getgenv().FishmanState.Model.State.travelStage > 1 and not goingUp then
-            cachedTravelParams.FilterDescendantsInstances = {LocalPlayer.Character}
+            if travelCharFilter[1] ~= LocalPlayer.Character then
+                travelCharFilter[1] = LocalPlayer.Character
+                cachedTravelParams.FilterDescendantsInstances = travelCharFilter
+            end
 
             local floorY = tgtY
             local rayStart = Vector3.new(newX, cur.Y + 10, newZ)
@@ -1117,6 +1138,11 @@ if not isLobby then
         local maxDuration = 30
         local startTime = tick()
         
+        local craftParts = {}
+        for _, part in ipairs(character:GetDescendants()) do
+            if part:IsA("BasePart") then table.insert(craftParts, part) end
+        end
+        
         while getgenv().FishmanState.Model.State.isCraftFlying and (tick() - startTime) < maxDuration do
             if not getgenv().FishmanState.Model.State.autoCraft and not getgenv().FishmanState.Model.State.isRefillingMegBait and not getgenv().FishmanState.Model.State.isManualTraveling and not getgenv().FishmanState.Model.State.isCurrentlyCrafting then
                 break
@@ -1147,8 +1173,8 @@ if not isLobby then
                 bv.Velocity = Vector3.zero
             end
             
-            for _, part in ipairs(character:GetDescendants()) do
-                if part:IsA("BasePart") and part.CanCollide then
+            for _, part in ipairs(craftParts) do
+                if part.Parent and part.CanCollide then
                     part.CanCollide = false
                 end
             end
@@ -1837,9 +1863,15 @@ local function DoFishingCycle()
                 end
                 getgenv().FishmanState.addConn(workspace.DescendantAdded:Connect(onNewSound))
                 getgenv().FishmanState.addConn(game:GetService("SoundService").DescendantAdded:Connect(onNewSound))
-                if LocalPlayer.Character then getgenv().FishmanState.addConn(LocalPlayer.Character.DescendantAdded:Connect(onNewSound)) end
+                local charDescConn = nil
+                if LocalPlayer.Character then
+                    charDescConn = LocalPlayer.Character.DescendantAdded:Connect(onNewSound)
+                    getgenv().FishmanState.addConn(charDescConn)
+                end
                 getgenv().FishmanState.addConn(LocalPlayer.CharacterAdded:Connect(function(char)
-                    getgenv().FishmanState.addConn(char.DescendantAdded:Connect(onNewSound))
+                    if charDescConn and charDescConn.Connected then charDescConn:Disconnect() end
+                    charDescConn = char.DescendantAdded:Connect(onNewSound)
+                    getgenv().FishmanState.addConn(charDescConn)
                 end))
                 if rootPart then
                     for _, child in ipairs(rootPart:GetChildren()) do onNewSound(child) end
@@ -1987,7 +2019,7 @@ end
 -- === MAIN LOOP ===
 task.spawn(function()
     print("Auto-Fisher started without UI.")
-    while getgenv().FishmanState._running do
+    while getgenv().FishmanSession == mySession and getgenv().FishmanState._running do
         if (getgenv().FishmanState.Model.State.isFishing or getgenv().FishmanState.Model.State.isDeepSeaCatcher) and not getgenv().FishmanState.Model.State.isCurrentlyCrafting and not getgenv().FishmanState.Model.State.isCraftFlying then
             DoFishingCycle()
         end
@@ -1999,7 +2031,7 @@ end)
     -- ⏱️ BACKGROUND LOOPS
     -- ======================================================================
     task.spawn(function()
-        while getgenv().FishmanState._running and task.wait(1) do
+        while getgenv().FishmanSession == mySession and getgenv().FishmanState._running and task.wait(1) do
             if getgenv().FishmanState.isAFKModeActive then
                 getgenv().FishmanState.secondsSinceLastInput += 1
                 if getgenv().FishmanState.secondsSinceLastInput == 10 then
@@ -2026,7 +2058,7 @@ end)
     end)
 
     task.spawn(function()
-        while getgenv().FishmanState._running and task.wait(3) do
+        while getgenv().FishmanSession == mySession and getgenv().FishmanState._running and task.wait(3) do
             if not getgenv().FishmanState.Model.State.autoCraft or getgenv().FishmanState.Model.State.isCurrentlyCrafting then continue end
             local inventoryData = getgenv().FishmanState.Model.GetInventoryData()
             if not inventoryData then continue end
@@ -2064,11 +2096,11 @@ end)
         end
     end)
 
-    task.spawn(function() while getgenv().FishmanState._running and task.wait(2) do if getgenv().FishmanState.Model.State.autoBuy or getgenv().FishmanState.Model.State.isMegStackLoc or getgenv().FishmanState.Model.State.autoSell then getgenv().FishmanState.Model.CheckInventory() end end end)
+    task.spawn(function() while getgenv().FishmanSession == mySession and getgenv().FishmanState._running and task.wait(2) do if getgenv().FishmanState.Model.State.autoBuy or getgenv().FishmanState.Model.State.isMegStackLoc or getgenv().FishmanState.Model.State.autoSell then getgenv().FishmanState.Model.CheckInventory() end end end)
 
     -- Auto-track hoverboard position to memory every 3 seconds to prevent StreamingEnabled drop-off
     task.spawn(function()
-        while getgenv().FishmanState._running and task.wait(3) do
+        while getgenv().FishmanSession == mySession and getgenv().FishmanState._running and task.wait(3) do
             local hb = getgenv().FishmanState.Model.FindHoverboard and getgenv().FishmanState.Model.FindHoverboard()
             if hb then
                 local hbCFrame = hb:IsA("Model") and hb:GetPivot() or hb.CFrame
@@ -2079,7 +2111,7 @@ end)
 
     -- Auto-return background loop
     task.spawn(function()
-        while getgenv().FishmanState._running and task.wait(1) do
+        while getgenv().FishmanSession == mySession and getgenv().FishmanState._running and task.wait(1) do
             if getgenv().FishmanState.Model.State.autoReturn and not getgenv().FishmanState.Model.State.isCraftFlying and not getgenv().FishmanState.Model.State.isAutoTraveling and not getgenv().FishmanState.Model.State.isRefillingMegBait and not getgenv().FishmanState.Model.State.isManualTraveling and not getgenv().FishmanState.Model.State.isCurrentlyCrafting then
                 local character = LocalPlayer.Character
                 local hum = character and character:FindFirstChild("Humanoid")
@@ -2110,12 +2142,17 @@ end)
     end)
 
     getgenv().FishmanState.addConn(RunService.Heartbeat:Connect(function(dt)
-        if getgenv().FishmanState._running and getgenv().FishmanState.Model.State.isAutoTraveling then getgenv().FishmanState.Model.HandleMovement(dt) end
+        if getgenv().FishmanSession == mySession and getgenv().FishmanState._running and getgenv().FishmanState.Model.State.isAutoTraveling then getgenv().FishmanState.Model.HandleMovement(dt) end
     end))
     
     local noclipCache = {}
     local lastCharacter = nil
     local descAddedConn = nil
+
+    getgenv().FishmanState.addConn(LocalPlayer.CharacterAdded:Connect(function()
+        lastCharacter = nil
+        table.clear(noclipCache)
+    end))
 
     getgenv().FishmanState.addConn(RunService.Stepped:Connect(function()
         if not getgenv().FishmanState._running then return end
@@ -2152,8 +2189,13 @@ getgenv().FishmanState.ShutdownEverything = function()
     getgenv().FishmanState._running = false
     getgenv().FishmanState.disconnectAll()
     if not isLobby then
+        if getgenv().FishmanState.Model and getgenv().FishmanState.Model.StopMovingToFishingSpot then
+            pcall(getgenv().FishmanState.Model.StopMovingToFishingSpot)
+        end
         getgenv().FishmanState.Model.DisableFlight()
     end
+    lastCharacter = nil
+    table.clear(noclipCache)
     if getgenv().DSC_SoundCache then getgenv().DSC_SoundCache = nil end
     if getgenv().StopAutofarm then
         pcall(getgenv().StopAutofarm)

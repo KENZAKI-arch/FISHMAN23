@@ -1,6 +1,6 @@
 -- Config & State Setup
 getgenv().FishmanState = getgenv().FishmanState or {}
--- Version 3.3
+-- Version 3.0
 -- ======================================================================
 -- 🛑 GLOBAL SETUP & DUPLICATE PREVENTION
 -- ======================================================================
@@ -27,9 +27,13 @@ end)
 
 env.FishmanScriptServer = game.JobId
 
+-- Disconnect any dangling connections from prior execution before resetting connection table
+if getgenv().FishmanState and getgenv().FishmanState.disconnectAll then
+    pcall(getgenv().FishmanState.disconnectAll)
+end
+
 getgenv().FishmanState._running = true
 getgenv().FishmanState._connections = {}
-
 
 getgenv().FishmanState.addConn = function(conn)
     table.insert(getgenv().FishmanState._connections, conn)
@@ -42,6 +46,16 @@ getgenv().FishmanState.disconnectAll = function()
     end
     table.clear(getgenv().FishmanState._connections)
 end
+
+-- Baseline StopPrevious handler so that even in Lobby mode, re-executions clean up safely
+env.Fishman_StopPrevious = function()
+    getgenv().FishmanState._running = false
+    if getgenv().FishmanState.disconnectAll then
+        getgenv().FishmanState.disconnectAll()
+    end
+end
+
+local mySession = getgenv().FishmanSession or 0
 
 print("--- [Fishman] Unified Script Starting ---")
 if not game:IsLoaded() then game.Loaded:Wait() end
@@ -93,7 +107,7 @@ print("[Fishman] Game fully loaded!")
 task.spawn(function()
     local Stats = game:GetService("Stats")
     local consecutiveHighPing = 0
-    while getgenv().FishmanState._running and task.wait(5) do
+    while getgenv().FishmanSession == mySession and getgenv().FishmanState._running and task.wait(5) do
         pcall(function()
             local pingStr = Stats.Network.ServerStatsItem["Data Ping"]:GetValueString()
             local pingVal = tonumber(string.match(pingStr, "%d+%.?%d*"))

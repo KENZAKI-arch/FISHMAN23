@@ -24,6 +24,7 @@ local TriggerSafeguardShutdown = getgenv().FishmanState.TriggerSafeguardShutdown
 local SaveConfig = getgenv().FishmanState.SaveConfig
 local isLobby = getgenv().FishmanState.isLobby
 
+local mySession = getgenv().FishmanSession or 0
 
 -- ======================================================================
 -- 🎨 CUSTOM LIGHTWEIGHT UI INTEGRATION
@@ -459,7 +460,7 @@ end
 
 local Window = getgenv().FishmanState.Fluent:CreateWindow({
     Title = "🐟 Fishman Hub",
-    SubTitle = "Unified Auto-Fisher 1.0.3 v3.1",
+    SubTitle = "Unified Auto-Fisher 1.0.3 v3.0",
     MinimizeKey = Enum.KeyCode.RightShift
 })
 
@@ -1022,7 +1023,7 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
             getgenv().FishmanState.Model.State.activeNavigation = getgenv().FishmanState.Model.NavigateTo(character, selectedIslandPos, 90, 20)
             
             task.spawn(function()
-                while getgenv().FishmanState._running and getgenv().FishmanState.Model.State.activeNavigation and getgenv().FishmanState.Model.State.activeNavigation._isNavigating do
+                while getgenv().FishmanSession == mySession and getgenv().FishmanState._running and getgenv().FishmanState.Model.State.activeNavigation and getgenv().FishmanState.Model.State.activeNavigation._isNavigating do
                     local nav = getgenv().FishmanState.Model.State.activeNavigation
                     if nav._isPaused then
                         flightStatus:SetDesc("Paused (" .. tostring(nav.Distance) .. " studs)")
@@ -1070,7 +1071,7 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
         getgenv().FishmanState.Model.State.isIslandESP = Value
         if Value then
             task.spawn(function()
-                while getgenv().FishmanState._running and getgenv().FishmanState.Model.State.isIslandESP do
+                while getgenv().FishmanSession == mySession and getgenv().FishmanState._running and getgenv().FishmanState.Model.State.isIslandESP do
                     local islandsFolder = workspace:FindFirstChild("Islands")
                     if islandsFolder then
                         for _, island in ipairs(islandsFolder:GetChildren()) do
@@ -1160,7 +1161,7 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
 
         if Value then
             task.spawn(function()
-                while getgenv().FishmanState._running and getgenv().FishmanState.Model.State.isFruitESP do
+                while getgenv().FishmanSession == mySession and getgenv().FishmanState._running and getgenv().FishmanState.Model.State.isFruitESP do
                     for _, obj in ipairs(workspace:GetChildren()) do
                         if (obj:IsA("Tool") or obj:IsA("Model")) and isTarget(obj.Name) then
                             local rootPart = (obj:IsA("Model") and (obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart"))) or (obj:IsA("Tool") and obj:FindFirstChild("Handle"))
@@ -1326,7 +1327,7 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
             if getgenv().FishmanState.Fluent.Options.T_AutoReturn then getgenv().FishmanState.Fluent.Options.T_AutoReturn:SetValue(true) end
             print("🌊 [MegStack] Meg stack starting now! Enabling deep sea catcher for 10 megalodons.")
             task.spawn(function()
-                while getgenv().FishmanState._running and getgenv().FishmanState.Model.State.isMegStacking do
+                while getgenv().FishmanSession == mySession and getgenv().FishmanState._running and getgenv().FishmanState.Model.State.isMegStacking do
                     local char = game:GetService("Players").LocalPlayer.Character
                     local hrp = char and char:FindFirstChild("HumanoidRootPart")
                     local isCyborgRunning = getgenv().FishmanState.Model and getgenv().FishmanState.Model.State and getgenv().FishmanState.Model.State.isAutoFarming
@@ -1382,7 +1383,7 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
             if getgenv().FishmanState.Fluent.Options.T_AutoReturn then getgenv().FishmanState.Fluent.Options.T_AutoReturn:SetValue(true) end
             print("🌊 [MegStackPassive] Meg stack starting now! Enabling deep sea catcher for 10 megalodons.")
             task.spawn(function()
-                while getgenv().FishmanState._running and getgenv().FishmanState.Model.State.isMegStackPassive do
+                while getgenv().FishmanSession == mySession and getgenv().FishmanState._running and getgenv().FishmanState.Model.State.isMegStackPassive do
                     local char = game:GetService("Players").LocalPlayer.Character
                     local hrp = char and char:FindFirstChild("HumanoidRootPart")
                     if hrp and (hrp:FindFirstChild("AntiGravity") or hrp:FindFirstChildOfClass("BodyVelocity")) and not getgenv().FishmanState.Model.State.isRefillingMegBait and not getgenv().FishmanState.Model.State.isAutoTraveling then
@@ -1399,7 +1400,7 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
                         
                         local waitTime = 0
                         local lastCount = getgenv().FishmanState.Model.countMegalodons()
-                        while getgenv().FishmanState._running and getgenv().FishmanState.Model.countMegalodons() > 0 and getgenv().FishmanState.Model.State.isMegStackPassive and waitTime < 180 do
+                        while getgenv().FishmanSession == mySession and getgenv().FishmanState._running and getgenv().FishmanState.Model.countMegalodons() > 0 and getgenv().FishmanState.Model.State.isMegStackPassive and waitTime < 180 do
                             task.wait(1)
                             waitTime = waitTime + 1
                             local curCount = getgenv().FishmanState.Model.countMegalodons()
@@ -1492,7 +1493,7 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
         getgenv().FishmanState.Model.State.isHoverboardESP = Value 
         if Value then
             task.spawn(function()
-                while getgenv().FishmanState._running and getgenv().FishmanState.Model.State.isHoverboardESP do
+                while getgenv().FishmanSession == mySession and getgenv().FishmanState._running and getgenv().FishmanState.Model.State.isHoverboardESP do
                     local shipsFolder = workspace:FindFirstChild("Ships")
                     if shipsFolder then
                         local myShip = shipsFolder:FindFirstChild(LocalPlayer.Name .. "Ship")
@@ -1534,7 +1535,7 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
         getgenv().FishmanState.Model.State.isMegESP = Value 
         if Value then
             task.spawn(function()
-                while getgenv().FishmanState._running and getgenv().FishmanState.Model.State.isMegESP do
+                while getgenv().FishmanSession == mySession and getgenv().FishmanState._running and getgenv().FishmanState.Model.State.isMegESP do
                     local folders = {workspace:FindFirstChild("NPCs"), workspace:FindFirstChild("Env")}
                     for _, folder in ipairs(folders) do
                         if folder then
@@ -1775,7 +1776,7 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
     local StatusPara = getgenv().FishmanState.Tabs.Fishing:AddParagraph({ Title = "Status", Content = "Idle" })
     local statusParts = {}
     task.spawn(function()
-        while getgenv().FishmanState._running and task.wait(1) do
+        while getgenv().FishmanSession == mySession and getgenv().FishmanState._running and task.wait(1) do
             table.clear(statusParts)
             if getgenv().FishmanState.Model.State.isFishing then table.insert(statusParts, "Fishing") end
             if getgenv().FishmanState.Model.State.autoBuy then table.insert(statusParts, "Buying") end
@@ -1883,7 +1884,7 @@ getgenv().FishmanState.Tabs.Autofarm:AddToggle("T_CyborgAuto", {
                     task.spawn(function()
                         local waitTime = 0
                         local lastCount = getgenv().FishmanState.Model.countMegalodons()
-                        while getgenv().FishmanState._running and getgenv().FishmanState.Fluent.Options.T_CyborgAuto.Value == true and getgenv().FishmanState.Model.countMegalodons() > 0 and waitTime < 180 do
+                        while getgenv().FishmanSession == mySession and getgenv().FishmanState._running and getgenv().FishmanState.Fluent.Options.T_CyborgAuto.Value == true and getgenv().FishmanState.Model.countMegalodons() > 0 and waitTime < 180 do
                             task.wait(1)
                             waitTime = waitTime + 1
                             local curCount = getgenv().FishmanState.Model.countMegalodons()
@@ -2029,6 +2030,13 @@ getgenv().FishmanState.Tabs.Autofarm:AddButton({
                         bv.Velocity = Vector3.new(0, 0, 0)
                         bv.Parent = hrp
                         
+                        local merchantCharParts = {}
+                        if hrp.Parent then
+                            for _, part in ipairs(hrp.Parent:GetDescendants()) do
+                                if part:IsA("BasePart") then table.insert(merchantCharParts, part) end
+                            end
+                        end
+
                         for i, waypoint in ipairs(waypoints) do
                             if not getgenv().FishmanState._running then break end
                             local wpPos = waypoint.Position
@@ -2037,7 +2045,7 @@ getgenv().FishmanState.Tabs.Autofarm:AddButton({
                             local stuckTimer = 0
                             local lastDist = (hrp.Position - wpPos).Magnitude
                             
-                            while getgenv().FishmanState._running and hrp.Parent do
+                            while getgenv().FishmanSession == mySession and getgenv().FishmanState._running and hrp.Parent do
                                 local dist = (hrp.Position - wpPos).Magnitude
                                 if dist <= 3 then break end
                                 
@@ -2051,8 +2059,8 @@ getgenv().FishmanState.Tabs.Autofarm:AddButton({
                                 end
                                 
                                 if stuckTimer > 0.5 then
-                                    for _, part in ipairs(hrp.Parent:GetDescendants()) do
-                                        if part:IsA("BasePart") then
+                                    for _, part in ipairs(merchantCharParts) do
+                                        if part.Parent and part.CanCollide then
                                             part.CanCollide = false
                                         end
                                     end

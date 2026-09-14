@@ -1,5 +1,9 @@
 -- Main Loader Orchestrator
 print("[Fishman] Loading Modular Architecture...")
+
+-- 🔄 Generation counter to cleanly terminate any zombie threads from previous executions
+getgenv().FishmanSession = (getgenv().FishmanSession or 0) + 1
+
 local repoURL = "https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/MSTACK/Modularized/"
 
 local modules = {
@@ -68,4 +72,9 @@ for _, mod in ipairs(modules) do
     end
 end
 
+-- 🧹 Free raw source strings from memory
+table.clear(scriptCache)
+table.clear(threads)
+
 print("[Fishman] All required modules loaded successfully!")
+
