@@ -390,12 +390,12 @@ end)
 -- Noclip & Collision Management
 steppedConnection = RunService.Stepped:Connect(function()
     if isActionActive and LocalPlayer.Character then
-        if isTraveling then
+        if isTraveling or Model.State.isAutoFarming then
             for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
-                if part:IsA("BasePart") then part.CanCollide = false end
+                if part:IsA("BasePart") and part.CanCollide then
+                    part.CanCollide = false
+                end
             end
-        elseif Model.State.isAutoFarming then
-            Model.ApplyNoclip()
         end
     end
 end)
