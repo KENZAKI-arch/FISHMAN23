@@ -35,8 +35,10 @@ local qot = queue_on_teleport or (syn and syn.queue_on_teleport) or (fluxus and 
 getgenv().FishmanState.UpdateTeleportMemory = nil -- Forward declaration
 
 -- ======================================================================
--- 🔄 AUTO RECONNECT ENGINE
+-- 🔄 AUTO RECONNECT ENGINE (DISABLED)
 -- ======================================================================
+-- Auto Reconnect has been stopped/disabled as requested.
+--[[
 getgenv().FishmanState.addConn(GuiService.ErrorMessageChanged:Connect(function()
     if GlobalMem.FishmanAutoReconnect then
         task.spawn(function()
@@ -55,6 +57,7 @@ getgenv().FishmanState.addConn(GuiService.ErrorMessageChanged:Connect(function()
         end)
     end
 end))
+--]]
 
 getgenv().FishmanState.UpdateTeleportMemory = function(willAutoTeleport)
     GlobalMem.FishmanAutoTeleport = willAutoTeleport

@@ -1,6 +1,6 @@
 -- Config & State Setup
 getgenv().FishmanState = getgenv().FishmanState or {}
--- Version 3.0
+-- Version 3.1
 -- ======================================================================
 -- 🛑 GLOBAL SETUP & DUPLICATE PREVENTION
 -- ======================================================================
@@ -174,7 +174,7 @@ pcall(function()
             if data.FishmanDestination ~= nil then GlobalMem.FishmanDestination = data.FishmanDestination end
             if GlobalMem.FishmanAutoTeleport == nil then GlobalMem.FishmanAutoTeleport = data.FishmanAutoTeleport end
             if GlobalMem.FishmanAutoJoin == nil then GlobalMem.FishmanAutoJoin = data.FishmanAutoJoin end
-            if GlobalMem.FishmanAutoReconnect == nil then GlobalMem.FishmanAutoReconnect = data.FishmanAutoReconnect end
+            GlobalMem.FishmanAutoReconnect = false
             if GlobalMem.FishmanAutoRouteLobby == nil then GlobalMem.FishmanAutoRouteLobby = data.FishmanAutoRouteLobby end
             if GlobalMem.FishmanAutoSpawnShip == nil then GlobalMem.FishmanAutoSpawnShip = data.FishmanAutoSpawnShip end
             print("[Fishman] Loaded Config from file.")
@@ -192,7 +192,7 @@ end
 GlobalMem.FishmanDestination = GlobalMem.FishmanDestination or GlobalMem.FishmanDefaultDestination or "tradeHub" 
 GlobalMem.FishmanAutoTeleport = GlobalMem.FishmanAutoTeleport or false 
 GlobalMem.FishmanAutoJoin = GlobalMem.FishmanAutoJoin or false
-if GlobalMem.FishmanAutoReconnect == nil then GlobalMem.FishmanAutoReconnect = false end
+GlobalMem.FishmanAutoReconnect = false
 if GlobalMem.FishmanAutoRouteLobby == nil then GlobalMem.FishmanAutoRouteLobby = true end
 
 getgenv().FishmanState.SaveConfig = function()

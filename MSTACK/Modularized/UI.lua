@@ -460,7 +460,7 @@ end
 
 local Window = getgenv().FishmanState.Fluent:CreateWindow({
     Title = "🐟 Fishman Hub",
-    SubTitle = "Unified Auto-Fisher 1.0.3 v3.0",
+    SubTitle = "Unified Auto-Fisher 1.0.3 v3.1",
     MinimizeKey = Enum.KeyCode.RightShift
 })
 
@@ -2152,10 +2152,10 @@ getgenv().FishmanState.Tabs.Autofarm:AddButton({
 -- ⚙️ SETTINGS TAB UI
 -- ======================================================================
 getgenv().FishmanState.Tabs.Settings:AddToggle("T_AutoReconnect", { 
-    Title = "Auto Reconnect on Disconnect", 
-    Default = GlobalMem.FishmanAutoReconnect or false, 
+    Title = "Auto Reconnect on Disconnect (Disabled)", 
+    Default = false, 
     Callback = function(Value)
-        GlobalMem.FishmanAutoReconnect = Value
+        GlobalMem.FishmanAutoReconnect = false
         getgenv().FishmanState.SaveConfig()
     end 
 })
