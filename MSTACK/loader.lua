@@ -60,36 +60,22 @@ end)
 -- ⚙️ ACCOUNT CONFIGURATION
 -- Add your accounts and their corresponding private server codes here.
 local AccountConfigs = {
-    -- Second Sea Accounts
-    ["ReneButterbones"] = { code = "qj1ttW4JG1", dest = "Second Sea" },
-    ["BarriacadedAlex"] = { code = "vcvq1Xp6GC", dest = "Second Sea" },
-    ["pc_Romer900"] = { code = "dmNfaqsjjj", dest = "Second Sea" },
-    ["LumpiangToge234"] = { code = "MCVwx2gvJv", dest = "Second Sea" },
-    ["TuronLovers"] = { code = "tirAZ2rx2s", dest = "Second Sea" },
-    ["SiomaiRice12369"] = { code = "dTuByY1k0O", dest = "Second Sea" },
-    ["Haswell128"] = { code = "IxM1NarToN", dest = "Second Sea" },
-    ["KamiSiRene"] = { code = "CnHpO5Kwa9", dest = "Second Sea" },
-    ["LumpiangChina"] = { code = "gVKAsClzbt", dest = "Second Sea" },
-    ["BeeswarmTensei"] = { code = "UO4gc2IyTY", dest = "Second Sea" },
-
-    -- Trade Hub Accounts
-    ["GibokJang6"] = { code = "qj1ttW4JG1", dest = "tradeHub" },
-
     -- First Sea Accounts
-    ["KingmakerJ1"] = { code = "CnHpO5Kwa9", dest = "First Sea" },
-    ["KingmakerJ3"] = { code = "IxM1NarToN", dest = "First Sea" },
-    ["KingmakerJ4"] = { code = "Ay5J7LqxL4", dest = "First Sea" },
-    ["Oggai001"] = { code = "tirAZ2rx2s", dest = "First Sea" },
-    ["Oggai002"] = { code = "dTuByY1k0O", dest = "First Sea" },
-    ["Oggai003"] = { code = "IxM1NarToN", dest = "First Sea" },
-    ["Oggai004"] = { code = "CnHpO5Kwa9", dest = "First Sea" },
-    ["Oggai005"] = { code = "gVKAsClzbt", dest = "First Sea" },
-    ["RinkakuWarrior"] = { code = "UO4gc2IyTY", dest = "First Sea" }
+    ["Dstereomadness13"] = { code = "qj1ttW4JG1", dest = "First Sea" },
+    ["Bstereomadness13"] = { code = "tirAZ2rx2s", dest = "First Sea" },
+    ["Cstereomadness13"] = { code = "MCVwx2gvJv", dest = "First Sea" },
+    ["Astereomadness12"] = { code = "dmNfaqsjjj", dest = "First Sea" },
+    ["Estereomadness14"] = { code = "dTuByY1k0O", dest = "First Sea" },
+    ["Qstereomadness14"] = { code = "Ay5J7LqxL4", dest = "First Sea" },
+    ["Xstereomadness14"] = { code = "D7YApdhRP1", dest = "First Sea" },
+    ["Zstereomadness14"] = { code = "KY4ilrrIXX", dest = "First Sea" },
+    ["Ystereomadness15"] = { code = "HiBe6mk1H7", dest = "First Sea" },
+    ["Kstereomadness14"] = { code = "vcvq1Xp6GC", dest = "First Sea" }
 }
 
 -- ⚙️ GLOBAL SETTINGS
 local DefaultPSCode = "qj1ttW4JG1"          -- Used if the account is not in AccountConfigs
-local DefaultDestination = "Second Sea"
+local DefaultDestination = "First Sea"
 
 -- Apply Configuration
 local playerName = LocalPlayer.Name

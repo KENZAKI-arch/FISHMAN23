@@ -109,6 +109,13 @@ function Model.ResetPhysics()
 end
 
 function Model.ApplyNoclip()
+    local character = LocalPlayer.Character
+    if not character then return end
+    for _, part in pairs(character:GetDescendants()) do
+        if part:IsA("BasePart") and part.CanCollide then
+            part.CanCollide = false
+        end
+    end
 end
 
 function Model.UpdateTracking(deltaTime)
