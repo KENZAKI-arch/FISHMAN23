@@ -1,6 +1,6 @@
 -- Config & State Setup
 getgenv().FishmanState = getgenv().FishmanState or {}
--- Version 3.1
+-- Version 3.2
 -- ======================================================================
 -- 🛑 GLOBAL SETUP & DUPLICATE PREVENTION
 -- ======================================================================
@@ -177,6 +177,7 @@ pcall(function()
             GlobalMem.FishmanAutoReconnect = false
             if GlobalMem.FishmanAutoRouteLobby == nil then GlobalMem.FishmanAutoRouteLobby = data.FishmanAutoRouteLobby end
             if GlobalMem.FishmanAutoSpawnShip == nil then GlobalMem.FishmanAutoSpawnShip = data.FishmanAutoSpawnShip end
+            if data.FishmanBaitType ~= nil then GlobalMem.FishmanBaitType = data.FishmanBaitType end
             print("[Fishman] Loaded Config from file.")
         end
     end
@@ -194,6 +195,7 @@ GlobalMem.FishmanAutoTeleport = GlobalMem.FishmanAutoTeleport or false
 GlobalMem.FishmanAutoJoin = GlobalMem.FishmanAutoJoin or false
 GlobalMem.FishmanAutoReconnect = false
 if GlobalMem.FishmanAutoRouteLobby == nil then GlobalMem.FishmanAutoRouteLobby = true end
+GlobalMem.FishmanBaitType = GlobalMem.FishmanBaitType or "Common Fish Bait"
 
 getgenv().FishmanState.SaveConfig = function()
     pcall(function()
@@ -206,7 +208,8 @@ getgenv().FishmanState.SaveConfig = function()
                 FishmanAutoJoin = GlobalMem.FishmanAutoJoin,
                 FishmanAutoReconnect = GlobalMem.FishmanAutoReconnect,
                 FishmanAutoRouteLobby = GlobalMem.FishmanAutoRouteLobby,
-                FishmanAutoSpawnShip = GlobalMem.FishmanAutoSpawnShip
+                FishmanAutoSpawnShip = GlobalMem.FishmanAutoSpawnShip,
+                FishmanBaitType = GlobalMem.FishmanBaitType
             }
             writefile(configFileName, HttpService:JSONEncode(data))
         end

@@ -117,6 +117,7 @@ local craftFlyTarget = nil
         isCraftFlying         = false,
         activeNavigation      = nil,
         shipSpeed             = 60,
+        selectedBait          = GlobalMem.FishmanBaitType or "Common Fish Bait",
     }
 
 if not isLobby then
@@ -1780,9 +1781,30 @@ local function DoFishingCycle()
     
     local throwGoal = Vector3.new(targetX, waterLevelY, targetZ)
     
+    local activeBait = (getgenv().FishmanState.Model and getgenv().FishmanState.Model.State and getgenv().FishmanState.Model.State.selectedBait) or GlobalMem.FishmanBaitType or BAIT_NAME or "Common Fish Bait"
+
+    if activeBait == "Legendary Fish Bait" then
+        local legBaitCount = getgenv().FishmanState.Model.GetLegendaryBaitCount and getgenv().FishmanState.Model.GetLegendaryBaitCount() or 0
+        if legBaitCount <= 0 then
+            if not getgenv().FishmanState._lastBaitWarn or (tick() - getgenv().FishmanState._lastBaitWarn > 10) then
+                getgenv().FishmanState._lastBaitWarn = tick()
+                print("[Fishman] ⚠️ Out of Legendary Fish Bait!")
+                if getgenv().FishmanState.Fluent and getgenv().FishmanState.Fluent.Notify then
+                    getgenv().FishmanState.Fluent:Notify({
+                        Title = "Bait Warning",
+                        Content = "Out of Legendary Fish Bait!",
+                        Duration = 3
+                    })
+                end
+            end
+            task.wait(2)
+            return true
+        end
+    end
+
     local success, throwResponse = pcall(function()
         return actionRemote:InvokeServer({ 
-            Bait = "Common Fish Bait", 
+            Bait = activeBait, 
             Action = "Throw", 
             Goal = throwGoal 
         })

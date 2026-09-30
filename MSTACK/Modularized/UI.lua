@@ -460,7 +460,7 @@ end
 
 local Window = getgenv().FishmanState.Fluent:CreateWindow({
     Title = "🐟 Fishman Hub",
-    SubTitle = "Unified Auto-Fisher 1.0.3 v3.1",
+    SubTitle = "Unified Auto-Fisher 1.0.3 v3.2",
     MinimizeKey = Enum.KeyCode.RightShift
 })
 
@@ -1234,6 +1234,20 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
         if isLobby then if Value then getgenv().FishmanState.Fluent:Notify({ Title = "Error", Content = "Cannot fish in Lobby!", Duration = 3 }); getgenv().FishmanState.Fluent.Options.T_Fish:SetValue(false) end return end
         getgenv().FishmanState.Model.State.isFishing = Value 
     end })
+    getgenv().FishmanState.Tabs.Fishing:AddDropdown("D_BaitType", {
+        Title = "Bait Type",
+        Values = { "Common Fish Bait", "Legendary Fish Bait" },
+        Default = GlobalMem.FishmanBaitType or "Common Fish Bait",
+        Callback = function(Value)
+            GlobalMem.FishmanBaitType = Value
+            if getgenv().FishmanState.Model and getgenv().FishmanState.Model.State then
+                getgenv().FishmanState.Model.State.selectedBait = Value
+            end
+            if getgenv().FishmanState.SaveConfig then
+                getgenv().FishmanState.SaveConfig()
+            end
+        end
+    })
     local legBaitInit = false
     getgenv().FishmanState.Tabs.Fishing:AddToggle("T_AutoLegBait", {
         Title = "Auto Leg Bait (All-In-One)",
