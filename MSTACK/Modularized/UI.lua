@@ -2165,11 +2165,12 @@ getgenv().FishmanState.Tabs.Autofarm:AddButton({
 -- ======================================================================
 -- ⚙️ SETTINGS TAB UI
 -- ======================================================================
-getgenv().FishmanState.Tabs.Settings:AddToggle("T_AutoReconnect", { 
-    Title = "Auto Reconnect on Disconnect (Disabled)", 
-    Default = false, 
+getgenv().FishmanState.Tabs.Settings:AddToggle("T_CloseOnDisconnect", { 
+    Title = "Safeguard: Close Roblox on Disconnect / Restart", 
+    Description = "Automatically shuts down and closes the Roblox app if disconnected, kicked, or the server restarts.",
+    Default = (GlobalMem.FishmanCloseOnDisconnect ~= nil) and GlobalMem.FishmanCloseOnDisconnect or true, 
     Callback = function(Value)
-        GlobalMem.FishmanAutoReconnect = false
+        GlobalMem.FishmanCloseOnDisconnect = Value
         getgenv().FishmanState.SaveConfig()
     end 
 })

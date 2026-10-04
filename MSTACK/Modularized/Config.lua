@@ -76,11 +76,29 @@ while not LocalPlayer do
     LocalPlayer = Players.LocalPlayer 
 end
 
+local isAppShuttingDown = false
+getgenv().FishmanState.CloseRobloxApp = function(reason)
+    if isAppShuttingDown then return end
+    if GlobalMem.FishmanCloseOnDisconnect == false then return end
+    isAppShuttingDown = true
+    warn(string.format("[Fishman Safeguard] %s -> Shutting down Roblox App...", tostring(reason)))
+    getgenv().FishmanState._running = false
+    if getgenv().FishmanState.disconnectAll then pcall(getgenv().FishmanState.disconnectAll) end
+    if env.Fishman_DestroyUI then pcall(env.Fishman_DestroyUI) end
+    task.wait(0.3)
+    pcall(function() game:Shutdown() end)
+    task.wait(0.5)
+    pcall(function() (os.exit or exit)() end)
+end
+
 getgenv().FishmanState.TriggerSafeguardShutdown = function(reason)
     warn("[Fishman] WIFI SAFEGUARD TRIGGERED: " .. tostring(reason))
     getgenv().FishmanState._running = false
     getgenv().FishmanState.disconnectAll()
     if env.Fishman_DestroyUI then pcall(env.Fishman_DestroyUI) end
+    if GlobalMem.FishmanCloseOnDisconnect ~= false and getgenv().FishmanState.CloseRobloxApp then
+        getgenv().FishmanState.CloseRobloxApp(reason)
+    end
 end
 
 -- Robust network/weak wifi safeguard: wait for essential player instances to fully replicate
@@ -178,6 +196,7 @@ pcall(function()
             if GlobalMem.FishmanAutoRouteLobby == nil then GlobalMem.FishmanAutoRouteLobby = data.FishmanAutoRouteLobby end
             if GlobalMem.FishmanAutoSpawnShip == nil then GlobalMem.FishmanAutoSpawnShip = data.FishmanAutoSpawnShip end
             if data.FishmanBaitType ~= nil then GlobalMem.FishmanBaitType = data.FishmanBaitType end
+            if data.FishmanCloseOnDisconnect ~= nil then GlobalMem.FishmanCloseOnDisconnect = data.FishmanCloseOnDisconnect end
             print("[Fishman] Loaded Config from file.")
         end
     end
@@ -196,6 +215,7 @@ GlobalMem.FishmanAutoJoin = GlobalMem.FishmanAutoJoin or false
 GlobalMem.FishmanAutoReconnect = false
 if GlobalMem.FishmanAutoRouteLobby == nil then GlobalMem.FishmanAutoRouteLobby = true end
 GlobalMem.FishmanBaitType = GlobalMem.FishmanBaitType or "Common Fish Bait"
+if GlobalMem.FishmanCloseOnDisconnect == nil then GlobalMem.FishmanCloseOnDisconnect = true end
 
 getgenv().FishmanState.SaveConfig = function()
     pcall(function()
@@ -209,7 +229,8 @@ getgenv().FishmanState.SaveConfig = function()
                 FishmanAutoReconnect = GlobalMem.FishmanAutoReconnect,
                 FishmanAutoRouteLobby = GlobalMem.FishmanAutoRouteLobby,
                 FishmanAutoSpawnShip = GlobalMem.FishmanAutoSpawnShip,
-                FishmanBaitType = GlobalMem.FishmanBaitType
+                FishmanBaitType = GlobalMem.FishmanBaitType,
+                FishmanCloseOnDisconnect = GlobalMem.FishmanCloseOnDisconnect
             }
             writefile(configFileName, HttpService:JSONEncode(data))
         end

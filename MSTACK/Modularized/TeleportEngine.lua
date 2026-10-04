@@ -35,29 +35,42 @@ local qot = queue_on_teleport or (syn and syn.queue_on_teleport) or (fluxus and 
 getgenv().FishmanState.UpdateTeleportMemory = nil -- Forward declaration
 
 -- ======================================================================
--- 🔄 AUTO RECONNECT ENGINE (DISABLED)
+-- 🛡️ SAFEGUARD APP SHUTDOWN (ON DISCONNECT / RESTART)
 -- ======================================================================
--- Auto Reconnect has been stopped/disabled as requested.
---[[
-getgenv().FishmanState.addConn(GuiService.ErrorMessageChanged:Connect(function()
-    if GlobalMem.FishmanAutoReconnect then
-        task.spawn(function()
-            -- It's a disconnect! Reroute to configured Default PS and Destination!
-            -- if GlobalMem.FishmanDefaultPSCode then GlobalMem.FishmanPSCode = GlobalMem.FishmanDefaultPSCode end
-            -- if GlobalMem.FishmanDefaultDestination then GlobalMem.FishmanDestination = GlobalMem.FishmanDefaultDestination end
-            GlobalMem.FishmanAutoTeleport = true
-            getgenv().FishmanState.SaveConfig()
-            
-            while getgenv().FishmanSession == mySession and getgenv().FishmanState._running and task.wait(5) do
-                pcall(function()
-                    if getgenv().FishmanState.UpdateTeleportMemory then getgenv().FishmanState.UpdateTeleportMemory(true) end
-                    TeleportService:Teleport(getgenv().FishmanState.targetPlaceId, LocalPlayer)
-                end)
-            end
-        end)
+local function TriggerAppShutdown(reason)
+    if getgenv().FishmanState.CloseRobloxApp then
+        getgenv().FishmanState.CloseRobloxApp(reason)
+    end
+end
+
+-- 1. GuiService Error Message (Kicks, Disconnect Error 277/268/529, Server Shutdown)
+getgenv().FishmanState.addConn(GuiService.ErrorMessageChanged:Connect(function(errorMessage)
+    if errorMessage and #errorMessage > 0 then
+        TriggerAppShutdown("Disconnect / Error Detected: " .. tostring(errorMessage))
     end
 end))
---]]
+
+-- 2. CoreGui Disconnect Modal Watcher (Roblox prompt overlay)
+task.spawn(function()
+    pcall(function()
+        local CoreGui = game:GetService("CoreGui")
+        local promptGui = CoreGui:WaitForChild("RobloxPromptGui", 10)
+        local promptOverlay = promptGui and promptGui:WaitForChild("promptOverlay", 10)
+        if promptOverlay then
+            getgenv().FishmanState.addConn(promptOverlay.ChildAdded:Connect(function(child)
+                if child.Name == "ErrorPrompt" or child.Name:find("Prompt") then
+                    task.wait(0.2)
+                    TriggerAppShutdown("Disconnect Prompt Displayed (" .. tostring(child.Name) .. ")")
+                end
+            end))
+        end
+    end)
+end)
+
+-- 3. Teleport / Game Restart Failures
+getgenv().FishmanState.addConn(TeleportService.TeleportInitFailed:Connect(function(player, teleportResult, errorMessage)
+    TriggerAppShutdown("Teleport / Restart Failed: " .. tostring(errorMessage))
+end))
 
 getgenv().FishmanState.UpdateTeleportMemory = function(willAutoTeleport)
     GlobalMem.FishmanAutoTeleport = willAutoTeleport
