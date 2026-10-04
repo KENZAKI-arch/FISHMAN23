@@ -72,8 +72,24 @@ getgenv().FishmanState.addConn(TeleportService.TeleportInitFailed:Connect(functi
     TriggerAppShutdown("Teleport / Restart Failed: " .. tostring(errorMessage))
 end))
 
+-- 4. Server Migration / Unexpected Teleports (Roblox server restart migrations)
+getgenv().FishmanState.addConn(LocalPlayer.OnTeleport:Connect(function(teleportState)
+    if GlobalMem.FishmanCloseOnDisconnect == false then return end
+    
+    if teleportState == Enum.TeleportState.Failed then
+        TriggerAppShutdown("Teleport Failed (OnTeleport State: Failed)")
+        return
+    end
+    
+    local isIntentional = getgenv().FishmanState.isScriptTeleporting or GlobalMem.FishmanAutoTeleport
+    if not isIntentional then
+        TriggerAppShutdown("Server Migration / Unexpected Teleport Detected (State: " .. tostring(teleportState) .. ")")
+    end
+end))
+
 getgenv().FishmanState.UpdateTeleportMemory = function(willAutoTeleport)
     GlobalMem.FishmanAutoTeleport = willAutoTeleport
+    getgenv().FishmanState.isScriptTeleporting = willAutoTeleport
     GlobalMem.LastTeleportTime = os.time()
     getgenv().FishmanState.SaveConfig()
     

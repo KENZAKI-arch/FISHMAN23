@@ -565,6 +565,7 @@ getgenv().FishmanState.Tabs = Tabs
     })
 
     local function ExecuteTeleport(destination, psCode)
+        getgenv().FishmanState.isScriptTeleporting = true
         if getgenv().FishmanState.Fluent then
             getgenv().FishmanState.Fluent:Notify({
                 Title = "🚀 Teleport Sequence",
@@ -992,6 +993,7 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
                 if getgenv().FishmanState.UpdateTeleportMemory then
                     getgenv().FishmanState.UpdateTeleportMemory(true)
                 end
+                getgenv().FishmanState.isScriptTeleporting = true
                 getgenv().FishmanState.Fluent:Notify({ Title = "Teleporting", Content = "Routing to " .. selectedTargetPlayer .. " via Lobby...", Duration = 5 })
                 task.wait(1.5)
                 game:GetService("TeleportService"):Teleport(1730877806, LocalPlayer)
