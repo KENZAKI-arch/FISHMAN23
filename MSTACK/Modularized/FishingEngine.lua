@@ -37,58 +37,6 @@ local cachedBaitItems = nil
     local loadedAnimations = {}
     getgenv().FishmanState.addConn(LocalPlayer.CharacterAdded:Connect(function() table.clear(loadedAnimations) end))
     
-    -- 📍 LOCATION-BASED RECOVERY SYSTEM (AUTO SPAWN SHIP)
-    task.spawn(function()
-        local timeAtSafezone = 0
-        local safezonePos = Vector3.new(-6852, 27, 9233)
-        local debugCounter = 0
-        while getgenv().FishmanSession == mySession and getgenv().FishmanState._running do
-            task.wait(1)
-            debugCounter = debugCounter + 1
-            local fluent = getgenv().FishmanState.Fluent
-            if fluent and fluent.Options then
-                local isAutoSpawnON = fluent.Options.T_AutoSpawnShip and fluent.Options.T_AutoSpawnShip.Value
-                                       
-                if isAutoSpawnON and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-                    local hrp = LocalPlayer.Character.HumanoidRootPart
-                    local dist = (hrp.Position - safezonePos).Magnitude
-                    
-                    if debugCounter >= 3 then
-                        print(string.format("[Fishman Debug] AutoSpawnShip: ON | Dist to Safezone: %d | Timer: %d/8", math.floor(dist), timeAtSafezone))
-                        debugCounter = 0
-                    end
-                    
-                    if dist < 600 then 
-                        timeAtSafezone = timeAtSafezone + 1
-                        if timeAtSafezone >= 8 then
-                            print("[Fishman] Back to safezone player died now retriggering auto spawn ship something")
-                            
-                            if fluent.Options.T_MegStack then fluent.Options.T_MegStack:SetValue(false) end
-                            if fluent.Options.T_MegStackPassive then fluent.Options.T_MegStackPassive:SetValue(false) end
-                            
-                            task.spawn(function()
-                                if fluent.Options.T_AutoSpawnShip then
-                                    fluent.Options.T_AutoSpawnShip:SetValue(false)
-                                    task.wait(2)
-                                    fluent.Options.T_AutoSpawnShip:SetValue(true)
-                                end
-                            end)
-                            
-                            timeAtSafezone = 0 -- Reset counter
-                        end
-                    else
-                        timeAtSafezone = 0
-                    end
-                else
-                    if debugCounter >= 3 then
-                        print("[Fishman Debug] Location Loop running, but AutoSpawnShip is OFF or Character is missing.")
-                        debugCounter = 0
-                    end
-                    timeAtSafezone = 0
-                end
-            end
-        end
-    end)
     getgenv().FishmanState.isAFKModeActive = false
     getgenv().FishmanState.secondsSinceLastInput = 0
 local craftHeartbeatConn = nil
