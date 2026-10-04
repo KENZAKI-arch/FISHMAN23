@@ -131,7 +131,7 @@ if not isLobby then
     inventoryObj   = statsFolder:WaitForChild("Inventory", 9e9):WaitForChild("Inventory", 9e9)
     peliObject     = statsFolder:WaitForChild("Stats", 9e9):WaitForChild("Peli", 9e9)
     
-    local LEGENDARY_FISHES  = { "Anglerfish", "Golden Ribbon Angelfish", "Golden Polka Puffer", "Golden Tigerfin" }
+    local LEGENDARY_FISHES  = { "Anglerfish", "Golden Ribbon Angelfish", "Golden Polka Puffer", "Golden Tigerfin", "Dark Skeletal Shark", "Jack-O'-Bite" }
     local MAX_PELI            = 1000000
     local BAIT_NAME           = "Common Fish Bait"
     local MIN_BAIT            = 1
