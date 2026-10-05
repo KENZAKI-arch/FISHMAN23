@@ -40,12 +40,28 @@ getgenv().FishmanState.addConn = function(conn)
     return conn
 end
 
+getgenv().FishmanState.removeConn = function(conn)
+    if not conn then return end
+    pcall(function() if conn.Connected then conn:Disconnect() end end)
+    local idx = table.find(getgenv().FishmanState._connections, conn)
+    if idx then table.remove(getgenv().FishmanState._connections, idx) end
+end
+
 getgenv().FishmanState.disconnectAll = function()
     for _, c in ipairs(getgenv().FishmanState._connections) do
         if c and c.Connected then c:Disconnect() end
     end
     table.clear(getgenv().FishmanState._connections)
 end
+
+-- Graceful exit handler on game window close
+pcall(function()
+    game:BindToClose(function()
+        if getgenv().FishmanState.SaveConfig then pcall(getgenv().FishmanState.SaveConfig) end
+        if getgenv().FishmanState.disconnectAll then pcall(getgenv().FishmanState.disconnectAll) end
+        if getgenv().FishmanState.ShutdownEverything then pcall(getgenv().FishmanState.ShutdownEverything) end
+    end)
+end)
 
 -- Baseline StopPrevious handler so that even in Lobby mode, re-executions clean up safely
 env.Fishman_StopPrevious = function()

@@ -1734,9 +1734,16 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
     local charConn = nil
 
     local function setupFruitListener()
-        if backpackConn then backpackConn:Disconnect(); backpackConn = nil end
+        if backpackConn then
+            if getgenv().FishmanState.removeConn then
+                getgenv().FishmanState.removeConn(backpackConn)
+            else
+                pcall(function() backpackConn:Disconnect() end)
+            end
+            backpackConn = nil
+        end
         local backpack = LocalPlayer:FindFirstChild("Backpack")
-        if backpack then
+        if backpack and autoStoreEnabled then
             backpackConn = backpack.ChildAdded:Connect(function(child)
                 if autoStoreEnabled and child:IsA("Tool") then
                     -- Slight delay to ensure tool attributes load
@@ -1775,14 +1782,28 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
                 if not charConn then
                     charConn = LocalPlayer.CharacterAdded:Connect(function()
                         task.wait(1)
-                        setupFruitListener()
+                        if autoStoreEnabled then
+                            setupFruitListener()
+                        end
                     end)
                     getgenv().FishmanState.addConn(charConn)
                 end
             else
                 if backpackConn then 
-                    backpackConn:Disconnect()
+                    if getgenv().FishmanState.removeConn then
+                        getgenv().FishmanState.removeConn(backpackConn)
+                    else
+                        pcall(function() backpackConn:Disconnect() end)
+                    end
                     backpackConn = nil 
+                end
+                if charConn then
+                    if getgenv().FishmanState.removeConn then
+                        getgenv().FishmanState.removeConn(charConn)
+                    else
+                        pcall(function() charConn:Disconnect() end)
+                    end
+                    charConn = nil
                 end
             end
         end 

@@ -1190,6 +1190,7 @@ if not isLobby then
                 PlayGeppoEffect(character, rootPart)
                 task.wait(0.1)
             end
+            pcall(function() tween:Destroy() end)
         end
 
         local cur = rootPart.Position
@@ -1828,7 +1829,9 @@ local function DoFishingCycle()
                 getgenv().DSC_SoundCache = {}
                 local function onNewSound(child)
                     if child:IsA("Sound") and string.find(child.Name, "DeepSea") then
-                        table.insert(getgenv().DSC_SoundCache, child)
+                        if not table.find(getgenv().DSC_SoundCache, child) then
+                            table.insert(getgenv().DSC_SoundCache, child)
+                        end
                     end
                 end
                 getgenv().FishmanState.addConn(workspace.DescendantAdded:Connect(onNewSound))
@@ -1839,7 +1842,14 @@ local function DoFishingCycle()
                     getgenv().FishmanState.addConn(charDescConn)
                 end
                 getgenv().FishmanState.addConn(LocalPlayer.CharacterAdded:Connect(function(char)
-                    if charDescConn and charDescConn.Connected then charDescConn:Disconnect() end
+                    if charDescConn then
+                        if getgenv().FishmanState.removeConn then
+                            getgenv().FishmanState.removeConn(charDescConn)
+                        else
+                            pcall(function() charDescConn:Disconnect() end)
+                        end
+                        charDescConn = nil
+                    end
                     charDescConn = char.DescendantAdded:Connect(onNewSound)
                     getgenv().FishmanState.addConn(charDescConn)
                 end))
