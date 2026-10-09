@@ -21,12 +21,21 @@ local LocalPlayer = Players.LocalPlayer
 -- Fetch Model module
 local Model = loadstring(game:HttpGet("https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/Model.lua"))()
 
--- Target Coordinates (Enemies Location)
+-- Target Coordinates & Waypoints
 local targetX = 7976.704
 local targetY = -2152.832
 local targetZ = -17074.277
 local finalTarget = Vector3.new(targetX, targetY, targetZ)
+local roboPos = Vector3.new(7978, -2153, -17074)
 local travelSpeed = 90
+local corridorSpeed = 50
+
+-- Waypoints from Robo Spawn to Enemies (Fishman Karate Users)
+local SPAWN_TO_ENEMIES_WAYPOINTS = {
+    Vector3.new(8002, -2154, -17146),
+    Vector3.new(7793, -2177, -17175),
+    Vector3.new(7757, -2177, -17244)
+}
 
 -- State Management
 local isRunning = true
@@ -36,6 +45,7 @@ local isTraveling = false
 local steppedConnection
 local heartbeatConnection
 local travelHeartbeatConnection
+local charAddedConnection
 
 -- ============================================================================
 -- 1. FLIGHT CONTROLS & PHYSICS
@@ -46,14 +56,11 @@ local function enableFlight(character)
     local humanoid = character:FindFirstChild("Humanoid")
     
     if rootPart and humanoid then
-        humanoid.PlatformStand = true
+        humanoid.PlatformStand = false -- Maintain upright footing (prevents ragdoll spinning)
         
-        local bg = rootPart:FindFirstChild("AutoTravel_Gyro") or Instance.new("BodyGyro")
-        bg.Name = "AutoTravel_Gyro"
-        bg.P = 9e4
-        bg.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
-        bg.CFrame = rootPart.CFrame
-        bg.Parent = rootPart
+        -- Destroy any BodyGyro so it does not fight CFrame rotation
+        local bg = rootPart:FindFirstChild("AutoTravel_Gyro")
+        if bg then bg:Destroy() end
         
         local bv = rootPart:FindFirstChild("AutoTravel_Velocity") or Instance.new("BodyVelocity")
         bv.Name = "AutoTravel_Velocity"
@@ -74,6 +81,9 @@ local function disableFlight(character)
         
         local bv = rootPart:FindFirstChild("AutoTravel_Velocity")
         if bv then bv:Destroy() end
+        
+        rootPart.Velocity = Vector3.new(0, 0, 0)
+        rootPart.RotVelocity = Vector3.new(0, 0, 0)
     end
     
     if humanoid then
@@ -135,6 +145,7 @@ local function cleanupEverything()
     if steppedConnection then steppedConnection:Disconnect(); steppedConnection = nil end
     if heartbeatConnection then heartbeatConnection:Disconnect(); heartbeatConnection = nil end
     if travelHeartbeatConnection then travelHeartbeatConnection:Disconnect(); travelHeartbeatConnection = nil end
+    if charAddedConnection then charAddedConnection:Disconnect(); charAddedConnection = nil end
     
     -- Clear teleport queue if present
     local clear_queue = clear_teleport_queue or (syn and syn.clear_teleport_queue) or (fluxus and fluxus.clear_teleport_queue) or (queue_on_teleport and function() queue_on_teleport("") end)
@@ -181,7 +192,7 @@ local versionLabel = Instance.new("TextLabel")
 versionLabel.Size = UDim2.new(1, 0, 0, 18)
 versionLabel.Position = UDim2.new(0, 0, 0, -20)
 versionLabel.BackgroundTransparency = 1
-versionLabel.Text = "AUTOFARM + TRAVEL V1.0"
+versionLabel.Text = "AUTOFARM 2.0"
 versionLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 versionLabel.Font = Enum.Font.GothamBold
 versionLabel.TextSize = 11
@@ -230,7 +241,7 @@ end)
 -- ============================================================================
 -- 6. COMBAT & TRAVEL LOGIC
 -- ============================================================================
-local stopAll, startAll, startCombatFarming, startTravelSequence
+local stopAll, startAll, startCombatFarming, startTravelSequence, startSpawnToEnemiesSequence
 
 function startCombatFarming()
     isTraveling = false
@@ -265,10 +276,183 @@ function stopAll()
     toggleBtn.BackgroundColor3 = Color3.fromRGB(255, 85, 85)
 end
 
+function startSpawnToEnemiesSequence()
+    isTraveling = true
+    Model.State.isAutoFarming = false
+    
+    toggleBtn.Text = "PATHFINDING (1/3)..."
+    toggleBtn.BackgroundColor3 = Color3.fromRGB(255, 170, 0)
+    
+    enableFlight(LocalPlayer.Character)
+    
+    if travelHeartbeatConnection then travelHeartbeatConnection:Disconnect() end
+    
+    local mainWaypointIndex = 1
+    local subWaypoints = nil
+    local subIndex = 1
+    local isComputingPath = false
+
+    local function requestPath(targetGoal)
+        if isComputingPath then return end
+        isComputingPath = true
+        task.spawn(function()
+            local char = LocalPlayer.Character
+            local root = char and char:FindFirstChild("HumanoidRootPart")
+            if not root then
+                isComputingPath = false
+                return
+            end
+            
+            -- Raycast down to find ground level so PathfindingService hits the NavMesh even while floating
+            local startPos = root.Position
+            local rp = RaycastParams.new()
+            rp.FilterDescendantsInstances = {char}
+            rp.FilterType = Enum.RaycastFilterType.Exclude
+            local groundHit = Workspace:Raycast(root.Position, Vector3.new(0, -60, 0), rp)
+            if groundHit then
+                startPos = groundHit.Position + Vector3.new(0, 2, 0)
+            end
+
+            local path = PathfindingService:CreatePath({
+                AgentRadius = 2.5,
+                AgentHeight = 5,
+                AgentCanJump = true,
+                WaypointSpacing = 4,
+                Costs = { Water = 20 }
+            })
+            
+            local success = pcall(function()
+                path:ComputeAsync(startPos, targetGoal)
+            end)
+            
+            if success and path.Status == Enum.PathStatus.Success then
+                subWaypoints = path:GetWaypoints()
+                subIndex = 1
+            else
+                -- Fallback to direct waypoint flight if path cannot be computed
+                subWaypoints = nil
+                subIndex = 1
+            end
+            isComputingPath = false
+        end)
+    end
+    
+    -- Compute path to initial milestone waypoint
+    requestPath(SPAWN_TO_ENEMIES_WAYPOINTS[mainWaypointIndex])
+
+    travelHeartbeatConnection = RunService.Heartbeat:Connect(function(deltaTime)
+        if not isActionActive or not isTraveling then
+            if travelHeartbeatConnection then
+                travelHeartbeatConnection:Disconnect()
+                travelHeartbeatConnection = nil
+            end
+            return
+        end
+        
+        local character = LocalPlayer.Character
+        local rootPart = character and character:FindFirstChild("HumanoidRootPart")
+        if not rootPart then return end
+        
+        local targetPoint = SPAWN_TO_ENEMIES_WAYPOINTS[mainWaypointIndex]
+        if not targetPoint then
+            -- Completed all waypoints in the sequence: proceed to combat farming
+            if travelHeartbeatConnection then
+                travelHeartbeatConnection:Disconnect()
+                travelHeartbeatConnection = nil
+            end
+            isTraveling = false
+            if isRunning and isActionActive then
+                startCombatFarming()
+            end
+            return
+        end
+        
+        local currentPos = rootPart.Position
+        local distToMainTarget = (currentPos - targetPoint).Magnitude
+        
+        -- Check if we have arrived at the current milestone waypoint
+        if distToMainTarget <= 5 then
+            mainWaypointIndex = mainWaypointIndex + 1
+            local nextTarget = SPAWN_TO_ENEMIES_WAYPOINTS[mainWaypointIndex]
+            if nextTarget then
+                toggleBtn.Text = string.format("PATHFINDING (%d/%d)...", mainWaypointIndex, #SPAWN_TO_ENEMIES_WAYPOINTS)
+                subWaypoints = nil
+                subIndex = 1
+                requestPath(nextTarget)
+            end
+            return
+        end
+        
+        -- Determine target coordinate along computed navmesh path or fallback
+        local flyToPoint = targetPoint
+        if subWaypoints and subIndex <= #subWaypoints then
+            local currentSub = subWaypoints[subIndex]
+            local subPos = currentSub.Position
+            local distToSub = (currentPos - subPos).Magnitude
+            
+            if distToSub <= 4 then
+                subIndex = subIndex + 1
+                if subIndex <= #subWaypoints then
+                    flyToPoint = subWaypoints[subIndex].Position
+                end
+            else
+                flyToPoint = subPos
+            end
+        else
+            flyToPoint = targetPoint
+        end
+        
+        -- Raycast to dynamically float EXACTLY 5 studs above ground always
+        local rp = RaycastParams.new()
+        rp.FilterDescendantsInstances = {character}
+        rp.FilterType = Enum.RaycastFilterType.Exclude
+        
+        local floorHit = Workspace:Raycast(Vector3.new(currentPos.X, currentPos.Y + 10, currentPos.Z), Vector3.new(0, -60, 0), rp)
+        if floorHit then
+            flyToPoint = Vector3.new(flyToPoint.X, floorHit.Position.Y + 5, flyToPoint.Z)
+        else
+            local targetFloorHit = Workspace:Raycast(Vector3.new(flyToPoint.X, flyToPoint.Y + 15, flyToPoint.Z), Vector3.new(0, -60, 0), rp)
+            if targetFloorHit then
+                flyToPoint = Vector3.new(flyToPoint.X, targetFloorHit.Position.Y + 5, flyToPoint.Z)
+            else
+                flyToPoint = Vector3.new(flyToPoint.X, flyToPoint.Y + 5, flyToPoint.Z)
+            end
+        end
+        
+        toggleBtn.Text = string.format("NAVIGATING (%d/%d)...", mainWaypointIndex, #SPAWN_TO_ENEMIES_WAYPOINTS)
+        
+        -- Smooth flight lerp at corridorSpeed (50 studs/s) with stable forward orientation
+        local distance = (currentPos - flyToPoint).Magnitude
+        if distance > 0 then
+            local moveDir = flyToPoint - currentPos
+            local horizontalDir = Vector3.new(moveDir.X, 0, moveDir.Z)
+            local targetCFrame
+            if horizontalDir.Magnitude > 0.3 then
+                targetCFrame = CFrame.lookAt(flyToPoint, flyToPoint + horizontalDir)
+            else
+                targetCFrame = CFrame.new(flyToPoint) * rootPart.CFrame.Rotation
+            end
+            
+            local alpha = math.clamp((corridorSpeed * deltaTime) / distance, 0, 1)
+            rootPart.CFrame = rootPart.CFrame:Lerp(targetCFrame, alpha)
+        end
+        
+        rootPart.Velocity = Vector3.new(0, 0, 0)
+        rootPart.RotVelocity = Vector3.new(0, 0, 0)
+    end)
+end
+
 function startAll()
     isActionActive = true
     if isAtFishmanIsland() then
-        startCombatFarming()
+        local character = LocalPlayer.Character
+        local rootPart = character and character:FindFirstChild("HumanoidRootPart")
+        -- If at or near Robo spawn (within 120 studs), traverse the corridor waypoints first
+        if rootPart and (rootPart.Position - roboPos).Magnitude <= 120 then
+            startSpawnToEnemiesSequence()
+        else
+            startCombatFarming()
+        end
     else
         startTravelSequence()
     end
@@ -334,7 +518,7 @@ function startTravelSequence()
         
         if phase == 4 then
             if tick() >= getgenv().roboWaitTime then
-                -- Checkpoint to Robo complete: Turn off and on in the UI
+                -- Checkpoint to Robo complete: transition directly to spawn-to-enemies waypoints!
                 phase = 99
                 if travelHeartbeatConnection then
                     travelHeartbeatConnection:Disconnect()
@@ -342,10 +526,9 @@ function startTravelSequence()
                 end
                 
                 task.spawn(function()
-                    stopAll()
-                    task.wait(1)
-                    if isRunning and not isActionActive then
-                        startAll()
+                    task.wait(0.5)
+                    if isRunning and isActionActive then
+                        startSpawnToEnemiesSequence()
                     end
                 end)
                 return
@@ -354,12 +537,21 @@ function startTravelSequence()
             end
         end
         
-        -- Flight lerping (Phases 1-4)
+        -- Flight lerping (Phases 1-4) with stable forward orientation
         if nextPoint then
             local distance = (currentPos - nextPoint).Magnitude
             if distance > 0 then
+                local moveDir = nextPoint - currentPos
+                local horizontalDir = Vector3.new(moveDir.X, 0, moveDir.Z)
+                local targetCFrame
+                if horizontalDir.Magnitude > 0.3 then
+                    targetCFrame = CFrame.lookAt(nextPoint, nextPoint + horizontalDir)
+                else
+                    targetCFrame = CFrame.new(nextPoint) * rootPart.CFrame.Rotation
+                end
+                
                 local alpha = math.clamp((travelSpeed * deltaTime) / distance, 0, 1)
-                rootPart.CFrame = rootPart.CFrame:Lerp(CFrame.new(nextPoint), alpha)
+                rootPart.CFrame = rootPart.CFrame:Lerp(targetCFrame, alpha)
             end
         end
         
@@ -387,7 +579,7 @@ end)
 -- ============================================================================
 -- 7. ROBLOX ENGINE HOOKS & BACKGROUND LOOPS
 -- ============================================================================
--- Noclip & Collision Management
+-- Noclip & Collision Management (ENABLED)
 steppedConnection = RunService.Stepped:Connect(function()
     if isActionActive and LocalPlayer.Character then
         if isTraveling or Model.State.isAutoFarming then
@@ -441,6 +633,27 @@ task.spawn(function()
         task.wait(1)
         if isActionActive and Model.State.isAutoFarming and isRunning then
             Model.UpgradeStats()
+        end
+    end
+end)
+
+-- Respawn Watcher (Auto-resume waypoint path if character dies and respawns at Robo)
+charAddedConnection = LocalPlayer.CharacterAdded:Connect(function(char)
+    if isRunning and isActionActive then
+        local root = char:WaitForChild("HumanoidRootPart", 10)
+        local hum = char:WaitForChild("Humanoid", 10)
+        if root and hum then
+            task.wait(1)
+            if not isRunning or not isActionActive then return end
+            if isAtFishmanIsland() then
+                if (root.Position - roboPos).Magnitude <= 120 then
+                    startSpawnToEnemiesSequence()
+                else
+                    startCombatFarming()
+                end
+            else
+                startTravelSequence()
+            end
         end
     end
 end)
