@@ -3529,7 +3529,7 @@ Tabs.Autofarm:AddButton({"Auto Reroll Skypian", function()
 
 Tabs.Autofarm:AddButton({"Load CombinedAutoLoad (Autofarm)", function()
         getgenv().FishmanAllowAutoLoad = true
-        local scriptURL = "https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/CombinedAutoLoad.lua"
+        local scriptURL = "https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/CombinedAutoLoad.lua?t=" .. tostring(tick())
         
         -- Execute the script. It will automatically queue itself for future teleports.
         loadstring(game:HttpGet(scriptURL))()

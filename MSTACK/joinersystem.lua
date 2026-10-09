@@ -3645,7 +3645,7 @@ Tabs.Autofarm:AddButton({
     Description = "Executes the script and queues it for future teleports.",
     Callback = function()
         getgenv().FishmanAllowAutoLoad = true
-        local scriptURL = "https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/CombinedAutoLoad.lua"
+        local scriptURL = "https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/CombinedAutoLoad.lua?t=" .. tostring(tick())
         
         -- Execute the script. It will automatically queue itself for future teleports.
         loadstring(game:HttpGet(scriptURL))()
