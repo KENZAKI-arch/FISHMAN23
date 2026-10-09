@@ -368,10 +368,10 @@ function startSpawnToEnemiesSequence()
         end
         
         local currentPos = rootPart.Position
-        local distToMainTarget = (currentPos - targetPoint).Magnitude
         
-        -- Check if we have arrived at the current milestone waypoint
-        if distToMainTarget <= 5 then
+        -- Check if we have arrived at the current milestone waypoint horizontally (ignore Y to avoid hover-height mismatch)
+        local flatDistToMain = Vector3.new(currentPos.X - targetPoint.X, 0, currentPos.Z - targetPoint.Z).Magnitude
+        if flatDistToMain <= 6 then
             mainWaypointIndex = mainWaypointIndex + 1
             local nextTarget = SPAWN_TO_ENEMIES_WAYPOINTS[mainWaypointIndex]
             if nextTarget then
@@ -388,12 +388,15 @@ function startSpawnToEnemiesSequence()
         if subWaypoints and subIndex <= #subWaypoints then
             local currentSub = subWaypoints[subIndex]
             local subPos = currentSub.Position
-            local distToSub = (currentPos - subPos).Magnitude
+            -- Use flat horizontal distance to prevent getting stuck due to floating altitude
+            local flatDistToSub = Vector3.new(currentPos.X - subPos.X, 0, currentPos.Z - subPos.Z).Magnitude
             
-            if distToSub <= 4 then
+            if flatDistToSub <= 5 then
                 subIndex = subIndex + 1
                 if subIndex <= #subWaypoints then
                     flyToPoint = subWaypoints[subIndex].Position
+                else
+                    flyToPoint = targetPoint
                 end
             else
                 flyToPoint = subPos
@@ -407,16 +410,23 @@ function startSpawnToEnemiesSequence()
         rp.FilterDescendantsInstances = {character}
         rp.FilterType = Enum.RaycastFilterType.Exclude
         
-        local floorHit = Workspace:Raycast(Vector3.new(currentPos.X, currentPos.Y + 10, currentPos.Z), Vector3.new(0, -60, 0), rp)
-        if floorHit then
-            flyToPoint = Vector3.new(flyToPoint.X, floorHit.Position.Y + 5, flyToPoint.Z)
+        -- Check floor height at both target destination and current position
+        local targetFloorHit = Workspace:Raycast(Vector3.new(flyToPoint.X, currentPos.Y + 20, flyToPoint.Z), Vector3.new(0, -80, 0), rp)
+        local floorHit = Workspace:Raycast(Vector3.new(currentPos.X, currentPos.Y + 20, currentPos.Z), Vector3.new(0, -80, 0), rp)
+        
+        local groundY = nil
+        if targetFloorHit and floorHit then
+            groundY = math.max(targetFloorHit.Position.Y, floorHit.Position.Y)
+        elseif targetFloorHit then
+            groundY = targetFloorHit.Position.Y
+        elseif floorHit then
+            groundY = floorHit.Position.Y
+        end
+        
+        if groundY then
+            flyToPoint = Vector3.new(flyToPoint.X, groundY + 5, flyToPoint.Z)
         else
-            local targetFloorHit = Workspace:Raycast(Vector3.new(flyToPoint.X, flyToPoint.Y + 15, flyToPoint.Z), Vector3.new(0, -60, 0), rp)
-            if targetFloorHit then
-                flyToPoint = Vector3.new(flyToPoint.X, targetFloorHit.Position.Y + 5, flyToPoint.Z)
-            else
-                flyToPoint = Vector3.new(flyToPoint.X, flyToPoint.Y + 5, flyToPoint.Z)
-            end
+            flyToPoint = Vector3.new(flyToPoint.X, flyToPoint.Y + 5, flyToPoint.Z)
         end
         
         toggleBtn.Text = string.format("NAVIGATING (%d/%d)...", mainWaypointIndex, #SPAWN_TO_ENEMIES_WAYPOINTS)
