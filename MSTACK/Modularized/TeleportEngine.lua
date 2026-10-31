@@ -38,6 +38,7 @@ getgenv().FishmanState.UpdateTeleportMemory = nil -- Forward declaration
 -- 🛡️ SAFEGUARD APP SHUTDOWN (ON DISCONNECT / RESTART)
 -- ======================================================================
 local function TriggerAppShutdown(reason)
+    if getgenv().FishmanState.isScriptTeleporting then return end
     if getgenv().FishmanState.CloseRobloxApp then
         getgenv().FishmanState.CloseRobloxApp(reason)
     end
@@ -45,6 +46,7 @@ end
 
 -- 1. GuiService Error Message (Kicks, Disconnect Error 277/268/529, Server Shutdown)
 getgenv().FishmanState.addConn(GuiService.ErrorMessageChanged:Connect(function(errorMessage)
+    if getgenv().FishmanState.isScriptTeleporting then return end
     if errorMessage and #errorMessage > 0 then
         TriggerAppShutdown("Disconnect / Error Detected: " .. tostring(errorMessage))
     end
@@ -58,9 +60,14 @@ task.spawn(function()
         local promptOverlay = promptGui and promptGui:WaitForChild("promptOverlay", 10)
         if promptOverlay then
             getgenv().FishmanState.addConn(promptOverlay.ChildAdded:Connect(function(child)
-                if child.Name == "ErrorPrompt" or child.Name:find("Prompt") then
-                    task.wait(0.2)
-                    TriggerAppShutdown("Disconnect Prompt Displayed (" .. tostring(child.Name) .. ")")
+                if getgenv().FishmanState.isScriptTeleporting then return end
+                -- ONLY match actual error prompts, never match teleport prompts or loading dialogs
+                local name = string.lower(child.Name)
+                if (child.Name == "ErrorPrompt" or name:find("error")) and not name:find("teleport") then
+                    task.wait(0.5)
+                    if not getgenv().FishmanState.isScriptTeleporting then
+                        TriggerAppShutdown("Disconnect Prompt Displayed (" .. tostring(child.Name) .. ")")
+                    end
                 end
             end))
         end
@@ -69,21 +76,24 @@ end)
 
 -- 3. Teleport / Game Restart Failures
 getgenv().FishmanState.addConn(TeleportService.TeleportInitFailed:Connect(function(player, teleportResult, errorMessage)
+    getgenv().FishmanState.isScriptTeleporting = false
     TriggerAppShutdown("Teleport / Restart Failed: " .. tostring(errorMessage))
 end))
 
--- 4. Server Migration / Unexpected Teleports (Roblox server restart migrations)
+-- 4. Server Migration / Unexpected Teleports
 getgenv().FishmanState.addConn(LocalPlayer.OnTeleport:Connect(function(teleportState)
     if GlobalMem.FishmanCloseOnDisconnect == false then return end
     
-    if teleportState == Enum.TeleportState.Failed then
-        TriggerAppShutdown("Teleport Failed (OnTeleport State: Failed)")
+    -- When teleport starts or is in progress, mark it and NEVER shut down the app
+    if teleportState == Enum.TeleportState.Started or teleportState == Enum.TeleportState.InProgress then
+        getgenv().FishmanState.isScriptTeleporting = true
         return
     end
     
-    local isIntentional = getgenv().FishmanState.isScriptTeleporting or GlobalMem.FishmanAutoTeleport
-    if not isIntentional then
-        TriggerAppShutdown("Server Migration / Unexpected Teleport Detected (State: " .. tostring(teleportState) .. ")")
+    if teleportState == Enum.TeleportState.Failed then
+        getgenv().FishmanState.isScriptTeleporting = false
+        TriggerAppShutdown("Teleport Failed (OnTeleport State: Failed)")
+        return
     end
 end))
 

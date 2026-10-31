@@ -96,6 +96,7 @@ end
 local isAppShuttingDown = false
 getgenv().FishmanState.CloseRobloxApp = function(reason)
     if isAppShuttingDown then return end
+    if getgenv().FishmanState.isScriptTeleporting then return end
     if GlobalMem.FishmanCloseOnDisconnect == false then return end
     isAppShuttingDown = true
     warn(string.format("[Fishman Safeguard] %s -> Shutting down Roblox App...", tostring(reason)))
