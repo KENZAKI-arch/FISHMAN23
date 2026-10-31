@@ -1710,6 +1710,15 @@ local function DoFishingCycle()
         return true
     end
 
+    -- Clean up any stuck hook from an earlier disconnect/timeout (0ms delay if none exists)
+    local hookName = LocalPlayer.Name .. "'s hook"
+    local existingHook = workspace.Effects:FindFirstChild(hookName)
+    if existingHook then
+        existingHook:Destroy()
+        pcall(function() actionRemote:InvokeServer({ Action = "Cancel" }) end)
+        task.wait()
+    end
+
     if not EquipRod() then
         warn("No Fishing Rod equipped! Stopping auto-fish.")
         return false 
@@ -1799,10 +1808,10 @@ local function DoFishingCycle()
     end
     
     local maxWait = 30 
-    local waited = 0
+    local waitStart = os.clock()
     local fishBitten = false
     
-    while waited < maxWait do
+    while (os.clock() - waitStart) < maxWait do
         if not (getgenv().FishmanState.Model.State.isFishing or getgenv().FishmanState.Model.State.isDeepSeaCatcher) then
             pcall(function() actionRemote:InvokeServer({ Action = "Cancel", SessionKey = sessionKey, ActionKey = actionKey }) end)
             if hook then hook:Destroy() end
@@ -1813,8 +1822,7 @@ local function DoFishingCycle()
             fishBitten = true
             break
         end
-        task.wait(0.1)
-        waited = waited + 0.1
+        task.wait(0.05)
     end
     
     if fishBitten then
@@ -1920,15 +1928,14 @@ local function DoFishingCycle()
         end
         
         if isBeast then
-            local w = 0
-            while w < 5.6 do
+            local reelStart = os.clock()
+            while (os.clock() - reelStart) < 5.5 do
                 if not (getgenv().FishmanState.Model.State.isFishing or getgenv().FishmanState.Model.State.isDeepSeaCatcher) then
                     pcall(function() actionRemote:InvokeServer({ Action = "Cancel", SessionKey = sessionKey, ActionKey = actionKey }) end)
                     if hook then hook:Destroy() end
                     return true
                 end
-                task.wait(0.1)
-                w += 0.1
+                task.wait()
             end
             
             local reelSuccess, reelResponse = pcall(function()

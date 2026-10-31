@@ -134,7 +134,7 @@ getgenv().FishmanState.ActivatePotatoGraphics = function()
 
     settings().Rendering.QualityLevel = 1
 
-    for _, v in pairs(game:GetDescendants()) do
+    for _, v in pairs(workspace:GetDescendants()) do
         if v:IsA("BasePart") then
             v.CastShadow = false
             v.Material = Enum.Material.Plastic

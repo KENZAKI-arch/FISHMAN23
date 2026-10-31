@@ -146,11 +146,7 @@ end
 
 local function stopGeppoLoop()
     if geppoThread then
-        pcall(function()
-            if geppoThread ~= coroutine.running() then
-                task.cancel(geppoThread)
-            end
-        end)
+        task.cancel(geppoThread)
         geppoThread = nil
     end
 end

@@ -1,10 +1,11 @@
 -- Config & State Setup
 getgenv().FishmanState = getgenv().FishmanState or {}
--- Version 3.4
+-- Version 3.5
 -- ======================================================================
 -- 🛑 GLOBAL SETUP & DUPLICATE PREVENTION
 -- ======================================================================
 local env = getgenv and getgenv() or shared
+local GlobalMem = env
 if env.Fishman_StopPrevious then
     pcall(env.Fishman_StopPrevious)
 end
