@@ -1444,38 +1444,41 @@ if not isLobby then
     getgenv().FishmanState.Model.BuyNearestBait = function()
         if getgenv().FishmanState.Model.State.isBuying then return end
         getgenv().FishmanState.Model.State.isBuying = true
-        local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-        local rootPart  = character:WaitForChild("HumanoidRootPart")
-        local nearest, nearestDist = nil, BAIT_SEARCH_RADIUS
+        pcall(function()
+            local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+            local rootPart  = character:WaitForChild("HumanoidRootPart", 5)
+            if not rootPart then return end
+            local nearest, nearestDist = nil, BAIT_SEARCH_RADIUS
 
-        if not cachedBaitItems then
-            cachedBaitItems = {}
-            for _, item in ipairs(buyableItems:GetChildren()) do
-                if string.find(string.lower(item.Name), "bait") then
-                    table.insert(cachedBaitItems, item)
+            if not cachedBaitItems then
+                cachedBaitItems = {}
+                for _, item in ipairs(buyableItems:GetChildren()) do
+                    if string.find(string.lower(item.Name), "bait") then
+                        table.insert(cachedBaitItems, item)
+                    end
+                end
+                getgenv().FishmanState.addConn(buyableItems.ChildAdded:Connect(function(item)
+                    if string.find(string.lower(item.Name), "bait") then
+                        table.insert(cachedBaitItems, item)
+                    end
+                end))
+            end
+
+            for _, item in ipairs(cachedBaitItems) do
+                local pos = (item:IsA("Model") and item.PrimaryPart and item.PrimaryPart.Position) or (item:IsA("BasePart") and item.Position)
+                if pos then
+                    local d = (rootPart.Position - pos).Magnitude
+                    if d < nearestDist then nearestDist = d; nearest = item end
                 end
             end
-            getgenv().FishmanState.addConn(buyableItems.ChildAdded:Connect(function(item)
-                if string.find(string.lower(item.Name), "bait") then
-                    table.insert(cachedBaitItems, item)
-                end
-            end))
-        end
 
-        for _, item in ipairs(cachedBaitItems) do
-            local pos = (item:IsA("Model") and item.PrimaryPart and item.PrimaryPart.Position) or (item:IsA("BasePart") and item.Position)
-            if pos then
-                local d = (rootPart.Position - pos).Magnitude
-                if d < nearestDist then nearestDist = d; nearest = item end
+            if nearest then
+                pcall(function()
+                    if shopEvent:IsA("RemoteFunction") then shopEvent:InvokeServer(nearest, BUY_AMOUNT)
+                    else shopEvent:FireServer(nearest, BUY_AMOUNT) end
+                end)
             end
-        end
-
-        if nearest then
-            pcall(function()
-                if shopEvent:IsA("RemoteFunction") then shopEvent:InvokeServer(nearest, BUY_AMOUNT)
-                else shopEvent:FireServer(nearest, BUY_AMOUNT) end
-            end)
-        end
+        end)
         task.wait(0.5)
         getgenv().FishmanState.Model.State.isBuying = false
     end
@@ -1646,7 +1649,7 @@ local actionRemote = ReplicatedStorage:WaitForChild("Fishing", 9e9):WaitForChild
 -- === FISHING LOGIC ===
 local function EquipRod()
     local char = LocalPlayer.Character
-    local backpack = LocalPlayer:WaitForChild("Backpack")
+    local backpack = LocalPlayer:WaitForChild("Backpack", 5)
     local humanoid = char and char:FindFirstChildOfClass("Humanoid")
     if not humanoid then return false end
     
@@ -1770,6 +1773,7 @@ local function DoFishingCycle()
     
     if not success or type(throwResponse) ~= "table" or not throwResponse.Accepted then
         pcall(function() actionRemote:InvokeServer({ Action = "Cancel" }) end)
+        task.wait(0.5)
         return true 
     end
     
@@ -1777,7 +1781,7 @@ local function DoFishingCycle()
     local actionKey = throwResponse.ActionKey
 
     local hookName = LocalPlayer.Name .. "'s hook"
-    local hook = workspace.Effects:WaitForChild(hookName, 3)
+    local hook = workspace.Effects:WaitForChild(hookName, 5)
     
     if not hook then return true end
     
@@ -1800,6 +1804,9 @@ local function DoFishingCycle()
     end)
     
     if not landSuccess or type(landedResponse) ~= "table" or not landedResponse.Accepted then
+        pcall(function() actionRemote:InvokeServer({ Action = "Cancel", SessionKey = sessionKey, ActionKey = actionKey }) end)
+        if hook then hook:Destroy() end
+        task.wait(0.5)
         return true
     end
     
@@ -2003,14 +2010,57 @@ local function DoFishingCycle()
     return true
 end
 
--- === MAIN LOOP ===
+-- === MAIN LOOP & WATCHDOG SUPERVISOR ===
+getgenv().FishmanLastCycleTime = os.clock()
+
 task.spawn(function()
-    print("Auto-Fisher started without UI.")
+    print("Auto-Fisher started with Watchdog Supervisor.")
     while getgenv().FishmanSession == mySession and getgenv().FishmanState._running do
         if (getgenv().FishmanState.Model.State.isFishing or getgenv().FishmanState.Model.State.isDeepSeaCatcher) and not getgenv().FishmanState.Model.State.isCurrentlyCrafting and not getgenv().FishmanState.Model.State.isCraftFlying then
-            DoFishingCycle()
+            local success, err = pcall(DoFishingCycle)
+            if not success then
+                warn("[Fishman Watchdog] Caught cycle error: " .. tostring(err) .. " -> Auto-recovering...")
+                task.wait(0.5)
+            end
+            getgenv().FishmanLastCycleTime = os.clock()
         end
         task.wait() -- Delay between casts
+    end
+end)
+
+-- Active Watchdog Thread: Guarantees fishing never gets permanently frozen during lag
+task.spawn(function()
+    while getgenv().FishmanSession == mySession and getgenv().FishmanState._running do
+        task.wait(5)
+        local now = os.clock()
+        local state = getgenv().FishmanState.Model and getgenv().FishmanState.Model.State
+        if state and (state.isFishing or state.isDeepSeaCatcher) then
+            -- If fishing is on but no progress made in 35 seconds (frozen/stuck during lag):
+            if (now - (getgenv().FishmanLastCycleTime or now)) > 35 then
+                warn("[Fishman Watchdog] ⚠️ Fishing stalled for >35s during lag! Forcing recovery...")
+                
+                -- Clear all stuck locks
+                state.isCurrentlyCrafting = false
+                state.isCraftFlying = false
+                state.isBuying = false
+                
+                -- Clean up any stuck hook
+                local hookName = LocalPlayer.Name .. "'s hook"
+                local stuckHook = workspace.Effects:FindFirstChild(hookName)
+                if stuckHook then pcall(function() stuckHook:Destroy() end) end
+                pcall(function() actionRemote:InvokeServer({ Action = "Cancel" }) end)
+                
+                -- Reposition and re-equip
+                if getgenv().FishmanState.Model.EnsureAtFishingSpot then
+                    pcall(getgenv().FishmanState.Model.EnsureAtFishingSpot)
+                end
+                pcall(EquipRod)
+                
+                getgenv().FishmanLastCycleTime = os.clock()
+            end
+        else
+            getgenv().FishmanLastCycleTime = os.clock()
+        end
     end
 end)
     

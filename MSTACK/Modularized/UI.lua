@@ -1235,6 +1235,16 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
     getgenv().FishmanState.Tabs.Fishing:AddToggle("T_Fish", { Title = "Auto Fish", Default = false, Callback = function(Value) 
         if isLobby then if Value then getgenv().FishmanState.Fluent:Notify({ Title = "Error", Content = "Cannot fish in Lobby!", Duration = 3 }); getgenv().FishmanState.Fluent.Options.T_Fish:SetValue(false) end return end
         getgenv().FishmanState.Model.State.isFishing = Value 
+        if Value then
+            -- Clear any stuck lockouts so re-enabling is never blocked or ignored
+            getgenv().FishmanState.Model.State.isCurrentlyCrafting = false
+            getgenv().FishmanState.Model.State.isCraftFlying = false
+            getgenv().FishmanState.Model.State.isBuying = false
+            getgenv().FishmanLastCycleTime = os.clock()
+            if getgenv().FishmanState.Model.EquipRod then
+                pcall(getgenv().FishmanState.Model.EquipRod)
+            end
+        end
     end })
     getgenv().FishmanState.Tabs.Fishing:AddDropdown("D_BaitType", {
         Title = "Bait Type",
