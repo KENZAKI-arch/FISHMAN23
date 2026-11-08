@@ -13,6 +13,17 @@ pcall(function()
     ugs.SavedQualityLevel = Enum.SavedQualitySetting.QualityLevel1
 end)
 
+-- 🔒 Disable Shift Lock
+pcall(function()
+    local lp = game:GetService("Players").LocalPlayer
+    if lp then
+        lp.DevEnableMouseLock = false
+        lp:GetPropertyChangedSignal("DevEnableMouseLock"):Connect(function()
+            if lp.DevEnableMouseLock then lp.DevEnableMouseLock = false end
+        end)
+    end
+end)
+
 local repoURL = "https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/MSTACK/Modularized/"
 
 local modules = {

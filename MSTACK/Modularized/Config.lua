@@ -102,6 +102,14 @@ while not LocalPlayer do
     LocalPlayer = Players.LocalPlayer 
 end
 
+-- 🔒 Disable Shift Lock
+pcall(function()
+    LocalPlayer.DevEnableMouseLock = false
+    LocalPlayer:GetPropertyChangedSignal("DevEnableMouseLock"):Connect(function()
+        if LocalPlayer.DevEnableMouseLock then LocalPlayer.DevEnableMouseLock = false end
+    end)
+end)
+
 local isAppShuttingDown = false
 getgenv().FishmanState.CloseRobloxApp = function(reason)
     if isAppShuttingDown then return end
