@@ -2219,7 +2219,7 @@ getgenv().FishmanState.Tabs.Settings:AddToggle("T_AntiLag", {
 getgenv().FishmanState.Tabs.Settings:AddSlider("S_FPSCap", {
     Title = "FPS Cap",
     Description = "Limits your FPS to reduce CPU/GPU usage when AFKing.",
-    Default = 35,
+    Default = 18,
     Min = 5,
     Max = 240,
     Rounding = 0,
