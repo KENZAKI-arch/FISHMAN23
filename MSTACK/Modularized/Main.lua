@@ -22,27 +22,11 @@ local modules = {
     "UI.lua"
 }
 
--- 🚀 LOBBY OPTIMIZATIONS 
-local isLobby = (game.PlaceId == 1730877806)
-if isLobby then
-    print("[Fishman] In Lobby: Activating Ultra-Low Resource Mode (FPS Cap & 3D Off)")
-    pcall(function() setfpscap(10) end)
-    pcall(function() game:GetService("RunService"):Set3dRenderingEnabled(false) end)
-    
-    getgenv().FishmanState = getgenv().FishmanState or {}
-    getgenv().FishmanState.Model = { State = {} }
-end
-
 -- ⚡ CONCURRENT DOWNLOADS
 local scriptCache = {}
 local threads = {}
 
 for _, mod in ipairs(modules) do
-    if isLobby and mod == "FishingEngine.lua" then
-        print("[Fishman] In Lobby: Skipping FishingEngine.lua to save RAM.")
-        continue
-    end
-    
     table.insert(threads, task.spawn(function()
         local success, result = pcall(function()
             return game:HttpGet(repoURL .. mod .. "?t=" .. tostring(tick()))
@@ -60,7 +44,7 @@ local waitStart = tick()
 while (tick() - waitStart < 10) do
     local allDone = true
     for _, mod in ipairs(modules) do
-        if not (isLobby and mod == "FishingEngine.lua") and not scriptCache[mod] then
+        if not scriptCache[mod] then
             allDone = false
             break
         end
