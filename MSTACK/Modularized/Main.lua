@@ -4,6 +4,15 @@ print("[Fishman] Loading Modular Architecture...")
 -- 🔄 Generation counter to cleanly terminate any zombie threads from previous executions
 getgenv().FishmanSession = (getgenv().FishmanSession or 0) + 1
 
+-- 📉 Automatically set Graphics Quality bar to Level 1 on load
+pcall(function()
+    settings().Rendering.QualityLevel = 1
+end)
+pcall(function()
+    local ugs = UserSettings():GetService("UserGameSettings")
+    ugs.SavedQualityLevel = Enum.SavedQualitySetting.QualityLevel1
+end)
+
 local repoURL = "https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/MSTACK/Modularized/"
 
 local modules = {

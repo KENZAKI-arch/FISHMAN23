@@ -77,6 +77,15 @@ local mySession = getgenv().FishmanSession or 0
 print("--- [Fishman] Unified Script Starting ---")
 if not game:IsLoaded() then game.Loaded:Wait() end
 
+-- 📉 Ensure Graphics Quality bar is Level 1 on load
+pcall(function()
+    settings().Rendering.QualityLevel = 1
+end)
+pcall(function()
+    local ugs = UserSettings():GetService("UserGameSettings")
+    ugs.SavedQualityLevel = Enum.SavedQualitySetting.QualityLevel1
+end)
+
 local Players = game:GetService("Players")
 local TeleportService = game:GetService("TeleportService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
