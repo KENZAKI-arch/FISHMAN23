@@ -156,25 +156,7 @@ end
 task.wait(2) -- Additional buffer to ensure client is fully responsive
 print("[Fishman] Game fully loaded!")
 
--- Active Ping Monitor (Shuts down script if wifi drops mid-game)
-task.spawn(function()
-    local Stats = game:GetService("Stats")
-    local consecutiveHighPing = 0
-    while getgenv().FishmanSession == mySession and getgenv().FishmanState._running and task.wait(5) do
-        pcall(function()
-            local pingStr = Stats.Network.ServerStatsItem["Data Ping"]:GetValueString()
-            local pingVal = tonumber(string.match(pingStr, "%d+%.?%d*"))
-            if pingVal and pingVal > 4000 then -- 4 seconds behind
-                consecutiveHighPing = consecutiveHighPing + 1
-                if consecutiveHighPing >= 6 then -- 30 seconds of pure 4000+ ping
-                    getgenv().FishmanState.TriggerSafeguardShutdown("Ping exceeded 4000ms for 30s. Connection lost.")
-                end
-            else
-                consecutiveHighPing = 0
-            end
-        end)
-    end
-end)
+-- Active Ping Monitor removed to prevent false autoshutdown during idle/low-FPS farming.
 
 getgenv().FishmanState.targetPlaceId = 1730877806
 getgenv().FishmanState.isLobby = (game.PlaceId == getgenv().FishmanState.targetPlaceId)
