@@ -2417,11 +2417,40 @@ local function scanBackpackFruits(fruitList)
     return inventoryCounts, foundAny
 end
 
-getgenv().FishmanState.getFruitStatus = function(fruitList)
+local function isStoredFruitKey(itemKeyLower, fruitLower)
+    if itemKeyLower == fruitLower then return true end
+    if itemKeyLower == (fruitLower .. "-" .. fruitLower) then return true end
+    if string.find(itemKeyLower, "^" .. fruitLower .. "%-" .. fruitLower .. "%s") then return true end
+    if string.find(itemKeyLower, "^" .. fruitLower .. "%s+fruit$") then return true end
+    if string.find(itemKeyLower, "model[:%s]+" .. fruitLower) then return true end
+    return false
+end
+
+getgenv().FishmanState.getFruitStatus = function(fruitList, invData)
     fruitList = fruitList or getgenv().FishmanState.targetFruits
     local backpackCounts = scanBackpackFruits(fruitList)
     local stored = {}
-    local seen = {}
+    local seenFruit = {}
+
+    if not invData and getgenv().FishmanState.Model and getgenv().FishmanState.Model.GetInventoryData then
+        invData = getgenv().FishmanState.Model.GetInventoryData()
+    end
+
+    if type(invData) == "table" then
+        for itemKey, itemVal in pairs(invData) do
+            local count = (type(itemVal) == "number" and itemVal) or (itemVal == true and 1) or tonumber(itemVal) or 0
+            if count > 0 and type(itemKey) == "string" then
+                local keyLower = string.lower(itemKey)
+                for _, fruitName in ipairs(fruitList) do
+                    if isStoredFruitKey(keyLower, string.lower(fruitName)) then
+                        seenFruit[fruitName] = true
+                        table.insert(stored, count > 1 and string.format("%dx %s", count, itemKey) or itemKey)
+                        break
+                    end
+                end
+            end
+        end
+    end
 
     local pGui = LocalPlayer:FindFirstChild("PlayerGui")
     local invGui = pGui and pGui:FindFirstChild("Inventory")
@@ -2432,14 +2461,15 @@ getgenv().FishmanState.getFruitStatus = function(fruitList)
         for _, child in ipairs(list:GetChildren()) do
             local childLower = string.lower(child.Name)
             for _, fruitName in ipairs(fruitList) do
-                if not seen[fruitName] and string.find(childLower, string.lower(fruitName)) then
-                    seen[fruitName] = true
+                if not seenFruit[fruitName] and string.find(childLower, string.lower(fruitName)) then
+                    seenFruit[fruitName] = true
                     table.insert(stored, fruitName)
                 end
             end
         end
-        table.sort(stored)
     end
+
+    table.sort(stored)
 
     return {
         backpack = backpackCounts,

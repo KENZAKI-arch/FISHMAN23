@@ -2384,7 +2384,7 @@ task.spawn(function()
 
             if FruitCheckerPara then
                 if getgenv().FishmanState.getFruitStatus then
-                    local fruitStatus = getgenv().FishmanState.getFruitStatus(getgenv().FishmanState.targetFruits)
+                    local fruitStatus = getgenv().FishmanState.getFruitStatus(getgenv().FishmanState.targetFruits, invData)
                     local bpLines = {}
                     for name, count in pairs(fruitStatus.backpack) do
                         table.insert(bpLines, string.format("- %dx %s", count, name))
