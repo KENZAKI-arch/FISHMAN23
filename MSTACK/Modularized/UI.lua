@@ -176,6 +176,7 @@ function Fluent:CreateWindow(options)
     closeBtn.Parent = topBar
 
     local isMinimized = false
+    local preferredW, preferredH = 520, 360
     local currentW, currentH = 520, 360
     local function getViewportSize()
         local cam = workspace.CurrentCamera
@@ -209,12 +210,14 @@ function Fluent:CreateWindow(options)
         end))
     end
 
-    -- Single shared drag handler for whole-window dragging and all sliders (zero per-slider UIS listeners)
+    -- Single shared drag handler for whole-window dragging, corner resizing, and all sliders
     local activeDragUpdate = nil
     local draggingWindow, dragStart, startPos
+    local resizingWindow, resizeStartPos, resizeStartW, resizeStartH = false, nil, 520, 360
+    local applyResponsiveLayout
     local function attachWindowDrag(guiObj)
         guiObj.InputBegan:Connect(function(input)
-            if not activeDragUpdate and (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
+            if not activeDragUpdate and not resizingWindow and (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
                 draggingWindow = true
                 dragStart = input.Position
                 startPos = mainFrame.Position
@@ -224,16 +227,72 @@ function Fluent:CreateWindow(options)
     attachWindowDrag(mainFrame)
     attachWindowDrag(topBar)
 
+    local resizeHandle = Instance.new("TextButton")
+    resizeHandle.Name = "ResizeHandle"
+    resizeHandle.Size = UDim2.new(0, 16, 0, 16)
+    resizeHandle.Position = UDim2.new(1, -16, 1, -16)
+    resizeHandle.BackgroundTransparency = 1
+    resizeHandle.Text = ""
+    resizeHandle.AutoButtonColor = false
+    resizeHandle.ZIndex = 10
+    resizeHandle.Parent = mainFrame
+
+    local grip1 = Instance.new("Frame")
+    grip1.Size = UDim2.new(0, 10, 0, 2)
+    grip1.Position = UDim2.new(1, -12, 1, -4)
+    grip1.BackgroundColor3 = THEME.Muted
+    grip1.BorderSizePixel = 0
+    grip1.ZIndex = 11
+    grip1.Parent = resizeHandle
+    local grip2 = Instance.new("Frame")
+    grip2.Size = UDim2.new(0, 2, 0, 10)
+    grip2.Position = UDim2.new(1, -4, 1, -12)
+    grip2.BackgroundColor3 = THEME.Muted
+    grip2.BorderSizePixel = 0
+    grip2.ZIndex = 11
+    grip2.Parent = resizeHandle
+
+    resizeHandle.MouseEnter:Connect(function()
+        grip1.BackgroundColor3 = THEME.Accent
+        grip2.BackgroundColor3 = THEME.Accent
+    end)
+    resizeHandle.MouseLeave:Connect(function()
+        if not resizingWindow then
+            grip1.BackgroundColor3 = THEME.Muted
+            grip2.BackgroundColor3 = THEME.Muted
+        end
+    end)
+    resizeHandle.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            resizingWindow = true
+            draggingWindow = false
+            resizeStartPos = input.Position
+            resizeStartW = currentW
+            resizeStartH = currentH
+        end
+    end)
+
     getgenv().FishmanState.addConn(UserInputService.InputEnded:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             draggingWindow = false
+            resizingWindow = false
             activeDragUpdate = nil
+            grip1.BackgroundColor3 = THEME.Muted
+            grip2.BackgroundColor3 = THEME.Muted
         end
     end))
     getgenv().FishmanState.addConn(UserInputService.InputChanged:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
             if activeDragUpdate then
                 activeDragUpdate(input.Position.X)
+            elseif resizingWindow then
+                local vp = getViewportSize()
+                local delta = input.Position - resizeStartPos
+                local maxW = math.max(220, math.floor(vp.X - 8))
+                local maxH = math.max(140, math.floor(vp.Y - 8))
+                preferredW = math.clamp(math.floor(resizeStartW + delta.X), 220, maxW)
+                preferredH = math.clamp(math.floor(resizeStartH + delta.Y), 140, maxH)
+                if applyResponsiveLayout then applyResponsiveLayout(false) end
             elseif draggingWindow then
                 local delta = input.Position - dragStart
                 local cx, cy = clampWindowPosition(startPos.X.Offset + delta.X, startPos.Y.Offset + delta.Y)
@@ -278,15 +337,15 @@ function Fluent:CreateWindow(options)
     attachWindowDrag(tabContainer)
     attachWindowDrag(contentContainer)
 
-    local function applyResponsiveLayout(centerIfFirst)
+    applyResponsiveLayout = function(centerIfFirst)
         local vp = getViewportSize()
-        local newW = math.clamp(math.floor(vp.X - 16), 220, 520)
-        local newH = math.clamp(math.floor(vp.Y - 16), 140, 360)
-        if vp.X < 236 then newW = math.max(160, math.floor(vp.X - 8)) end
-        if vp.Y < 156 then newH = math.max(100, math.floor(vp.Y - 8)) end
+        local maxW = math.max(100, math.floor(vp.X - 8))
+        local maxH = math.max(80, math.floor(vp.Y - 8))
+        local newW = (vp.X <= 540) and maxW or math.min(preferredW, maxW)
+        local newH = (vp.Y <= 380) and maxH or math.min(preferredH, maxH)
 
         currentW, currentH = newW, newH
-        local sideW = (newW < 400) and math.max(84, math.floor(newW * 0.27)) or 124
+        local sideW = (newW < 360) and math.max(76, math.floor(newW * 0.27)) or 124
 
         mainFrame.Size = UDim2.fromOffset(newW, isMinimized and 28 or newH)
         tabContainer.Size = UDim2.new(0, sideW, 1, -28)
