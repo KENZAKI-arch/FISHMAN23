@@ -1024,6 +1024,7 @@ getgenv().FishmanState.Tabs = Tabs
 
     addTradeHubButton("📈 Trade Hub", "qj1ttW4JG1")
     addTradeHubButton("📈 Trade Hub 2", "HiBe6mk1H7")
+    addTradeHubButton("📈 Transaction Place", "xtHSqjVx5o")
 
     UI_Loaded = true
 
