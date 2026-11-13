@@ -1519,6 +1519,25 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
         end
     })
     local legBaitInit = false
+    local legBaitSeq = 0
+    local function setLegBaitFeatures(opts, enabled)
+        if opts.T_Fish and opts.T_Fish.Value ~= enabled then opts.T_Fish:SetValue(enabled) end
+        if opts.T_StrictReel and opts.T_StrictReel.Value ~= enabled then opts.T_StrictReel:SetValue(enabled) end
+        if opts.T_Buy and opts.T_Buy.Value ~= enabled then opts.T_Buy:SetValue(enabled) end
+        if opts.T_Craft and opts.T_Craft.Value ~= enabled then opts.T_Craft:SetValue(enabled) end
+        if opts.T_AntiLag then
+            if opts.T_AntiLag.Value ~= enabled then opts.T_AntiLag:SetValue(enabled) end
+        else
+            pcall(function() RunService:Set3dRenderingEnabled(not enabled) end)
+        end
+        if getgenv().FishmanState.Fluent and getgenv().FishmanState.Fluent.Notify then
+            getgenv().FishmanState.Fluent:Notify({
+                Title = "Auto Leg Bait",
+                Content = enabled and "Turned ON: Auto Fish, Strict Reel, Auto Buy, Auto Craft, & Anti-Lag" or "Turned OFF: Auto Fish, Strict Reel, Auto Buy, Auto Craft, & Anti-Lag",
+                Duration = 3
+            })
+        end
+    end
     getgenv().FishmanState.Tabs.Fishing:AddToggle("T_AutoLegBait", {
         Title = "Auto Leg Bait (All-In-One)",
         Default = false,
@@ -1537,23 +1556,59 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
                 return
             end
             local opts = getgenv().FishmanState.Fluent and getgenv().FishmanState.Fluent.Options
-            if opts then
-                if opts.T_Fish and opts.T_Fish.Value ~= Value then opts.T_Fish:SetValue(Value) end
-                if opts.T_StrictReel and opts.T_StrictReel.Value ~= Value then opts.T_StrictReel:SetValue(Value) end
-                if opts.T_Buy and opts.T_Buy.Value ~= Value then opts.T_Buy:SetValue(Value) end
-                if opts.T_Craft and opts.T_Craft.Value ~= Value then opts.T_Craft:SetValue(Value) end
-                if opts.T_AntiLag then
-                    if opts.T_AntiLag.Value ~= Value then opts.T_AntiLag:SetValue(Value) end
-                else
-                    pcall(function() RunService:Set3dRenderingEnabled(not Value) end)
+            if not opts then return end
+
+            legBaitSeq = legBaitSeq + 1
+            local mySeq = legBaitSeq
+
+            if not Value then
+                if opts.T_MoveToFishingSpot and opts.T_MoveToFishingSpot.Value then
+                    opts.T_MoveToFishingSpot:SetValue(false)
                 end
+                setLegBaitFeatures(opts, false)
+                return
+            end
+
+            local spotPos = Vector3.new(104, 9, -56)
+            local char = LocalPlayer.Character
+            local hrp = char and char:FindFirstChild("HumanoidRootPart")
+            if hrp and (hrp.Position - spotPos).Magnitude <= 8 then
+                setLegBaitFeatures(opts, true)
+                return
+            end
+
+            if opts.T_MoveToFishingSpot then
                 if getgenv().FishmanState.Fluent and getgenv().FishmanState.Fluent.Notify then
                     getgenv().FishmanState.Fluent:Notify({
                         Title = "Auto Leg Bait",
-                        Content = Value and "Turned ON: Auto Fish, Strict Reel, Auto Buy, Auto Craft, & Anti-Lag" or "Turned OFF: Auto Fish, Strict Reel, Auto Buy, Auto Craft, & Anti-Lag",
+                        Content = "Moving to Fishing Spot first...",
                         Duration = 3
                     })
                 end
+                if not opts.T_MoveToFishingSpot.Value then
+                    opts.T_MoveToFishingSpot:SetValue(true)
+                end
+                task.spawn(function()
+                    while legBaitSeq == mySeq
+                        and getgenv().FishmanSession == mySession
+                        and getgenv().FishmanState._running
+                        and opts.T_AutoLegBait and opts.T_AutoLegBait.Value
+                        and opts.T_MoveToFishingSpot and opts.T_MoveToFishingSpot.Value do
+                        task.wait(0.25)
+                    end
+                    if legBaitSeq == mySeq
+                        and getgenv().FishmanSession == mySession
+                        and getgenv().FishmanState._running
+                        and opts.T_AutoLegBait and opts.T_AutoLegBait.Value then
+                        local c = LocalPlayer.Character
+                        local root = c and c:FindFirstChild("HumanoidRootPart")
+                        if root and (root.Position - spotPos).Magnitude <= 12 then
+                            setLegBaitFeatures(opts, true)
+                        end
+                    end
+                end)
+            else
+                setLegBaitFeatures(opts, true)
             end
         end
     })
