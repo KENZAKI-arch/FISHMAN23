@@ -1697,15 +1697,6 @@ local function DoFishingCycle()
     local rootPart = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
     if not rootPart then return true end
 
-    -- Safeguard: Prevent casting on the wooden dock at NPC Sen (162, 9, -54) or if away from fishing spot
-    local craftPos = Vector3.new(162, 9, -54)
-    local fishingSpot = getgenv().FishmanState.Model.State.finalTarget or Vector3.new(104, 9, -56)
-    if (rootPart.Position - craftPos).Magnitude < 50 or (rootPart.Position - fishingSpot).Magnitude > 12 then
-        print("[Fishman Safeguard] Character is near crafting dock or away from fishing spot! Returning to (104, 9, -56)...")
-        getgenv().FishmanState.Model.EnsureAtFishingSpot()
-        return true
-    end
-
     -- Clean up any stuck hook from an earlier disconnect/timeout (0ms delay if none exists)
     local hookName = LocalPlayer.Name .. "'s hook"
     local existingHook = workspace.Effects:FindFirstChild(hookName)
@@ -2044,10 +2035,7 @@ task.spawn(function()
                 local actionRemote = getActionRemote()
                 if actionRemote then pcall(function() actionRemote:InvokeServer({ Action = "Cancel" }) end) end
                 
-                -- Reposition and re-equip
-                if getgenv().FishmanState.Model.EnsureAtFishingSpot then
-                    pcall(getgenv().FishmanState.Model.EnsureAtFishingSpot)
-                end
+                -- Re-equip rod in place
                 pcall(EquipRod)
                 
                 getgenv().FishmanLastCycleTime = os.clock()
