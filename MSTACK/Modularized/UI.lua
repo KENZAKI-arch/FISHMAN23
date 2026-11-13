@@ -1596,7 +1596,13 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
                         local c = LocalPlayer.Character
                         local root = c and c:FindFirstChild("HumanoidRootPart")
                         if root and (root.Position - spotPos).Magnitude <= 5 then
-                            setLegBaitFeatures(opts, true)
+                            task.wait(1)
+                            if legBaitSeq == mySeq
+                                and getgenv().FishmanSession == mySession
+                                and getgenv().FishmanState._running
+                                and opts.T_AutoLegBait and opts.T_AutoLegBait.Value then
+                                setLegBaitFeatures(opts, true)
+                            end
                         end
                     end
                 end)
