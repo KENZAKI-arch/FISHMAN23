@@ -354,8 +354,9 @@ function Fluent:CreateWindow(options)
         contentContainer.Position = UDim2.new(0, sideW + 1, 0, 28)
 
         if centerIfFirst then
-            local cx = math.max(0, math.floor((vp.X - newW) / 2))
-            local cy = math.max(0, math.floor((vp.Y - (isMinimized and 28 or newH)) / 2))
+            local h = isMinimized and 28 or newH
+            local cx = math.max(0, math.floor((vp.X - newW) * 0.15))
+            local cy = math.max(0, math.floor((vp.Y - h) * 0.12))
             mainFrame.Position = UDim2.fromOffset(cx, cy)
         else
             local cx, cy = clampWindowPosition(mainFrame.Position.X.Offset, mainFrame.Position.Y.Offset)
