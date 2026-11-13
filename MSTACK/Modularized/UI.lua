@@ -482,17 +482,17 @@ function Fluent:CreateWindow(options)
             btn.Parent = contentScroll
 
             local FakeToggle = { Value = tArgs.Default or false }
-            local function update()
+            local function update(silent)
                 if FakeToggle.Value then
                     btn.Text = string.format("  <font color=\"rgb(72,219,132)\"><b>[ON]</b></font>  %s", tArgs.Title)
                 else
                     btn.Text = string.format("  <font color=\"rgb(235,95,105)\"><b>[OFF]</b></font> %s", tArgs.Title)
                 end
                 btn.TextColor3 = THEME.Text
-                if tArgs.Callback then task.spawn(tArgs.Callback, FakeToggle.Value) end
+                if not silent and tArgs.Callback then task.spawn(tArgs.Callback, FakeToggle.Value) end
             end
-            btn.MouseButton1Click:Connect(function() FakeToggle.Value = not FakeToggle.Value; update() end)
-            FakeToggle.SetValue = function(self, val) self.Value = val; update() end
+            btn.MouseButton1Click:Connect(function() FakeToggle.Value = not FakeToggle.Value; update(false) end)
+            FakeToggle.SetValue = function(self, val, silent) self.Value = val; update(silent) end
             if not isTable and id then getgenv().FishmanState.Fluent.Options[id] = FakeToggle end
             update(); return FakeToggle
         end
@@ -2714,6 +2714,10 @@ getgenv().FishmanState.addConn(UserInputService.InputBegan:Connect(function(inpu
             end
 
             if getgenv().FishmanState.Model and getgenv().FishmanState.Model.State then
+                local opts = getgenv().FishmanState.Fluent and getgenv().FishmanState.Fluent.Options
+                local function optVal(name)
+                    return (opts and opts[name] and opts[name].Value) or false
+                end
                 -- Save current task states
                 savedState = {
                     isFishing = getgenv().FishmanState.Model.State.isFishing,
@@ -2722,33 +2726,48 @@ getgenv().FishmanState.addConn(UserInputService.InputBegan:Connect(function(inpu
                     isAutoTraveling = getgenv().FishmanState.Model.State.isAutoTraveling,
                     autoCraft = getgenv().FishmanState.Model.State.autoCraft,
                     isCurrentlyCrafting = getgenv().FishmanState.Model.State.isCurrentlyCrafting,
-                    antiLag = (getgenv().FishmanState.Fluent.Options and getgenv().FishmanState.Fluent.Options.T_AntiLag) and getgenv().FishmanState.Fluent.Options.T_AntiLag.Value or false,
-                    deepSea = (getgenv().FishmanState.Fluent and getgenv().FishmanState.Fluent.Options and getgenv().FishmanState.Fluent.Options.T_DeepSea) and getgenv().FishmanState.Fluent.Options.T_DeepSea.Value or false,
-                    megStack = (getgenv().FishmanState.Fluent and getgenv().FishmanState.Fluent.Options and getgenv().FishmanState.Fluent.Options.T_MegStack) and getgenv().FishmanState.Fluent.Options.T_MegStack.Value or false,
-                    megStackLoc = (getgenv().FishmanState.Fluent and getgenv().FishmanState.Fluent.Options and getgenv().FishmanState.Fluent.Options.T_MegStackLoc) and getgenv().FishmanState.Fluent.Options.T_MegStackLoc.Value or false
+                    strictReel = optVal("T_StrictReel"),
+                    autoLegBait = optVal("T_AutoLegBait"),
+                    moveToSpot = optVal("T_MoveToFishingSpot"),
+                    antiLag = optVal("T_AntiLag"),
+                    deepSea = optVal("T_DeepSea"),
+                    megStack = optVal("T_MegStack"),
+                    megStackPassive = optVal("T_MegStackPassive"),
+                    megStackLoc = optVal("T_MegStackLoc"),
+                    autoReturn = optVal("T_AutoReturn"),
+                    autoStoreFruit = optVal("T_AutoStoreFruit"),
+                    cyborgAuto = optVal("T_CyborgAuto")
                 }
 
                 -- Force stop everything instantly
                 getgenv().FishmanState.Model.State.isFishing = false
-                -- getgenv().FishmanState.Model.State.autoBuy = false
+                getgenv().FishmanState.Model.State.autoBuy = false
                 getgenv().FishmanState.Model.State.autoSell = false
                 getgenv().FishmanState.Model.State.isAutoTraveling = false
                 getgenv().FishmanState.Model.State.autoCraft = false
                 getgenv().FishmanState.Model.State.isCurrentlyCrafting = false
                 getgenv().FishmanState.Model.State.isCraftFlying = false
                 getgenv().FishmanState.Model.State.isBuying = false
+                getgenv().FishmanState.Model.State.strictReel = false
                 
-                -- Update UI toggles to visually show they are off
-                if getgenv().FishmanState.Fluent.Options then
-                    if getgenv().FishmanState.Fluent.Options.T_Fish then getgenv().FishmanState.Fluent.Options.T_Fish:SetValue(false) end
-                    -- if getgenv().FishmanState.Fluent.Options.T_Buy then getgenv().FishmanState.Fluent.Options.T_Buy:SetValue(false) end
-                    if getgenv().FishmanState.Fluent.Options.T_Sell then getgenv().FishmanState.Fluent.Options.T_Sell:SetValue(false) end
-                    if getgenv().FishmanState.Fluent.Options.T_Travel then getgenv().FishmanState.Fluent.Options.T_Travel:SetValue(false) end
-                    if getgenv().FishmanState.Fluent.Options.T_Craft then getgenv().FishmanState.Fluent.Options.T_Craft:SetValue(false) end
-                    if getgenv().FishmanState.Fluent.Options.T_AntiLag then getgenv().FishmanState.Fluent.Options.T_AntiLag:SetValue(false) end
-                    if getgenv().FishmanState.Fluent.Options.T_DeepSea then getgenv().FishmanState.Fluent.Options.T_DeepSea:SetValue(false) end
-                    if getgenv().FishmanState.Fluent.Options.T_MegStack then getgenv().FishmanState.Fluent.Options.T_MegStack:SetValue(false) end
-                    if getgenv().FishmanState.Fluent.Options.T_MegStackLoc then getgenv().FishmanState.Fluent.Options.T_MegStackLoc:SetValue(false) end
+                -- Update UI toggles to visually show they are [OFF]
+                if opts then
+                    if opts.T_AutoLegBait then opts.T_AutoLegBait:SetValue(false, true) end
+                    if opts.T_Fish then opts.T_Fish:SetValue(false) end
+                    if opts.T_StrictReel then opts.T_StrictReel:SetValue(false) end
+                    if opts.T_Buy then opts.T_Buy:SetValue(false) end
+                    if opts.T_Sell then opts.T_Sell:SetValue(false) end
+                    if opts.T_Travel then opts.T_Travel:SetValue(false) end
+                    if opts.T_Craft then opts.T_Craft:SetValue(false) end
+                    if opts.T_MoveToFishingSpot then opts.T_MoveToFishingSpot:SetValue(false) end
+                    if opts.T_AntiLag then opts.T_AntiLag:SetValue(false) end
+                    if opts.T_DeepSea then opts.T_DeepSea:SetValue(false) end
+                    if opts.T_MegStack then opts.T_MegStack:SetValue(false) end
+                    if opts.T_MegStackPassive then opts.T_MegStackPassive:SetValue(false) end
+                    if opts.T_MegStackLoc then opts.T_MegStackLoc:SetValue(false) end
+                    if opts.T_AutoReturn then opts.T_AutoReturn:SetValue(false) end
+                    if opts.T_AutoStoreFruit then opts.T_AutoStoreFruit:SetValue(false) end
+                    if opts.T_CyborgAuto then opts.T_CyborgAuto:SetValue(false) end
                 end
 
                 -- Abort actions
@@ -2777,16 +2796,24 @@ getgenv().FishmanState.addConn(UserInputService.InputBegan:Connect(function(inpu
                 getgenv().FishmanState.Model.State.autoCraft = savedState.autoCraft or false
                 
                 -- Update UI toggles visually to match restored state
-                if getgenv().FishmanState.Fluent.Options then
-                    if getgenv().FishmanState.Fluent.Options.T_Fish then getgenv().FishmanState.Fluent.Options.T_Fish:SetValue(getgenv().FishmanState.Model.State.isFishing) end
-                    if getgenv().FishmanState.Fluent.Options.T_Buy then getgenv().FishmanState.Fluent.Options.T_Buy:SetValue(getgenv().FishmanState.Model.State.autoBuy) end
-                    if getgenv().FishmanState.Fluent.Options.T_Sell then getgenv().FishmanState.Fluent.Options.T_Sell:SetValue(getgenv().FishmanState.Model.State.autoSell) end
-                    if getgenv().FishmanState.Fluent.Options.T_Travel then getgenv().FishmanState.Fluent.Options.T_Travel:SetValue(getgenv().FishmanState.Model.State.isAutoTraveling) end
-                    if getgenv().FishmanState.Fluent.Options.T_Craft then getgenv().FishmanState.Fluent.Options.T_Craft:SetValue(getgenv().FishmanState.Model.State.autoCraft) end
-                    if getgenv().FishmanState.Fluent.Options.T_AntiLag and savedState.antiLag then getgenv().FishmanState.Fluent.Options.T_AntiLag:SetValue(true) end
-                    if getgenv().FishmanState.Fluent.Options.T_DeepSea then getgenv().FishmanState.Fluent.Options.T_DeepSea:SetValue(savedState.deepSea) end
-                    if getgenv().FishmanState.Fluent.Options.T_MegStack then getgenv().FishmanState.Fluent.Options.T_MegStack:SetValue(savedState.megStack) end
-                    if getgenv().FishmanState.Fluent.Options.T_MegStackLoc then getgenv().FishmanState.Fluent.Options.T_MegStackLoc:SetValue(savedState.megStackLoc) end
+                local opts = getgenv().FishmanState.Fluent and getgenv().FishmanState.Fluent.Options
+                if opts then
+                    if opts.T_AutoLegBait and savedState.autoLegBait then opts.T_AutoLegBait:SetValue(true, true) end
+                    if opts.T_Fish then opts.T_Fish:SetValue(getgenv().FishmanState.Model.State.isFishing) end
+                    if opts.T_StrictReel and savedState.strictReel then opts.T_StrictReel:SetValue(true) end
+                    if opts.T_Buy then opts.T_Buy:SetValue(getgenv().FishmanState.Model.State.autoBuy) end
+                    if opts.T_Sell then opts.T_Sell:SetValue(getgenv().FishmanState.Model.State.autoSell) end
+                    if opts.T_Travel then opts.T_Travel:SetValue(getgenv().FishmanState.Model.State.isAutoTraveling) end
+                    if opts.T_Craft then opts.T_Craft:SetValue(getgenv().FishmanState.Model.State.autoCraft) end
+                    if opts.T_MoveToFishingSpot and savedState.moveToSpot then opts.T_MoveToFishingSpot:SetValue(true) end
+                    if opts.T_AntiLag and savedState.antiLag then opts.T_AntiLag:SetValue(true) end
+                    if opts.T_DeepSea and savedState.deepSea then opts.T_DeepSea:SetValue(true) end
+                    if opts.T_MegStack and savedState.megStack then opts.T_MegStack:SetValue(true) end
+                    if opts.T_MegStackPassive and savedState.megStackPassive then opts.T_MegStackPassive:SetValue(true) end
+                    if opts.T_MegStackLoc and savedState.megStackLoc then opts.T_MegStackLoc:SetValue(true) end
+                    if opts.T_AutoReturn and savedState.autoReturn then opts.T_AutoReturn:SetValue(true) end
+                    if opts.T_AutoStoreFruit and savedState.autoStoreFruit then opts.T_AutoStoreFruit:SetValue(true) end
+                    if opts.T_CyborgAuto and savedState.cyborgAuto then opts.T_CyborgAuto:SetValue(true) end
                 end
 
                 -- Resume traveling if needed
