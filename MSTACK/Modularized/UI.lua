@@ -1000,25 +1000,30 @@ getgenv().FishmanState.Tabs = Tabs
         end
     })
 
-    getgenv().FishmanState.Tabs.Teleport:AddButton({
-        Title = "📈 Trade Hub",
-        Description = "Instantly teleports you to tradeHub in private server qj1ttW4JG1.",
-        Callback = function()
-            GlobalMem.FishmanPSCode = "qj1ttW4JG1"
-            GlobalMem.FishmanDestination = "tradeHub"
-            GlobalMem.FishmanAutoTeleport = true
-            GlobalMem.FishmanAutoRouteLobby = false
-            if getgenv().FishmanState.Fluent.Options.T_AutoRouteLobby then getgenv().FishmanState.Fluent.Options.T_AutoRouteLobby:SetValue(false) end
-            getgenv().FishmanState.SaveConfig()
-            
-            if getgenv().FishmanState.Fluent.Options.Input then getgenv().FishmanState.Fluent.Options.Input:SetValue("qj1ttW4JG1") end
-            if getgenv().FishmanState.Fluent.Options.Dropdown then getgenv().FishmanState.Fluent.Options.Dropdown:SetValue("tradeHub") end
+    local function addTradeHubButton(title, psCode)
+        getgenv().FishmanState.Tabs.Teleport:AddButton({
+            Title = title,
+            Description = string.format("Instantly teleports you to tradeHub in private server %s.", psCode),
+            Callback = function()
+                GlobalMem.FishmanPSCode = psCode
+                GlobalMem.FishmanDestination = "tradeHub"
+                GlobalMem.FishmanAutoTeleport = true
+                GlobalMem.FishmanAutoRouteLobby = false
+                if getgenv().FishmanState.Fluent.Options.T_AutoRouteLobby then getgenv().FishmanState.Fluent.Options.T_AutoRouteLobby:SetValue(false) end
+                getgenv().FishmanState.SaveConfig()
 
-            getgenv().FishmanState.Fluent:Notify({ Title = "Trade Hub", Content = "Initiating warp to Trade Hub (qj1ttW4JG1)...", Duration = 3 })
-            
-            ExecuteTeleport("tradeHub", "qj1ttW4JG1")
-        end
-    })
+                if getgenv().FishmanState.Fluent.Options.Input then getgenv().FishmanState.Fluent.Options.Input:SetValue(psCode) end
+                if getgenv().FishmanState.Fluent.Options.Dropdown then getgenv().FishmanState.Fluent.Options.Dropdown:SetValue("tradeHub") end
+
+                getgenv().FishmanState.Fluent:Notify({ Title = title, Content = string.format("Initiating warp to %s (%s)...", title, psCode), Duration = 3 })
+
+                ExecuteTeleport("tradeHub", psCode)
+            end
+        })
+    end
+
+    addTradeHubButton("📈 Trade Hub", "qj1ttW4JG1")
+    addTradeHubButton("📈 Trade Hub 2", "HiBe6mk1H7")
 
     UI_Loaded = true
 
