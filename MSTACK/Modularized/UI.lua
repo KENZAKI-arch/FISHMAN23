@@ -158,17 +158,17 @@ function Fluent:CreateWindow(options)
     minBtn.Size = UDim2.new(0, 28, 0, 27)
     minBtn.Position = UDim2.new(1, -56, 0, 0)
     minBtn.BackgroundTransparency = 1
-    minBtn.Text = "—"
+    minBtn.Text = "-"
     minBtn.TextColor3 = THEME.Muted
     minBtn.Font = THEME.FontMain
-    minBtn.TextSize = 12
+    minBtn.TextSize = 14
     minBtn.Parent = topBar
 
     local closeBtn = Instance.new("TextButton")
     closeBtn.Size = UDim2.new(0, 28, 0, 27)
     closeBtn.Position = UDim2.new(1, -28, 0, 0)
     closeBtn.BackgroundTransparency = 1
-    closeBtn.Text = "✕"
+    closeBtn.Text = "X"
     closeBtn.TextColor3 = THEME.Off
     closeBtn.Font = THEME.FontMain
     closeBtn.TextSize = 12
@@ -457,25 +457,28 @@ function Fluent:CreateWindow(options)
             local listLayout = Instance.new("UIListLayout", list)
 
             local isOpen = false
+            local FakeDrop = { Value = nil }
+            local optionUpdaters = {}
+
+            local function formatHeader()
+                local label = (dArgs.Multi and type(FakeDrop.Value) == "table") and (#FakeDrop.Value .. " selected") or tostring(FakeDrop.Value)
+                btn.Text = (isOpen and "  v " or "  > ") .. dArgs.Title .. ": " .. label
+            end
+
             btn.MouseButton1Click:Connect(function()
                 isOpen = not isOpen
                 frame.Size = UDim2.new(1, 0, 0, isOpen and 112 or 24)
+                formatHeader()
             end)
 
             local initVal = dArgs.Default
             if type(initVal) == "number" and not dArgs.Multi and dArgs.Values and dArgs.Values[initVal] then
                 initVal = dArgs.Values[initVal]
             end
-            local FakeDrop = { Value = initVal or (dArgs.Multi and {} or "") }
-            local optionUpdaters = {}
+            FakeDrop.Value = initVal or (dArgs.Multi and {} or "")
 
             local function refreshAllVis()
                 for _, fn in ipairs(optionUpdaters) do fn() end
-            end
-
-            local function formatHeader()
-                local label = (dArgs.Multi and type(FakeDrop.Value) == "table") and (#FakeDrop.Value .. " selected") or tostring(FakeDrop.Value)
-                btn.Text = "  ▾ " .. dArgs.Title .. ": " .. label
             end
 
             local function populate(vals)
