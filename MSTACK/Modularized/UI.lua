@@ -150,6 +150,7 @@ function Fluent:CreateWindow(options)
     titleLabel.Text = string.format("<b>%s</b>  <font color=\"rgb(135,145,165)\">|  %s</font>", tostring(options.Title or "Hub"), tostring(options.SubTitle or ""))
     titleLabel.TextColor3 = THEME.Text
     titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+    titleLabel.TextTruncate = Enum.TextTruncate.AtEnd
     titleLabel.Font = THEME.FontMain
     titleLabel.TextSize = 12
     titleLabel.Parent = topBar
@@ -175,12 +176,27 @@ function Fluent:CreateWindow(options)
     closeBtn.Parent = topBar
 
     local isMinimized = false
+    local currentW, currentH = 520, 360
+    local function getViewportSize()
+        local cam = workspace.CurrentCamera
+        return (cam and cam.ViewportSize) or Vector2.new(1280, 720)
+    end
+    local function clampWindowPosition(x, y)
+        local vp = getViewportSize()
+        local h = isMinimized and 28 or currentH
+        local maxX = math.max(0, math.floor(vp.X - currentW))
+        local maxY = math.max(0, math.floor(vp.Y - h))
+        return math.clamp(math.floor(x), 0, maxX), math.clamp(math.floor(y), 0, maxY)
+    end
+
     local function toggleMinimize()
         isMinimized = not isMinimized
-        mainFrame.Size = UDim2.new(0, 520, 0, isMinimized and 28 or 360)
+        mainFrame.Size = UDim2.fromOffset(currentW, isMinimized and 28 or currentH)
         for _, c in ipairs(mainFrame:GetChildren()) do
             if c ~= topBar and c.Name ~= "UICorner" then c.Visible = not isMinimized end
         end
+        local cx, cy = clampWindowPosition(mainFrame.Position.X.Offset, mainFrame.Position.Y.Offset)
+        mainFrame.Position = UDim2.fromOffset(cx, cy)
     end
     minBtn.MouseButton1Click:Connect(toggleMinimize)
     closeBtn.MouseButton1Click:Connect(function() FakeWindow:Destroy() end)
@@ -193,16 +209,21 @@ function Fluent:CreateWindow(options)
         end))
     end
 
-    -- Single shared drag handler for both window dragging and all sliders (zero per-slider UIS listeners)
+    -- Single shared drag handler for whole-window dragging and all sliders (zero per-slider UIS listeners)
     local activeDragUpdate = nil
     local draggingWindow, dragStart, startPos
-    topBar.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            draggingWindow = true
-            dragStart = input.Position
-            startPos = mainFrame.Position
-        end
-    end)
+    local function attachWindowDrag(guiObj)
+        guiObj.InputBegan:Connect(function(input)
+            if not activeDragUpdate and (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
+                draggingWindow = true
+                dragStart = input.Position
+                startPos = mainFrame.Position
+            end
+        end)
+    end
+    attachWindowDrag(mainFrame)
+    attachWindowDrag(topBar)
+
     getgenv().FishmanState.addConn(UserInputService.InputEnded:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             draggingWindow = false
@@ -211,11 +232,12 @@ function Fluent:CreateWindow(options)
     end))
     getgenv().FishmanState.addConn(UserInputService.InputChanged:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-            if draggingWindow then
-                local delta = input.Position - dragStart
-                mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-            elseif activeDragUpdate then
+            if activeDragUpdate then
                 activeDragUpdate(input.Position.X)
+            elseif draggingWindow then
+                local delta = input.Position - dragStart
+                local cx, cy = clampWindowPosition(startPos.X.Offset + delta.X, startPos.Y.Offset + delta.Y)
+                mainFrame.Position = UDim2.fromOffset(cx, cy)
             end
         end
     end))
@@ -252,6 +274,60 @@ function Fluent:CreateWindow(options)
     contentContainer.BackgroundColor3 = THEME.Bg
     contentContainer.BorderSizePixel = 0
     contentContainer.Parent = mainFrame
+
+    attachWindowDrag(tabContainer)
+    attachWindowDrag(contentContainer)
+
+    local function applyResponsiveLayout(centerIfFirst)
+        local vp = getViewportSize()
+        local newW = math.clamp(math.floor(vp.X - 16), 220, 520)
+        local newH = math.clamp(math.floor(vp.Y - 16), 140, 360)
+        if vp.X < 236 then newW = math.max(160, math.floor(vp.X - 8)) end
+        if vp.Y < 156 then newH = math.max(100, math.floor(vp.Y - 8)) end
+
+        currentW, currentH = newW, newH
+        local sideW = (newW < 400) and math.max(84, math.floor(newW * 0.27)) or 124
+
+        mainFrame.Size = UDim2.fromOffset(newW, isMinimized and 28 or newH)
+        tabContainer.Size = UDim2.new(0, sideW, 1, -28)
+        sideDivider.Position = UDim2.new(0, sideW, 0, 28)
+        contentContainer.Size = UDim2.new(1, -(sideW + 1), 1, -28)
+        contentContainer.Position = UDim2.new(0, sideW + 1, 0, 28)
+
+        if centerIfFirst then
+            local cx = math.max(0, math.floor((vp.X - newW) / 2))
+            local cy = math.max(0, math.floor((vp.Y - (isMinimized and 28 or newH)) / 2))
+            mainFrame.Position = UDim2.fromOffset(cx, cy)
+        else
+            local cx, cy = clampWindowPosition(mainFrame.Position.X.Offset, mainFrame.Position.Y.Offset)
+            mainFrame.Position = UDim2.fromOffset(cx, cy)
+        end
+    end
+
+    applyResponsiveLayout(true)
+    local vpConn = nil
+    local function hookCameraViewport()
+        if vpConn then
+            if getgenv().FishmanState.removeConn then
+                getgenv().FishmanState.removeConn(vpConn)
+            else
+                pcall(function() vpConn:Disconnect() end)
+            end
+            vpConn = nil
+        end
+        local cam = workspace.CurrentCamera
+        if cam then
+            vpConn = cam:GetPropertyChangedSignal("ViewportSize"):Connect(function()
+                applyResponsiveLayout(false)
+            end)
+            getgenv().FishmanState.addConn(vpConn)
+        end
+    end
+    hookCameraViewport()
+    getgenv().FishmanState.addConn(workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(function()
+        hookCameraViewport()
+        applyResponsiveLayout(false)
+    end))
 
     local tabsList = {}
     local activeTabBtn, activeTabBar, activeContent = nil, nil, nil
@@ -301,6 +377,7 @@ function Fluent:CreateWindow(options)
         contentScroll.ScrollBarImageColor3 = THEME.Border
         contentScroll.Visible = false
         contentScroll.Parent = contentContainer
+        attachWindowDrag(contentScroll)
 
         local contentPad = Instance.new("UIPadding", contentScroll)
         contentPad.PaddingTop = UDim.new(0, 6)
