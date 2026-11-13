@@ -1437,6 +1437,204 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
             end
         end
     })
+    getgenv().FishmanState.Tabs.Fishing:AddToggle("T_StrictReel", { Title = "Only Reel > 1.0 Multiplier", Default = false, Callback = function(Value) 
+        getgenv().FishmanState.Model.State.strictReel = Value 
+    end })
+    getgenv().FishmanState.Tabs.Fishing:AddToggle("T_Buy", { Title = "Auto Buy Bait", Default = not isLobby, Callback = function(Value) 
+        if isLobby then if Value then getgenv().FishmanState.Fluent:Notify({ Title = "Error", Content = "Cannot buy in Lobby!", Duration = 3 }); getgenv().FishmanState.Fluent.Options.T_Buy:SetValue(false) end return end
+        getgenv().FishmanState.Model.State.autoBuy = Value; if Value then getgenv().FishmanState.Model.CheckInventory() end 
+    end })
+    getgenv().FishmanState.Tabs.Fishing:AddToggle("T_Sell", { Title = "Auto Sell Fish", Default = false, Callback = function(Value) 
+        if isLobby then if Value then getgenv().FishmanState.Fluent:Notify({ Title = "Error", Content = "Cannot sell in Lobby!", Duration = 3 }); getgenv().FishmanState.Fluent.Options.T_Sell:SetValue(false) end return end
+        getgenv().FishmanState.Model.State.autoSell = Value; if Value then getgenv().FishmanState.Model.CheckInventory() end 
+    end })
+    getgenv().FishmanState.Tabs.Fishing:AddToggle("T_Travel", { Title = "Travel to Bait", Default = false, Callback = function(Value) 
+        if isLobby then if Value then getgenv().FishmanState.Fluent:Notify({ Title = "Error", Content = "Cannot travel in Lobby!", Duration = 3 }); getgenv().FishmanState.Fluent.Options.T_Travel:SetValue(false) end return end
+        if Value then getgenv().FishmanState.Model.StartTraveling() else getgenv().FishmanState.Model.State.isAutoTraveling = false; if getgenv().FishmanState.Model.DisableFlight then getgenv().FishmanState.Model.DisableFlight() end; getgenv().FishmanState.Model.State.travelMessage = "" end 
+    end })
+    getgenv().FishmanState.Tabs.Fishing:AddToggle("T_Craft", { Title = "Auto Craft Legendary Bait", Default = false, Callback = function(Value) 
+        if isLobby then if Value then getgenv().FishmanState.Fluent:Notify({ Title = "Error", Content = "Cannot craft in Lobby!", Duration = 3 }); getgenv().FishmanState.Fluent.Options.T_Craft:SetValue(false) end return end
+        getgenv().FishmanState.Model.State.autoCraft = Value 
+    end })
+    getgenv().FishmanState.Tabs.Fishing:AddButton({
+        Title = "🔨 Craft All Legendary Fish Now",
+        Description = "Instantly crafts all legendary fishes in your inventory into bait.",
+        Callback = function()
+            if isLobby then
+                getgenv().FishmanState.Fluent:Notify({ Title = "Error", Content = "Cannot craft in Lobby!", Duration = 3 })
+                return
+            end
+            task.spawn(getgenv().FishmanState.Model.ForceCraftAll)
+        end
+    })
+    getgenv().FishmanState.Tabs.Fishing:AddToggle("T_AFK", { Title = "AFK Mode (Auto-start after 10s)", Default = false, Callback = function(Value) 
+        if isLobby then if Value then getgenv().FishmanState.Fluent:Notify({ Title = "Error", Content = "AFK Mode requires Fishing server!", Duration = 3 }); getgenv().FishmanState.Fluent.Options.T_AFK:SetValue(false) end return end
+        getgenv().FishmanState.isAFKModeActive = Value; getgenv().FishmanState.secondsSinceLastInput = 0 
+    end })
+
+    getgenv().FishmanState.Tabs.Fishing:AddButton({
+        Title = "Check Fruits",
+        Description = "Check your inventory for target fruits.",
+        Callback = function() getgenv().FishmanState.checkFruits(getgenv().FishmanState.targetFruits) end
+    })
+    
+    getgenv().FishmanState.Tabs.Fishing:AddToggle("T_StoreFruitsManual", {
+        Title = "Store Fruits",
+        Description = "Store target fruits (keeps in inventory if full).",
+        Default = false,
+        Callback = function(Value)
+            if Value then
+                if getgenv().FishmanState.Fluent.Options.T_DropFruitsManual and getgenv().FishmanState.Fluent.Options.T_DropFruitsManual.Value then
+                    getgenv().FishmanState.Fluent:Notify({ Title = "Action Prevented", Content = "Cannot store fruits while dropping is active!", Duration = 3 })
+                    task.spawn(function() getgenv().FishmanState.Fluent.Options.T_StoreFruitsManual:SetValue(false) end)
+                    return
+                end
+                getgenv()._cancelStoreFruits = false
+                task.spawn(function()
+                    getgenv().FishmanState.storeFruits(getgenv().FishmanState.targetFruits)
+                    if getgenv().FishmanState.Fluent.Options.T_StoreFruitsManual and getgenv().FishmanState.Fluent.Options.T_StoreFruitsManual.Value then
+                        getgenv().FishmanState.Fluent.Options.T_StoreFruitsManual:SetValue(false)
+                    end
+                end)
+            else
+                getgenv()._cancelStoreFruits = true
+            end
+        end
+    })
+    
+    getgenv().FishmanState.Tabs.Fishing:AddToggle("T_DropFruitsManual", {
+        Title = "Drop Fruits",
+        Description = "Force drop all target fruits.",
+        Default = false,
+        Callback = function(Value)
+            if Value then
+                if getgenv().FishmanState.Fluent.Options.T_StoreFruitsManual and getgenv().FishmanState.Fluent.Options.T_StoreFruitsManual.Value then
+                    getgenv().FishmanState.Fluent:Notify({ Title = "Action Prevented", Content = "Cannot drop fruits while manual storing is active!", Duration = 3 })
+                    task.spawn(function() getgenv().FishmanState.Fluent.Options.T_DropFruitsManual:SetValue(false) end)
+                    return
+                end
+                if getgenv().FishmanState.Fluent.Options.T_AutoStoreFruit and getgenv().FishmanState.Fluent.Options.T_AutoStoreFruit.Value then
+                    getgenv().FishmanState.Fluent:Notify({ Title = "Action Prevented", Content = "Please turn off Auto Store Fruit before dropping!", Duration = 3 })
+                    task.spawn(function() getgenv().FishmanState.Fluent.Options.T_DropFruitsManual:SetValue(false) end)
+                    return
+                end
+                getgenv()._cancelDropFruits = false
+                task.spawn(function()
+                    getgenv().FishmanState.dropFruits(getgenv().FishmanState.targetFruits)
+                    if getgenv().FishmanState.Fluent.Options.T_DropFruitsManual and getgenv().FishmanState.Fluent.Options.T_DropFruitsManual.Value then
+                        getgenv().FishmanState.Fluent.Options.T_DropFruitsManual:SetValue(false)
+                    end
+                end)
+            else
+                getgenv()._cancelDropFruits = true
+            end
+        end
+    })
+    
+    local autoStoreEnabled = false
+    local backpackConn = nil
+    local charConn = nil
+
+    local function setupFruitListener()
+        if backpackConn then
+            if getgenv().FishmanState.removeConn then
+                getgenv().FishmanState.removeConn(backpackConn)
+            else
+                pcall(function() backpackConn:Disconnect() end)
+            end
+            backpackConn = nil
+        end
+        local backpack = LocalPlayer:FindFirstChild("Backpack")
+        if backpack and autoStoreEnabled then
+            backpackConn = backpack.ChildAdded:Connect(function(child)
+                if autoStoreEnabled and child:IsA("Tool") then
+                    -- Slight delay to ensure tool attributes load
+                    task.delay(0.5, function()
+                        if autoStoreEnabled then
+                            getgenv()._cancelStoreFruits = false
+                            getgenv().FishmanState.storeFruits(getgenv().FishmanState.targetFruits)
+                        end
+                    end)
+                end
+            end)
+            getgenv().FishmanState.addConn(backpackConn)
+        end
+    end
+
+    getgenv().FishmanState.Tabs.Fishing:AddToggle("T_AutoStoreFruit", { 
+        Title = "Auto Store Fruit (Instantly)", 
+        Default = false, 
+        Callback = function(Value)
+            autoStoreEnabled = Value
+            if autoStoreEnabled then
+                if getgenv().FishmanState.Fluent.Options.T_DropFruitsManual and getgenv().FishmanState.Fluent.Options.T_DropFruitsManual.Value then
+                    getgenv().FishmanState.Fluent:Notify({ Title = "Action Prevented", Content = "Cannot enable Auto Store while dropping!", Duration = 3 })
+                    task.spawn(function() getgenv().FishmanState.Fluent.Options.T_AutoStoreFruit:SetValue(false) end)
+                    return
+                end
+                
+                -- Check immediately upon turning it on
+                task.spawn(function()
+                    getgenv()._cancelStoreFruits = false
+                    getgenv().FishmanState.storeFruits(getgenv().FishmanState.targetFruits)
+                end)
+                
+                -- Setup listeners for future fruits
+                setupFruitListener()
+                if not charConn then
+                    charConn = LocalPlayer.CharacterAdded:Connect(function()
+                        task.wait(1)
+                        if autoStoreEnabled then
+                            setupFruitListener()
+                        end
+                    end)
+                    getgenv().FishmanState.addConn(charConn)
+                end
+            else
+                if backpackConn then 
+                    if getgenv().FishmanState.removeConn then
+                        getgenv().FishmanState.removeConn(backpackConn)
+                    else
+                        pcall(function() backpackConn:Disconnect() end)
+                    end
+                    backpackConn = nil 
+                end
+                if charConn then
+                    if getgenv().FishmanState.removeConn then
+                        getgenv().FishmanState.removeConn(charConn)
+                    else
+                        pcall(function() charConn:Disconnect() end)
+                    end
+                    charConn = nil
+                end
+            end
+        end 
+    })
+
+    -- Status Monitor
+    local StatusPara = getgenv().FishmanState.Tabs.Fishing:AddParagraph({ Title = "Status", Content = "Idle" })
+    local statusParts = {}
+    task.spawn(function()
+        while getgenv().FishmanSession == mySession and getgenv().FishmanState._running and task.wait(1) do
+            table.clear(statusParts)
+            if getgenv().FishmanState.Model.State.isFishing then table.insert(statusParts, "Fishing") end
+            if getgenv().FishmanState.Model.State.autoBuy then table.insert(statusParts, "Buying") end
+            if getgenv().FishmanState.Model.State.autoSell then table.insert(statusParts, "Selling") end
+            if getgenv().FishmanState.Model.State.autoCraft then table.insert(statusParts,  getgenv().FishmanState.Model.State.isCurrentlyCrafting and "Crafting" or "Craft ON") end
+            if getgenv().FishmanState.isAFKModeActive then table.insert(statusParts, "[AFK ON]") end
+
+            if getgenv().FishmanState.Model.State.isAutoTraveling or getgenv().FishmanState.Model.State.travelMessage ~= "" then
+                StatusPara:SetDesc("Status: " .. getgenv().FishmanState.Model.State.travelMessage)
+                if getgenv().FishmanState.Model.State.travelMessage == "Arrived at Bait" and getgenv().FishmanState.Model.State.waitingForArrivalToFish then
+                    getgenv().FishmanState.Model.State.waitingForArrivalToFish = false
+                    if getgenv().FishmanState.Fluent and getgenv().FishmanState.Fluent.Options and getgenv().FishmanState.Fluent.Options.T_Fish then getgenv().FishmanState.Fluent.Options.T_Fish:SetValue(true) end -- Automatically turn on fishing toggle in UI
+                end
+            else
+                StatusPara:SetDesc(#statusParts > 0 and ("Active: " .. table.concat(statusParts, " ")) or "Idle")
+            end
+        end
+    end)
+
     getgenv().FishmanState.Tabs.Fishing:AddToggle("T_DeepSea", { Title = "Deep Sea Catcher (ONLY Beasts)", Default = false, Callback = function(Value) 
         if isLobby then if Value then getgenv().FishmanState.Fluent:Notify({ Title = "Error", Content = "Cannot fish in Lobby!", Duration = 3 }); getgenv().FishmanState.Fluent.Options.T_DeepSea:SetValue(false) end return end
         task.spawn(function()
@@ -1754,203 +1952,6 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
         end
     })
 
-    getgenv().FishmanState.Tabs.Fishing:AddToggle("T_StrictReel", { Title = "Only Reel > 1.0 Multiplier", Default = false, Callback = function(Value) 
-        getgenv().FishmanState.Model.State.strictReel = Value 
-    end })
-    getgenv().FishmanState.Tabs.Fishing:AddToggle("T_Buy", { Title = "Auto Buy Bait", Default = not isLobby, Callback = function(Value) 
-        if isLobby then if Value then getgenv().FishmanState.Fluent:Notify({ Title = "Error", Content = "Cannot buy in Lobby!", Duration = 3 }); getgenv().FishmanState.Fluent.Options.T_Buy:SetValue(false) end return end
-        getgenv().FishmanState.Model.State.autoBuy = Value; if Value then getgenv().FishmanState.Model.CheckInventory() end 
-    end })
-    getgenv().FishmanState.Tabs.Fishing:AddToggle("T_Sell", { Title = "Auto Sell Fish", Default = false, Callback = function(Value) 
-        if isLobby then if Value then getgenv().FishmanState.Fluent:Notify({ Title = "Error", Content = "Cannot sell in Lobby!", Duration = 3 }); getgenv().FishmanState.Fluent.Options.T_Sell:SetValue(false) end return end
-        getgenv().FishmanState.Model.State.autoSell = Value; if Value then getgenv().FishmanState.Model.CheckInventory() end 
-    end })
-    getgenv().FishmanState.Tabs.Fishing:AddToggle("T_Travel", { Title = "Travel to Bait", Default = false, Callback = function(Value) 
-        if isLobby then if Value then getgenv().FishmanState.Fluent:Notify({ Title = "Error", Content = "Cannot travel in Lobby!", Duration = 3 }); getgenv().FishmanState.Fluent.Options.T_Travel:SetValue(false) end return end
-        if Value then getgenv().FishmanState.Model.StartTraveling() else getgenv().FishmanState.Model.State.isAutoTraveling = false; if getgenv().FishmanState.Model.DisableFlight then getgenv().FishmanState.Model.DisableFlight() end; getgenv().FishmanState.Model.State.travelMessage = "" end 
-    end })
-    getgenv().FishmanState.Tabs.Fishing:AddToggle("T_Craft", { Title = "Auto Craft Legendary Bait", Default = false, Callback = function(Value) 
-        if isLobby then if Value then getgenv().FishmanState.Fluent:Notify({ Title = "Error", Content = "Cannot craft in Lobby!", Duration = 3 }); getgenv().FishmanState.Fluent.Options.T_Craft:SetValue(false) end return end
-        getgenv().FishmanState.Model.State.autoCraft = Value 
-    end })
-    getgenv().FishmanState.Tabs.Fishing:AddButton({
-        Title = "🔨 Craft All Legendary Fish Now",
-        Description = "Instantly crafts all legendary fishes in your inventory into bait.",
-        Callback = function()
-            if isLobby then
-                getgenv().FishmanState.Fluent:Notify({ Title = "Error", Content = "Cannot craft in Lobby!", Duration = 3 })
-                return
-            end
-            task.spawn(getgenv().FishmanState.Model.ForceCraftAll)
-        end
-    })
-    getgenv().FishmanState.Tabs.Fishing:AddToggle("T_AFK", { Title = "AFK Mode (Auto-start after 10s)", Default = false, Callback = function(Value) 
-        if isLobby then if Value then getgenv().FishmanState.Fluent:Notify({ Title = "Error", Content = "AFK Mode requires Fishing server!", Duration = 3 }); getgenv().FishmanState.Fluent.Options.T_AFK:SetValue(false) end return end
-        getgenv().FishmanState.isAFKModeActive = Value; getgenv().FishmanState.secondsSinceLastInput = 0 
-    end })
-
-    getgenv().FishmanState.Tabs.Fishing:AddButton({
-        Title = "Check Fruits",
-        Description = "Check your inventory for target fruits.",
-        Callback = function() getgenv().FishmanState.checkFruits(getgenv().FishmanState.targetFruits) end
-    })
-    
-    getgenv().FishmanState.Tabs.Fishing:AddToggle("T_StoreFruitsManual", {
-        Title = "Store Fruits",
-        Description = "Store target fruits (keeps in inventory if full).",
-        Default = false,
-        Callback = function(Value)
-            if Value then
-                if getgenv().FishmanState.Fluent.Options.T_DropFruitsManual and getgenv().FishmanState.Fluent.Options.T_DropFruitsManual.Value then
-                    getgenv().FishmanState.Fluent:Notify({ Title = "Action Prevented", Content = "Cannot store fruits while dropping is active!", Duration = 3 })
-                    task.spawn(function() getgenv().FishmanState.Fluent.Options.T_StoreFruitsManual:SetValue(false) end)
-                    return
-                end
-                getgenv()._cancelStoreFruits = false
-                task.spawn(function()
-                    getgenv().FishmanState.storeFruits(getgenv().FishmanState.targetFruits)
-                    if getgenv().FishmanState.Fluent.Options.T_StoreFruitsManual and getgenv().FishmanState.Fluent.Options.T_StoreFruitsManual.Value then
-                        getgenv().FishmanState.Fluent.Options.T_StoreFruitsManual:SetValue(false)
-                    end
-                end)
-            else
-                getgenv()._cancelStoreFruits = true
-            end
-        end
-    })
-    
-    getgenv().FishmanState.Tabs.Fishing:AddToggle("T_DropFruitsManual", {
-        Title = "Drop Fruits",
-        Description = "Force drop all target fruits.",
-        Default = false,
-        Callback = function(Value)
-            if Value then
-                if getgenv().FishmanState.Fluent.Options.T_StoreFruitsManual and getgenv().FishmanState.Fluent.Options.T_StoreFruitsManual.Value then
-                    getgenv().FishmanState.Fluent:Notify({ Title = "Action Prevented", Content = "Cannot drop fruits while manual storing is active!", Duration = 3 })
-                    task.spawn(function() getgenv().FishmanState.Fluent.Options.T_DropFruitsManual:SetValue(false) end)
-                    return
-                end
-                if getgenv().FishmanState.Fluent.Options.T_AutoStoreFruit and getgenv().FishmanState.Fluent.Options.T_AutoStoreFruit.Value then
-                    getgenv().FishmanState.Fluent:Notify({ Title = "Action Prevented", Content = "Please turn off Auto Store Fruit before dropping!", Duration = 3 })
-                    task.spawn(function() getgenv().FishmanState.Fluent.Options.T_DropFruitsManual:SetValue(false) end)
-                    return
-                end
-                getgenv()._cancelDropFruits = false
-                task.spawn(function()
-                    getgenv().FishmanState.dropFruits(getgenv().FishmanState.targetFruits)
-                    if getgenv().FishmanState.Fluent.Options.T_DropFruitsManual and getgenv().FishmanState.Fluent.Options.T_DropFruitsManual.Value then
-                        getgenv().FishmanState.Fluent.Options.T_DropFruitsManual:SetValue(false)
-                    end
-                end)
-            else
-                getgenv()._cancelDropFruits = true
-            end
-        end
-    })
-    
-    local autoStoreEnabled = false
-    local backpackConn = nil
-    local charConn = nil
-
-    local function setupFruitListener()
-        if backpackConn then
-            if getgenv().FishmanState.removeConn then
-                getgenv().FishmanState.removeConn(backpackConn)
-            else
-                pcall(function() backpackConn:Disconnect() end)
-            end
-            backpackConn = nil
-        end
-        local backpack = LocalPlayer:FindFirstChild("Backpack")
-        if backpack and autoStoreEnabled then
-            backpackConn = backpack.ChildAdded:Connect(function(child)
-                if autoStoreEnabled and child:IsA("Tool") then
-                    -- Slight delay to ensure tool attributes load
-                    task.delay(0.5, function()
-                        if autoStoreEnabled then
-                            getgenv()._cancelStoreFruits = false
-                            getgenv().FishmanState.storeFruits(getgenv().FishmanState.targetFruits)
-                        end
-                    end)
-                end
-            end)
-            getgenv().FishmanState.addConn(backpackConn)
-        end
-    end
-
-    getgenv().FishmanState.Tabs.Fishing:AddToggle("T_AutoStoreFruit", { 
-        Title = "Auto Store Fruit (Instantly)", 
-        Default = false, 
-        Callback = function(Value)
-            autoStoreEnabled = Value
-            if autoStoreEnabled then
-                if getgenv().FishmanState.Fluent.Options.T_DropFruitsManual and getgenv().FishmanState.Fluent.Options.T_DropFruitsManual.Value then
-                    getgenv().FishmanState.Fluent:Notify({ Title = "Action Prevented", Content = "Cannot enable Auto Store while dropping!", Duration = 3 })
-                    task.spawn(function() getgenv().FishmanState.Fluent.Options.T_AutoStoreFruit:SetValue(false) end)
-                    return
-                end
-                
-                -- Check immediately upon turning it on
-                task.spawn(function()
-                    getgenv()._cancelStoreFruits = false
-                    getgenv().FishmanState.storeFruits(getgenv().FishmanState.targetFruits)
-                end)
-                
-                -- Setup listeners for future fruits
-                setupFruitListener()
-                if not charConn then
-                    charConn = LocalPlayer.CharacterAdded:Connect(function()
-                        task.wait(1)
-                        if autoStoreEnabled then
-                            setupFruitListener()
-                        end
-                    end)
-                    getgenv().FishmanState.addConn(charConn)
-                end
-            else
-                if backpackConn then 
-                    if getgenv().FishmanState.removeConn then
-                        getgenv().FishmanState.removeConn(backpackConn)
-                    else
-                        pcall(function() backpackConn:Disconnect() end)
-                    end
-                    backpackConn = nil 
-                end
-                if charConn then
-                    if getgenv().FishmanState.removeConn then
-                        getgenv().FishmanState.removeConn(charConn)
-                    else
-                        pcall(function() charConn:Disconnect() end)
-                    end
-                    charConn = nil
-                end
-            end
-        end 
-    })
-
-    -- Status Monitor
-    local StatusPara = getgenv().FishmanState.Tabs.Fishing:AddParagraph({ Title = "Status", Content = "Idle" })
-    local statusParts = {}
-    task.spawn(function()
-        while getgenv().FishmanSession == mySession and getgenv().FishmanState._running and task.wait(1) do
-            table.clear(statusParts)
-            if getgenv().FishmanState.Model.State.isFishing then table.insert(statusParts, "Fishing") end
-            if getgenv().FishmanState.Model.State.autoBuy then table.insert(statusParts, "Buying") end
-            if getgenv().FishmanState.Model.State.autoSell then table.insert(statusParts, "Selling") end
-            if getgenv().FishmanState.Model.State.autoCraft then table.insert(statusParts,  getgenv().FishmanState.Model.State.isCurrentlyCrafting and "Crafting" or "Craft ON") end
-            if getgenv().FishmanState.isAFKModeActive then table.insert(statusParts, "[AFK ON]") end
-
-            if getgenv().FishmanState.Model.State.isAutoTraveling or getgenv().FishmanState.Model.State.travelMessage ~= "" then
-                StatusPara:SetDesc("Status: " .. getgenv().FishmanState.Model.State.travelMessage)
-                if getgenv().FishmanState.Model.State.travelMessage == "Arrived at Bait" and getgenv().FishmanState.Model.State.waitingForArrivalToFish then
-                    getgenv().FishmanState.Model.State.waitingForArrivalToFish = false
-                    if getgenv().FishmanState.Fluent and getgenv().FishmanState.Fluent.Options and getgenv().FishmanState.Fluent.Options.T_Fish then getgenv().FishmanState.Fluent.Options.T_Fish:SetValue(true) end -- Automatically turn on fishing toggle in UI
-                end
-            else
-                StatusPara:SetDesc(#statusParts > 0 and ("Active: " .. table.concat(statusParts, " ")) or "Idle")
-            end
-        end
-    end)
     
     if not isLobby and getgenv().FishmanState.GetCurrentPSCode() == GlobalMem.FishmanPSCode and GlobalMem.FishmanPSCode ~= "" then
         getgenv().FishmanState.Fluent:Notify({ Title = "Detection", Content = "Target Server " .. tostring(GlobalMem.FishmanPSCode) .. " Detected.", Duration = 5 })
