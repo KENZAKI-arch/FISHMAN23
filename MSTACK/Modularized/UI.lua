@@ -1467,6 +1467,17 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
             task.spawn(getgenv().FishmanState.Model.ForceCraftAll)
         end
     })
+    getgenv().FishmanState.Tabs.Fishing:AddSlider("S_ShipSpeed", {
+        Title = "Return To Ship Speed",
+        Description = "Adjusts flight speed (300 is recommended)",
+        Default = 60,
+        Min = 50,
+        Max = 1000,
+        Rounding = 0,
+        Callback = function(Value)
+            getgenv().FishmanState.Model.State.shipSpeed = Value
+        end
+    })
     getgenv().FishmanState.Tabs.Fishing:AddToggle("T_AFK", { Title = "AFK Mode (Auto-start after 10s)", Default = false, Callback = function(Value) 
         if isLobby then if Value then getgenv().FishmanState.Fluent:Notify({ Title = "Error", Content = "AFK Mode requires Fishing server!", Duration = 3 }); getgenv().FishmanState.Fluent.Options.T_AFK:SetValue(false) end return end
         getgenv().FishmanState.isAFKModeActive = Value; getgenv().FishmanState.secondsSinceLastInput = 0 
@@ -1611,26 +1622,14 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
         end 
     })
 
-    -- Status Monitor
-    local StatusPara = getgenv().FishmanState.Tabs.Fishing:AddParagraph({ Title = "Status", Content = "Idle" })
-    local statusParts = {}
+    -- Travel arrival watcher (auto-enables Auto Fish on arrival at bait)
     task.spawn(function()
         while getgenv().FishmanSession == mySession and getgenv().FishmanState._running and task.wait(1) do
-            table.clear(statusParts)
-            if getgenv().FishmanState.Model.State.isFishing then table.insert(statusParts, "Fishing") end
-            if getgenv().FishmanState.Model.State.autoBuy then table.insert(statusParts, "Buying") end
-            if getgenv().FishmanState.Model.State.autoSell then table.insert(statusParts, "Selling") end
-            if getgenv().FishmanState.Model.State.autoCraft then table.insert(statusParts,  getgenv().FishmanState.Model.State.isCurrentlyCrafting and "Crafting" or "Craft ON") end
-            if getgenv().FishmanState.isAFKModeActive then table.insert(statusParts, "[AFK ON]") end
-
-            if getgenv().FishmanState.Model.State.isAutoTraveling or getgenv().FishmanState.Model.State.travelMessage ~= "" then
-                StatusPara:SetDesc("Status: " .. getgenv().FishmanState.Model.State.travelMessage)
-                if getgenv().FishmanState.Model.State.travelMessage == "Arrived at Bait" and getgenv().FishmanState.Model.State.waitingForArrivalToFish then
-                    getgenv().FishmanState.Model.State.waitingForArrivalToFish = false
-                    if getgenv().FishmanState.Fluent and getgenv().FishmanState.Fluent.Options and getgenv().FishmanState.Fluent.Options.T_Fish then getgenv().FishmanState.Fluent.Options.T_Fish:SetValue(true) end -- Automatically turn on fishing toggle in UI
+            if getgenv().FishmanState.Model.State.travelMessage == "Arrived at Bait" and getgenv().FishmanState.Model.State.waitingForArrivalToFish then
+                getgenv().FishmanState.Model.State.waitingForArrivalToFish = false
+                if getgenv().FishmanState.Fluent and getgenv().FishmanState.Fluent.Options and getgenv().FishmanState.Fluent.Options.T_Fish then
+                    getgenv().FishmanState.Fluent.Options.T_Fish:SetValue(true)
                 end
-            else
-                StatusPara:SetDesc(#statusParts > 0 and ("Active: " .. table.concat(statusParts, " ")) or "Idle")
             end
         end
     end)
@@ -1940,19 +1939,6 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
         end 
     })
 
-    getgenv().FishmanState.Tabs.Fishing:AddSlider("S_ShipSpeed", {
-        Title = "Return To Ship Speed",
-        Description = "Adjusts flight speed (300 is recommended)",
-        Default = 60,
-        Min = 50,
-        Max = 1000,
-        Rounding = 0,
-        Callback = function(Value)
-            getgenv().FishmanState.Model.State.shipSpeed = Value
-        end
-    })
-
-    
     if not isLobby and getgenv().FishmanState.GetCurrentPSCode() == GlobalMem.FishmanPSCode and GlobalMem.FishmanPSCode ~= "" then
         getgenv().FishmanState.Fluent:Notify({ Title = "Detection", Content = "Target Server " .. tostring(GlobalMem.FishmanPSCode) .. " Detected.", Duration = 5 })
     end
