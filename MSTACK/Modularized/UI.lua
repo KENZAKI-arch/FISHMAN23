@@ -21,6 +21,21 @@ local mySession = getgenv().FishmanSession or 0
 local Fluent = { Options = {} }
 getgenv().FishmanState.Fluent = Fluent
 
+local THEME = {
+    Bg        = Color3.fromRGB(16, 18, 24),
+    Surface   = Color3.fromRGB(22, 25, 33),
+    Card      = Color3.fromRGB(28, 32, 42),
+    CardHover = Color3.fromRGB(36, 41, 54),
+    Border    = Color3.fromRGB(48, 54, 68),
+    Accent    = Color3.fromRGB(88, 166, 255),
+    On        = Color3.fromRGB(72, 219, 132),
+    Off       = Color3.fromRGB(235, 95, 105),
+    Text      = Color3.fromRGB(235, 240, 248),
+    Muted     = Color3.fromRGB(145, 154, 170),
+    FontMain  = Enum.Font.GothamMedium,
+    FontMono  = Enum.Font.Code,
+}
+
 local notifyGui, notifyContainer
 local function getNotifyContainer()
     if notifyContainer and notifyContainer.Parent then return notifyContainer end
@@ -30,122 +45,146 @@ local function getNotifyContainer()
 
     notifyGui = Instance.new("ScreenGui")
     notifyGui.Name = "FishmanNotify"
+    notifyGui.ResetOnSpawn = false
     notifyGui.Parent = coreGui
 
     notifyContainer = Instance.new("Frame")
-    notifyContainer.Size = UDim2.new(0, 200, 1, -20)
-    notifyContainer.Position = UDim2.new(1, -210, 0, 10)
+    notifyContainer.Size = UDim2.new(0, 230, 1, -20)
+    notifyContainer.Position = UDim2.new(1, -240, 0, 10)
     notifyContainer.BackgroundTransparency = 1
     notifyContainer.Parent = notifyGui
 
     local layout = Instance.new("UIListLayout")
     layout.SortOrder = Enum.SortOrder.LayoutOrder
     layout.VerticalAlignment = Enum.VerticalAlignment.Bottom
-    layout.Padding = UDim.new(0, 5)
+    layout.Padding = UDim.new(0, 6)
     layout.Parent = notifyContainer
 
     return notifyContainer
 end
 
 function Fluent:Notify(options)
-    task.spawn(function()
-        local container = getNotifyContainer()
-        
-        local frame = Instance.new("Frame")
-        frame.Size = UDim2.new(1, 0, 0, 50)
-        frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-        frame.BorderSizePixel = 1
-        frame.BorderColor3 = Color3.fromRGB(60, 60, 60)
-        frame.Parent = container
-        
-        local txt = Instance.new("TextLabel")
-        txt.Size = UDim2.new(1, -10, 1, -10)
-        txt.Position = UDim2.new(0, 5, 0, 5)
-        txt.BackgroundTransparency = 1
-        txt.Text = (options.Title or "") .. "\n" .. (options.Content or "")
-        txt.TextColor3 = Color3.fromRGB(255, 255, 255)
-        txt.TextXAlignment = Enum.TextXAlignment.Left
-        txt.TextYAlignment = Enum.TextYAlignment.Top
-        txt.Font = Enum.Font.Code
-        txt.TextSize = 12
-        txt.TextWrapped = true
-        txt.Parent = frame
-        
-        task.wait(options.Duration or 3)
+    local container = getNotifyContainer()
+
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(1, 0, 0, 0)
+    frame.AutomaticSize = Enum.AutomaticSize.Y
+    frame.BackgroundColor3 = THEME.Surface
+    frame.BorderSizePixel = 1
+    frame.BorderColor3 = THEME.Border
+    frame.Parent = container
+
+    local accent = Instance.new("Frame")
+    accent.Size = UDim2.new(0, 3, 1, 0)
+    accent.BackgroundColor3 = THEME.Accent
+    accent.BorderSizePixel = 0
+    accent.Parent = frame
+
+    local pad = Instance.new("UIPadding")
+    pad.PaddingLeft = UDim.new(0, 9)
+    pad.PaddingRight = UDim.new(0, 8)
+    pad.PaddingTop = UDim.new(0, 6)
+    pad.PaddingBottom = UDim.new(0, 6)
+    pad.Parent = frame
+
+    local txt = Instance.new("TextLabel")
+    txt.Size = UDim2.new(1, 0, 0, 0)
+    txt.AutomaticSize = Enum.AutomaticSize.Y
+    txt.BackgroundTransparency = 1
+    txt.RichText = true
+    txt.Text = string.format("<b>%s</b>\n<font color=\"rgb(175,184,200)\">%s</font>", tostring(options.Title or ""), tostring(options.Content or ""))
+    txt.TextColor3 = THEME.Text
+    txt.TextXAlignment = Enum.TextXAlignment.Left
+    txt.TextYAlignment = Enum.TextYAlignment.Top
+    txt.Font = THEME.FontMain
+    txt.TextSize = 11
+    txt.TextWrapped = true
+    txt.Parent = frame
+
+    task.delay(options.Duration or 3, function()
         if frame and frame.Parent then frame:Destroy() end
     end)
 end
 
 function Fluent:CreateWindow(options)
     local FakeWindow = {}
-    
+
     local sg = Instance.new("ScreenGui")
     sg.Name = "FishmanHubCustom"
+    sg.ResetOnSpawn = false
     sg.Parent = game:GetService("CoreGui")
-    
+
     FakeWindow.Destroy = function(self)
         sg:Destroy()
         if notifyGui and notifyGui.Parent then notifyGui:Destroy() end
     end
     env.Fishman_DestroyUI = function() pcall(function() FakeWindow:Destroy() end) end
-    
+
     local mainFrame = Instance.new("Frame")
-    mainFrame.Size = UDim2.new(0, 500, 0, 350)
-    mainFrame.Position = UDim2.new(0.5, -250, 0.5, -175)
-    mainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+    mainFrame.Size = UDim2.new(0, 520, 0, 360)
+    mainFrame.Position = UDim2.new(0.5, -260, 0.5, -180)
+    mainFrame.BackgroundColor3 = THEME.Bg
     mainFrame.BorderSizePixel = 1
-    mainFrame.BorderColor3 = Color3.fromRGB(50, 50, 50)
+    mainFrame.BorderColor3 = THEME.Border
     mainFrame.Active = true
     mainFrame.Parent = sg
-    
+
     local topBar = Instance.new("Frame")
-    topBar.Size = UDim2.new(1, 0, 0, 25)
-    topBar.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+    topBar.Size = UDim2.new(1, 0, 0, 28)
+    topBar.BackgroundColor3 = THEME.Surface
     topBar.BorderSizePixel = 0
     topBar.Parent = mainFrame
-    
+
+    local topDivider = Instance.new("Frame")
+    topDivider.Size = UDim2.new(1, 0, 0, 1)
+    topDivider.Position = UDim2.new(0, 0, 1, -1)
+    topDivider.BackgroundColor3 = THEME.Border
+    topDivider.BorderSizePixel = 0
+    topDivider.Parent = topBar
+
     local titleLabel = Instance.new("TextLabel")
-    titleLabel.Size = UDim2.new(1, -60, 1, 0)
-    titleLabel.Position = UDim2.new(0, 5, 0, 0)
+    titleLabel.Size = UDim2.new(1, -64, 1, 0)
+    titleLabel.Position = UDim2.new(0, 10, 0, 0)
     titleLabel.BackgroundTransparency = 1
-    titleLabel.Text = (options.Title or "Hub") .. " | " .. (options.SubTitle or "")
-    titleLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+    titleLabel.RichText = true
+    titleLabel.Text = string.format("<b>%s</b>  <font color=\"rgb(135,145,165)\">|  %s</font>", tostring(options.Title or "Hub"), tostring(options.SubTitle or ""))
+    titleLabel.TextColor3 = THEME.Text
     titleLabel.TextXAlignment = Enum.TextXAlignment.Left
-    titleLabel.Font = Enum.Font.Code
+    titleLabel.Font = THEME.FontMain
     titleLabel.TextSize = 12
     titleLabel.Parent = topBar
-    
+
     local minBtn = Instance.new("TextButton")
-    minBtn.Size = UDim2.new(0, 25, 0, 25)
-    minBtn.Position = UDim2.new(1, -50, 0, 0)
+    minBtn.Size = UDim2.new(0, 28, 0, 27)
+    minBtn.Position = UDim2.new(1, -56, 0, 0)
     minBtn.BackgroundTransparency = 1
-    minBtn.Text = "-"
-    minBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
-    minBtn.Font = Enum.Font.Code
-    minBtn.TextSize = 14
+    minBtn.Text = "—"
+    minBtn.TextColor3 = THEME.Muted
+    minBtn.Font = THEME.FontMain
+    minBtn.TextSize = 12
     minBtn.Parent = topBar
-    
+
     local closeBtn = Instance.new("TextButton")
-    closeBtn.Size = UDim2.new(0, 25, 0, 25)
-    closeBtn.Position = UDim2.new(1, -25, 0, 0)
+    closeBtn.Size = UDim2.new(0, 28, 0, 27)
+    closeBtn.Position = UDim2.new(1, -28, 0, 0)
     closeBtn.BackgroundTransparency = 1
-    closeBtn.Text = "X"
-    closeBtn.TextColor3 = Color3.fromRGB(200, 100, 100)
-    closeBtn.Font = Enum.Font.Code
-    closeBtn.TextSize = 14
+    closeBtn.Text = "✕"
+    closeBtn.TextColor3 = THEME.Off
+    closeBtn.Font = THEME.FontMain
+    closeBtn.TextSize = 12
     closeBtn.Parent = topBar
-    
+
     local isMinimized = false
     local function toggleMinimize()
         isMinimized = not isMinimized
-        mainFrame.Size = UDim2.new(0, 500, 0, isMinimized and 25 or 350)
+        mainFrame.Size = UDim2.new(0, 520, 0, isMinimized and 28 or 360)
         for _, c in ipairs(mainFrame:GetChildren()) do
             if c ~= topBar and c.Name ~= "UICorner" then c.Visible = not isMinimized end
         end
     end
     minBtn.MouseButton1Click:Connect(toggleMinimize)
     closeBtn.MouseButton1Click:Connect(function() FakeWindow:Destroy() end)
-    
+
     if options.MinimizeKey then
         getgenv().FishmanState.addConn(UserInputService.InputBegan:Connect(function(input, processed)
             if not processed and input.KeyCode == options.MinimizeKey then
@@ -153,91 +192,159 @@ function Fluent:CreateWindow(options)
             end
         end))
     end
-    
-    local dragging, dragStart, startPos
+
+    -- Single shared drag handler for both window dragging and all sliders (zero per-slider UIS listeners)
+    local activeDragUpdate = nil
+    local draggingWindow, dragStart, startPos
     topBar.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            dragging = true; dragStart = input.Position; startPos = mainFrame.Position
-            input.Changed:Connect(function() if input.UserInputState == Enum.UserInputState.End then dragging = false end end)
+            draggingWindow = true
+            dragStart = input.Position
+            startPos = mainFrame.Position
         end
     end)
+    getgenv().FishmanState.addConn(UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            draggingWindow = false
+            activeDragUpdate = nil
+        end
+    end))
     getgenv().FishmanState.addConn(UserInputService.InputChanged:Connect(function(input)
-        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-            local delta = input.Position - dragStart
-            mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+            if draggingWindow then
+                local delta = input.Position - dragStart
+                mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+            elseif activeDragUpdate then
+                activeDragUpdate(input.Position.X)
+            end
         end
     end))
 
     local tabContainer = Instance.new("ScrollingFrame")
-    tabContainer.Size = UDim2.new(0, 120, 1, -25)
-    tabContainer.Position = UDim2.new(0, 0, 0, 25)
-    tabContainer.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+    tabContainer.Size = UDim2.new(0, 124, 1, -28)
+    tabContainer.Position = UDim2.new(0, 0, 0, 28)
+    tabContainer.BackgroundColor3 = THEME.Surface
     tabContainer.BorderSizePixel = 0
     tabContainer.ScrollBarThickness = 2
+    tabContainer.ScrollBarImageColor3 = THEME.Border
     tabContainer.Parent = mainFrame
+
+    local tabPad = Instance.new("UIPadding", tabContainer)
+    tabPad.PaddingTop = UDim.new(0, 6)
+    tabPad.PaddingLeft = UDim.new(0, 6)
+    tabPad.PaddingRight = UDim.new(0, 6)
     local tabLayout = Instance.new("UIListLayout", tabContainer)
-    tabLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function() tabContainer.CanvasSize = UDim2.new(0,0,0,tabLayout.AbsoluteContentSize.Y) end)
+    tabLayout.Padding = UDim.new(0, 4)
+    tabLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+        tabContainer.CanvasSize = UDim2.new(0, 0, 0, tabLayout.AbsoluteContentSize.Y + 12)
+    end)
+
+    local sideDivider = Instance.new("Frame")
+    sideDivider.Size = UDim2.new(0, 1, 1, -28)
+    sideDivider.Position = UDim2.new(0, 124, 0, 28)
+    sideDivider.BackgroundColor3 = THEME.Border
+    sideDivider.BorderSizePixel = 0
+    sideDivider.Parent = mainFrame
 
     local contentContainer = Instance.new("Frame")
-    contentContainer.Size = UDim2.new(1, -120, 1, -25)
-    contentContainer.Position = UDim2.new(0, 120, 0, 25)
-    contentContainer.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+    contentContainer.Size = UDim2.new(1, -125, 1, -28)
+    contentContainer.Position = UDim2.new(0, 125, 0, 28)
+    contentContainer.BackgroundColor3 = THEME.Bg
     contentContainer.BorderSizePixel = 0
     contentContainer.Parent = mainFrame
 
     local tabsList = {}
-    local activeTabBtn, activeContent = nil, nil
+    local activeTabBtn, activeTabBar, activeContent = nil, nil, nil
+
+    local function setActiveTab(tabBtn, tabBar, contentScroll)
+        if activeTabBtn then
+            activeTabBtn.TextColor3 = THEME.Muted
+            activeTabBtn.BackgroundColor3 = THEME.Surface
+            if activeTabBar then activeTabBar.Visible = false end
+            activeContent.Visible = false
+        end
+        activeTabBtn = tabBtn
+        activeTabBar = tabBar
+        activeContent = contentScroll
+        tabBtn.TextColor3 = THEME.Text
+        tabBtn.BackgroundColor3 = THEME.CardHover
+        tabBar.Visible = true
+        contentScroll.Visible = true
+    end
 
     function FakeWindow:AddTab(tabArgs)
         local tabBtn = Instance.new("TextButton")
-        tabBtn.Size = UDim2.new(1, 0, 0, 25)
-        tabBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-        tabBtn.BorderSizePixel = 1
-        tabBtn.BorderColor3 = Color3.fromRGB(40, 40, 40)
-        tabBtn.Text = tabArgs.Title
-        tabBtn.TextColor3 = Color3.fromRGB(150, 150, 150)
-        tabBtn.Font = Enum.Font.Code
-        tabBtn.TextSize = 12
+        tabBtn.Size = UDim2.new(1, 0, 0, 26)
+        tabBtn.BackgroundColor3 = THEME.Surface
+        tabBtn.BorderSizePixel = 0
+        tabBtn.AutoButtonColor = false
+        tabBtn.Text = "  " .. tabArgs.Title
+        tabBtn.TextColor3 = THEME.Muted
+        tabBtn.TextXAlignment = Enum.TextXAlignment.Left
+        tabBtn.Font = THEME.FontMain
+        tabBtn.TextSize = 11
         tabBtn.Parent = tabContainer
-        
+
+        local tabBar = Instance.new("Frame")
+        tabBar.Size = UDim2.new(0, 2, 1, -6)
+        tabBar.Position = UDim2.new(0, 0, 0, 3)
+        tabBar.BackgroundColor3 = THEME.Accent
+        tabBar.BorderSizePixel = 0
+        tabBar.Visible = false
+        tabBar.Parent = tabBtn
+
         local contentScroll = Instance.new("ScrollingFrame")
-        contentScroll.Size = UDim2.new(1, -10, 1, -10)
-        contentScroll.Position = UDim2.new(0, 5, 0, 5)
+        contentScroll.Size = UDim2.new(1, 0, 1, 0)
         contentScroll.BackgroundTransparency = 1
         contentScroll.BorderSizePixel = 0
-        contentScroll.ScrollBarThickness = 2
+        contentScroll.ScrollBarThickness = 3
+        contentScroll.ScrollBarImageColor3 = THEME.Border
         contentScroll.Visible = false
         contentScroll.Parent = contentContainer
+
+        local contentPad = Instance.new("UIPadding", contentScroll)
+        contentPad.PaddingTop = UDim.new(0, 6)
+        contentPad.PaddingBottom = UDim.new(0, 6)
+        contentPad.PaddingLeft = UDim.new(0, 8)
+        contentPad.PaddingRight = UDim.new(0, 8)
         local contentLayout = Instance.new("UIListLayout", contentScroll)
-        contentLayout.Padding = UDim.new(0, 2)
-        contentLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function() contentScroll.CanvasSize = UDim2.new(0,0,0,contentLayout.AbsoluteContentSize.Y) end)
-        
-        tabBtn.MouseButton1Click:Connect(function()
-            if activeTabBtn then activeTabBtn.TextColor3 = Color3.fromRGB(150, 150, 150); activeContent.Visible = false end
-            activeTabBtn = tabBtn; activeContent = contentScroll
-            tabBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-            contentScroll.Visible = true
+        contentLayout.Padding = UDim.new(0, 4)
+        contentLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+            contentScroll.CanvasSize = UDim2.new(0, 0, 0, contentLayout.AbsoluteContentSize.Y + 12)
         end)
-        if not activeTabBtn then tabBtn.TextColor3 = Color3.fromRGB(255, 255, 255); activeTabBtn = tabBtn; activeContent = contentScroll; contentScroll.Visible = true end
-        
+
+        tabBtn.MouseButton1Click:Connect(function()
+            setActiveTab(tabBtn, tabBar, contentScroll)
+        end)
+        if not activeTabBtn then
+            setActiveTab(tabBtn, tabBar, contentScroll)
+        end
+
         local FakeTab = {}
-        table.insert(tabsList, { Btn = tabBtn, Content = contentScroll })
-        
+        table.insert(tabsList, { Btn = tabBtn, Bar = tabBar, Content = contentScroll })
+
         function FakeTab:AddToggle(id, tArgs)
             local isTable = type(id) == "table"; if isTable then tArgs = id; id = nil end
             local btn = Instance.new("TextButton")
-            btn.Size = UDim2.new(1, 0, 0, 22)
-            btn.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-            btn.BorderSizePixel = 0
+            btn.Size = UDim2.new(1, 0, 0, 24)
+            btn.BackgroundColor3 = THEME.Card
+            btn.BorderSizePixel = 1
+            btn.BorderColor3 = THEME.Border
+            btn.AutoButtonColor = false
+            btn.RichText = true
             btn.TextXAlignment = Enum.TextXAlignment.Left
-            btn.Font = Enum.Font.Code
-            btn.TextSize = 12
+            btn.Font = THEME.FontMain
+            btn.TextSize = 11
             btn.Parent = contentScroll
-            
+
             local FakeToggle = { Value = tArgs.Default or false }
             local function update()
-                btn.Text = " " .. (FakeToggle.Value and "[ON] " or "[OFF] ") .. tArgs.Title
-                btn.TextColor3 = FakeToggle.Value and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(200, 100, 100)
+                if FakeToggle.Value then
+                    btn.Text = string.format("  <font color=\"rgb(72,219,132)\"><b>[ON]</b></font>  %s", tArgs.Title)
+                else
+                    btn.Text = string.format("  <font color=\"rgb(235,95,105)\"><b>[OFF]</b></font> %s", tArgs.Title)
+                end
+                btn.TextColor3 = THEME.Text
                 if tArgs.Callback then task.spawn(tArgs.Callback, FakeToggle.Value) end
             end
             btn.MouseButton1Click:Connect(function() FakeToggle.Value = not FakeToggle.Value; update() end)
@@ -245,201 +352,254 @@ function Fluent:CreateWindow(options)
             if not isTable and id then getgenv().FishmanState.Fluent.Options[id] = FakeToggle end
             update(); return FakeToggle
         end
-        
+
         function FakeTab:AddButton(bArgs)
             local btn = Instance.new("TextButton")
-            btn.Size = UDim2.new(1, 0, 0, 22)
-            btn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-            btn.BorderSizePixel = 0
-            btn.Text = " > " .. bArgs.Title
-            btn.TextColor3 = Color3.fromRGB(200, 200, 200)
+            btn.Size = UDim2.new(1, 0, 0, 24)
+            btn.BackgroundColor3 = THEME.CardHover
+            btn.BorderSizePixel = 1
+            btn.BorderColor3 = THEME.Border
+            btn.Text = "  ›  " .. bArgs.Title
+            btn.TextColor3 = THEME.Text
             btn.TextXAlignment = Enum.TextXAlignment.Left
-            btn.Font = Enum.Font.Code
-            btn.TextSize = 12
+            btn.Font = THEME.FontMain
+            btn.TextSize = 11
             btn.Parent = contentScroll
             btn.MouseButton1Click:Connect(function() if bArgs.Callback then task.spawn(bArgs.Callback) end end)
         end
-        
+
         function FakeTab:AddSlider(id, sArgs)
             local isTable = type(id) == "table"; if isTable then sArgs = id; id = nil end
             local frame = Instance.new("Frame")
-            frame.Size = UDim2.new(1, 0, 0, 32)
-            frame.BackgroundTransparency = 1
+            frame.Size = UDim2.new(1, 0, 0, 34)
+            frame.BackgroundColor3 = THEME.Card
+            frame.BorderSizePixel = 1
+            frame.BorderColor3 = THEME.Border
             frame.Parent = contentScroll
+
             local lbl = Instance.new("TextLabel")
-            lbl.Size = UDim2.new(1, -5, 0, 16)
+            lbl.Size = UDim2.new(1, -12, 0, 16)
+            lbl.Position = UDim2.new(0, 6, 0, 2)
             lbl.BackgroundTransparency = 1
-            lbl.TextColor3 = Color3.fromRGB(200, 200, 200)
+            lbl.TextColor3 = THEME.Text
             lbl.TextXAlignment = Enum.TextXAlignment.Left
-            lbl.Font = Enum.Font.Code
-            lbl.TextSize = 12
+            lbl.Font = THEME.FontMain
+            lbl.TextSize = 11
             lbl.Parent = frame
+
             local bg = Instance.new("TextButton")
-            bg.Size = UDim2.new(1, -10, 0, 10)
-            bg.Position = UDim2.new(0, 5, 0, 18)
-            bg.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+            bg.Size = UDim2.new(1, -12, 0, 8)
+            bg.Position = UDim2.new(0, 6, 0, 21)
+            bg.BackgroundColor3 = THEME.Bg
+            bg.BorderSizePixel = 0
             bg.Text = ""; bg.AutoButtonColor = false
             bg.Parent = frame
+
             local fill = Instance.new("Frame")
             fill.Size = UDim2.new(0, 0, 1, 0)
-            fill.BackgroundColor3 = Color3.fromRGB(100, 150, 255)
+            fill.BackgroundColor3 = THEME.Accent
             fill.BorderSizePixel = 0
             fill.Parent = bg
-            
+
             local FakeSlider = { Value = sArgs.Default or sArgs.Min }
+            local range = math.max(1e-6, sArgs.Max - sArgs.Min)
+            local step = sArgs.Rounding and (10 ^ -sArgs.Rounding) or 1
             local function update(val)
                 val = math.clamp(val, sArgs.Min, sArgs.Max)
                 FakeSlider.Value = val
-                lbl.Text = " " .. sArgs.Title .. ": " .. tostring(val)
-                fill.Size = UDim2.new((val - sArgs.Min) / (sArgs.Max - sArgs.Min), 0, 1, 0)
+                lbl.Text = sArgs.Title .. ": " .. tostring(val)
+                fill.Size = UDim2.new((val - sArgs.Min) / range, 0, 1, 0)
                 if sArgs.Callback then task.spawn(sArgs.Callback, val) end
             end
-            local dragging = false
-            bg.InputBegan:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then dragging = true end end)
-            getgenv().FishmanState.addConn(UserInputService.InputEnded:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then dragging = false end end))
-            getgenv().FishmanState.addConn(UserInputService.InputChanged:Connect(function(input)
-                if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-                    local pct = math.clamp(input.Position.X - bg.AbsolutePosition.X, 0, bg.AbsoluteSize.X) / bg.AbsoluteSize.X
-                    local step = sArgs.Rounding and (10 ^ -sArgs.Rounding) or 1
-                    update(math.floor((sArgs.Min + (sArgs.Max - sArgs.Min) * pct) / step + 0.5) * step)
+            local function updateFromX(mouseX)
+                local width = math.max(1, bg.AbsoluteSize.X)
+                local pct = math.clamp(mouseX - bg.AbsolutePosition.X, 0, width) / width
+                update(math.floor((sArgs.Min + range * pct) / step + 0.5) * step)
+            end
+            bg.InputBegan:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                    activeDragUpdate = updateFromX
+                    updateFromX(input.Position.X)
                 end
-            end))
+            end)
             FakeSlider.SetValue = function(self, val) update(val) end
             if not isTable and id then getgenv().FishmanState.Fluent.Options[id] = FakeSlider end
             update(FakeSlider.Value); return FakeSlider
         end
-        
+
         function FakeTab:AddDropdown(id, dArgs)
             local isTable = type(id) == "table"; if isTable then dArgs = id; id = nil end
             local frame = Instance.new("Frame")
-            frame.Size = UDim2.new(1, 0, 0, 22)
-            frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-            frame.BorderSizePixel = 0
+            frame.Size = UDim2.new(1, 0, 0, 24)
+            frame.BackgroundColor3 = THEME.Card
+            frame.BorderSizePixel = 1
+            frame.BorderColor3 = THEME.Border
             frame.ClipsDescendants = true
             frame.Parent = contentScroll
+
             local btn = Instance.new("TextButton")
-            btn.Size = UDim2.new(1, 0, 0, 22)
+            btn.Size = UDim2.new(1, 0, 0, 24)
             btn.BackgroundTransparency = 1
-            btn.TextColor3 = Color3.fromRGB(200, 200, 200)
+            btn.TextColor3 = THEME.Text
             btn.TextXAlignment = Enum.TextXAlignment.Left
-            btn.Font = Enum.Font.Code
-            btn.TextSize = 12
+            btn.Font = THEME.FontMain
+            btn.TextSize = 11
             btn.Parent = frame
+
             local list = Instance.new("ScrollingFrame")
-            list.Size = UDim2.new(1, 0, 0, 80)
-            list.Position = UDim2.new(0, 0, 0, 22)
-            list.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+            list.Size = UDim2.new(1, 0, 0, 88)
+            list.Position = UDim2.new(0, 0, 0, 24)
+            list.BackgroundColor3 = THEME.Surface
             list.BorderSizePixel = 0
             list.ScrollBarThickness = 2
+            list.ScrollBarImageColor3 = THEME.Border
             list.Parent = frame
             local listLayout = Instance.new("UIListLayout", list)
-            
+
             local isOpen = false
-            btn.MouseButton1Click:Connect(function() isOpen = not isOpen; frame.Size = UDim2.new(1, 0, 0, isOpen and 102 or 22) end)
-            
+            btn.MouseButton1Click:Connect(function()
+                isOpen = not isOpen
+                frame.Size = UDim2.new(1, 0, 0, isOpen and 112 or 24)
+            end)
+
             local initVal = dArgs.Default
             if type(initVal) == "number" and not dArgs.Multi and dArgs.Values and dArgs.Values[initVal] then
                 initVal = dArgs.Values[initVal]
             end
             local FakeDrop = { Value = initVal or (dArgs.Multi and {} or "") }
+            local optionUpdaters = {}
+
+            local function refreshAllVis()
+                for _, fn in ipairs(optionUpdaters) do fn() end
+            end
+
+            local function formatHeader()
+                local label = (dArgs.Multi and type(FakeDrop.Value) == "table") and (#FakeDrop.Value .. " selected") or tostring(FakeDrop.Value)
+                btn.Text = "  ▾ " .. dArgs.Title .. ": " .. label
+            end
+
             local function populate(vals)
+                table.clear(optionUpdaters)
                 for _, c in ipairs(list:GetChildren()) do if c:IsA("TextButton") then c:Destroy() end end
                 for _, v in ipairs(vals) do
                     local opt = Instance.new("TextButton")
                     opt.Size = UDim2.new(1, 0, 0, 20)
                     opt.BackgroundTransparency = 1
-                    opt.Text = "  " .. tostring(v)
-                    opt.TextColor3 = Color3.fromRGB(150, 150, 150)
+                    opt.Text = "    " .. tostring(v)
+                    opt.TextColor3 = THEME.Muted
                     opt.TextXAlignment = Enum.TextXAlignment.Left
-                    opt.Font = Enum.Font.Code
+                    opt.Font = THEME.FontMono
                     opt.TextSize = 11
                     opt.Parent = list
+
                     local function updateVis()
                         if dArgs.Multi then
                             local f = false; for _, sv in ipairs(FakeDrop.Value) do if sv == v then f = true break end end
-                            opt.TextColor3 = f and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(150, 150, 150)
+                            opt.TextColor3 = f and THEME.On or THEME.Muted
                         else
-                            opt.TextColor3 = (FakeDrop.Value == v) and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(150, 150, 150)
+                            opt.TextColor3 = (FakeDrop.Value == v) and THEME.On or THEME.Muted
                         end
                     end
+                    table.insert(optionUpdaters, updateVis)
+
                     opt.MouseButton1Click:Connect(function()
                         if dArgs.Multi then
                             local fIdx = nil; for i, sv in ipairs(FakeDrop.Value) do if sv == v then fIdx = i break end end
                             if fIdx then table.remove(FakeDrop.Value, fIdx) else table.insert(FakeDrop.Value, v) end
                         else
-                            FakeDrop.Value = v; isOpen = false; frame.Size = UDim2.new(1, 0, 0, 22)
+                            FakeDrop.Value = v; isOpen = false; frame.Size = UDim2.new(1, 0, 0, 24)
                         end
-                        btn.Text = " ▼ " .. dArgs.Title .. ": " .. (dArgs.Multi and #FakeDrop.Value .. " selected" or tostring(FakeDrop.Value))
-                        for _, c in ipairs(list:GetChildren()) do if c:IsA("TextButton") then c.TextColor3 = Color3.fromRGB(150, 150, 150) end end
-                        updateVis()
+                        formatHeader()
+                        refreshAllVis()
                         if dArgs.Callback then task.spawn(dArgs.Callback, FakeDrop.Value) end
                     end)
                     updateVis()
                 end
                 list.CanvasSize = UDim2.new(0, 0, 0, listLayout.AbsoluteContentSize.Y)
             end
+
             FakeDrop.SetValues = function(self, vals) populate(vals) end
             FakeDrop.SetValue = function(self, val)
                 self.Value = val
-                btn.Text = " ▼ " .. dArgs.Title .. ": " .. (dArgs.Multi and type(self.Value) == "table" and #self.Value .. " selected" or tostring(self.Value))
+                formatHeader()
+                refreshAllVis()
                 if dArgs.Callback then task.spawn(dArgs.Callback, self.Value) end
             end
             if not isTable and id then getgenv().FishmanState.Fluent.Options[id] = FakeDrop end
             populate(dArgs.Values or {})
-            btn.Text = " ▼ " .. dArgs.Title .. ": " .. (dArgs.Multi and type(FakeDrop.Value) == "table" and #FakeDrop.Value .. " selected" or tostring(FakeDrop.Value))
+            formatHeader()
             if initVal and dArgs.Callback then task.spawn(dArgs.Callback, initVal) end
             return FakeDrop
         end
-        
+
         function FakeTab:AddParagraph(id, pArgs)
             local isTable = type(id) == "table"; if isTable then pArgs = id; id = nil end
+            local card = Instance.new("Frame")
+            card.Size = UDim2.new(1, 0, 0, 0)
+            card.AutomaticSize = Enum.AutomaticSize.Y
+            card.BackgroundColor3 = THEME.Card
+            card.BorderSizePixel = 1
+            card.BorderColor3 = THEME.Border
+            card.Parent = contentScroll
+
+            local pad = Instance.new("UIPadding", card)
+            pad.PaddingTop = UDim.new(0, 6)
+            pad.PaddingBottom = UDim.new(0, 6)
+            pad.PaddingLeft = UDim.new(0, 8)
+            pad.PaddingRight = UDim.new(0, 8)
+
             local lbl = Instance.new("TextLabel")
             lbl.Size = UDim2.new(1, 0, 0, 0)
             lbl.AutomaticSize = Enum.AutomaticSize.Y
             lbl.BackgroundTransparency = 1
-            lbl.Text = " " .. (pArgs.Title or "") .. "\n " .. (pArgs.Content or "")
-            lbl.TextColor3 = Color3.fromRGB(180, 180, 180)
+            lbl.Text = (pArgs.Title or "") .. "\n" .. (pArgs.Content or "")
+            lbl.TextColor3 = THEME.Text
             lbl.TextXAlignment = Enum.TextXAlignment.Left
             lbl.TextYAlignment = Enum.TextYAlignment.Top
-            lbl.Font = Enum.Font.Code
+            lbl.Font = THEME.FontMono
             lbl.TextSize = 11
             lbl.TextWrapped = true
-            lbl.Parent = contentScroll
+            lbl.Parent = card
             local FakePara = {}
-            function FakePara:SetDesc(txt) lbl.Text = " " .. (pArgs.Title or "") .. "\n " .. txt end
+            function FakePara:SetDesc(txt) lbl.Text = (pArgs.Title or "") .. "\n" .. txt end
             return FakePara
         end
-        
+
         function FakeTab:AddInput(id, iArgs)
             local isTable = type(id) == "table"; if isTable then iArgs = id; id = nil end
             local frame = Instance.new("Frame")
-            frame.Size = UDim2.new(1, 0, 0, 22)
-            frame.BackgroundTransparency = 1
+            frame.Size = UDim2.new(1, 0, 0, 24)
+            frame.BackgroundColor3 = THEME.Card
+            frame.BorderSizePixel = 1
+            frame.BorderColor3 = THEME.Border
             frame.Parent = contentScroll
+
             local lbl = Instance.new("TextLabel")
-            lbl.Size = UDim2.new(0.45, 0, 1, 0)
+            lbl.Size = UDim2.new(0.45, -6, 1, 0)
+            lbl.Position = UDim2.new(0, 6, 0, 0)
             lbl.BackgroundTransparency = 1
-            lbl.Text = " " .. (iArgs.Title or "")
-            lbl.TextColor3 = Color3.fromRGB(200, 200, 200)
+            lbl.Text = iArgs.Title or ""
+            lbl.TextColor3 = THEME.Text
             lbl.TextXAlignment = Enum.TextXAlignment.Left
-            lbl.Font = Enum.Font.Code
-            lbl.TextSize = 12
+            lbl.Font = THEME.FontMain
+            lbl.TextSize = 11
             lbl.Parent = frame
+
             local box = Instance.new("TextBox")
-            box.Size = UDim2.new(0.55, -5, 1, 0)
-            box.Position = UDim2.new(0.45, 0, 0, 0)
-            box.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+            box.Size = UDim2.new(0.55, -6, 1, -4)
+            box.Position = UDim2.new(0.45, 2, 0, 2)
+            box.BackgroundColor3 = THEME.Bg
             box.BorderSizePixel = 1
-            box.BorderColor3 = Color3.fromRGB(50, 50, 50)
+            box.BorderColor3 = THEME.Border
             box.Text = iArgs.Default or ""
             box.PlaceholderText = iArgs.Placeholder or ""
-            box.PlaceholderColor3 = Color3.fromRGB(110, 110, 110)
-            box.TextColor3 = Color3.fromRGB(255, 255, 255)
-            box.Font = Enum.Font.Code
-            box.TextSize = 12
+            box.PlaceholderColor3 = THEME.Muted
+            box.TextColor3 = THEME.Text
+            box.Font = THEME.FontMono
+            box.TextSize = 11
             box.ClearTextOnFocus = false
             box.Parent = frame
-            
+
             local FakeInput = { Value = iArgs.Default or "" }
             box:GetPropertyChangedSignal("Text"):Connect(function()
                 FakeInput.Value = box.Text
@@ -457,20 +617,17 @@ function Fluent:CreateWindow(options)
             if not isTable and id then getgenv().FishmanState.Fluent.Options[id] = FakeInput end
             return FakeInput
         end
-        
+
         return FakeTab
     end
-    
+
     function FakeWindow:SelectTab(idx)
         local target = tabsList[idx]
         if target then
-            if activeTabBtn then activeTabBtn.TextColor3 = Color3.fromRGB(150, 150, 150); activeContent.Visible = false end
-            activeTabBtn = target.Btn; activeContent = target.Content
-            activeTabBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-            activeContent.Visible = true
+            setActiveTab(target.Btn, target.Bar, target.Content)
         end
     end
-    
+
     return FakeWindow
 end
 
