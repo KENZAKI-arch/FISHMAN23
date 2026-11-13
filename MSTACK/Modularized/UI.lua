@@ -394,7 +394,8 @@ function Fluent:CreateWindow(options)
         function FakeTab:AddParagraph(id, pArgs)
             local isTable = type(id) == "table"; if isTable then pArgs = id; id = nil end
             local lbl = Instance.new("TextLabel")
-            lbl.Size = UDim2.new(1, 0, 0, 30)
+            lbl.Size = UDim2.new(1, 0, 0, 0)
+            lbl.AutomaticSize = Enum.AutomaticSize.Y
             lbl.BackgroundTransparency = 1
             lbl.Text = " " .. (pArgs.Title or "") .. "\n " .. (pArgs.Content or "")
             lbl.TextColor3 = Color3.fromRGB(180, 180, 180)
@@ -500,6 +501,7 @@ local Tabs = {
     Navigation = Window:AddTab({ Title = "Navigation", Icon = "map" }),
     Fishing = Window:AddTab({ Title = "Fishing", Icon = "anchor" }),
     Autofarm = Window:AddTab({ Title = "Autofarm", Icon = "swords" }),
+    Status = Window:AddTab({ Title = "Status", Icon = "bar-chart" }),
     Settings = Window:AddTab({ Title = "Settings", Icon = "settings" })
 }
 getgenv().FishmanState.Tabs = Tabs
@@ -2211,6 +2213,81 @@ getgenv().FishmanState.Tabs.Autofarm:AddButton({
         getgenv().FishmanState.Fluent:Notify({ Title = "Autofarm Halted", Content = "Queue cleared. If loops are still running, please manually rejoin.", Duration = 5 })
     end
 })
+
+-- ======================================================================
+-- 📊 STATUS TAB UI (Session Stats & Legendary Fish Tracker)
+-- ======================================================================
+local SessionSummaryPara = getgenv().FishmanState.Tabs.Status:AddParagraph({
+    Title = "📊 Session Overview",
+    Content = "Loading session stats..."
+})
+
+local LegendaryBreakdownPara = getgenv().FishmanState.Tabs.Status:AddParagraph({
+    Title = "🐟 Legendary Fish Caught (This Session)",
+    Content = "None caught yet."
+})
+
+getgenv().FishmanState.Tabs.Status:AddButton({
+    Title = "🔄 Reset Session Stats",
+    Description = "Resets session timer, cast counter, and legendary catch counts.",
+    Callback = function()
+        if getgenv().FishmanState.ResetSessionStats then
+            getgenv().FishmanState.ResetSessionStats()
+        end
+        if getgenv().FishmanState.Fluent then
+            getgenv().FishmanState.Fluent:Notify({ Title = "Session Stats", Content = "Session stats reset!", Duration = 3 })
+        end
+    end
+})
+
+task.spawn(function()
+    local function formatDuration(secs)
+        secs = math.max(0, math.floor(secs))
+        local h = math.floor(secs / 3600)
+        local m = math.floor((secs % 3600) / 60)
+        local s = secs % 60
+        return string.format("%02d:%02d:%02d", h, m, s)
+    end
+
+    while getgenv().FishmanSession == mySession and getgenv().FishmanState._running do
+        local stats = getgenv().FishmanState.SessionStats
+        if stats then
+            local elapsed = math.max(1, os.time() - (stats.startTime or os.time()))
+            local totalLeg = stats.totalLegendaryCaught or 0
+            local casts = stats.totalCasts or 0
+            local perHour = (totalLeg / elapsed) * 3600
+
+            local legBaitCount = 0
+            local invData = nil
+            if not isLobby and getgenv().FishmanState.Model and getgenv().FishmanState.Model.GetInventoryData then
+                invData = getgenv().FishmanState.Model.GetInventoryData()
+                if invData and getgenv().FishmanState.UpdateSessionStats then
+                    getgenv().FishmanState.UpdateSessionStats(invData)
+                    totalLeg = stats.totalLegendaryCaught or 0
+                    perHour = (totalLeg / elapsed) * 3600
+                end
+                if getgenv().FishmanState.Model.GetLegendaryBaitCount then
+                    legBaitCount = getgenv().FishmanState.Model.GetLegendaryBaitCount(invData)
+                end
+            end
+
+            SessionSummaryPara:SetDesc(string.format(
+                "Uptime: %s\nTotal Casts: %d\nLegendary Caught: %d (%.1f/hr)\nLegendary Bait: %d/300",
+                formatDuration(elapsed), casts, totalLeg, perHour, legBaitCount
+            ))
+
+            local legList = getgenv().FishmanState.LEGENDARY_FISHES or {}
+            local lines = {}
+            for _, fishName in ipairs(legList) do
+                local caught = (stats.legendaryByType and stats.legendaryByType[fishName]) or 0
+                local inBag = invData and (tonumber(invData[fishName]) or 0) or 0
+                table.insert(lines, string.format("- %s: %d caught (in bag: %d)", fishName, caught, inBag))
+            end
+            LegendaryBreakdownPara:SetDesc(#lines > 0 and table.concat(lines, "\n ") or "Waiting for data...")
+        end
+        task.wait(2)
+    end
+end)
 
 -- ======================================================================
 -- ⚙️ SETTINGS TAB UI

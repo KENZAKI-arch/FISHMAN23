@@ -29,6 +29,16 @@ local lastCharacter = nil
 
 getgenv().FishmanState.isAFKModeActive = false
 getgenv().FishmanState.secondsSinceLastInput = 0
+getgenv().FishmanState.LEGENDARY_FISHES = {
+    "Anglerfish", "Golden Ribbon Angelfish", "Golden Polka Puffer", "Golden Tigerfin", "Dark Skeletal Shark", "Jack-O'-Bite"
+}
+getgenv().FishmanState.SessionStats = {
+    startTime = os.time(),
+    totalCasts = 0,
+    totalLegendaryCaught = 0,
+    legendaryByType = {},
+    lastInventoryCounts = nil
+}
 
 local EVASION_DIRECTIONS = {
     Vector3.new(1, 0, 0),   -- 1. Slide Right
@@ -83,6 +93,9 @@ if not isLobby then
             local stContainer = statsFolder:WaitForChild("Stats", 30)
             peliObject = stContainer and stContainer:WaitForChild("Peli", 30)
             if inventoryObj and getgenv().FishmanState._running then
+                if getgenv().FishmanState.Model and getgenv().FishmanState.Model.CheckInventory then
+                    task.defer(getgenv().FishmanState.Model.CheckInventory)
+                end
                 getgenv().FishmanState.addConn(inventoryObj:GetPropertyChangedSignal("Value"):Connect(function()
                     if getgenv().FishmanState.Model and getgenv().FishmanState.Model.CheckInventory then
                         getgenv().FishmanState.Model.CheckInventory()
@@ -1570,9 +1583,54 @@ if not isLobby then
         getgenv().FishmanState.Model.State.isRefillingMegBait = false
     end
 
+    getgenv().FishmanState.UpdateSessionStats = function(inventoryData)
+        if type(inventoryData) ~= "table" then return end
+        local stats = getgenv().FishmanState.SessionStats
+        if not stats then return end
+
+        local legList = getgenv().FishmanState.LEGENDARY_FISHES or LEGENDARY_FISHES
+        if not stats.lastInventoryCounts then
+            stats.lastInventoryCounts = {}
+            for _, legFish in ipairs(legList) do
+                stats.lastInventoryCounts[legFish] = tonumber(inventoryData[legFish]) or 0
+                stats.legendaryByType[legFish] = stats.legendaryByType[legFish] or 0
+            end
+            return
+        end
+
+        for _, legFish in ipairs(legList) do
+            local cur = tonumber(inventoryData[legFish]) or 0
+            local prev = stats.lastInventoryCounts[legFish] or 0
+            if cur > prev then
+                local gained = cur - prev
+                stats.totalLegendaryCaught = stats.totalLegendaryCaught + gained
+                stats.legendaryByType[legFish] = (stats.legendaryByType[legFish] or 0) + gained
+            end
+            stats.lastInventoryCounts[legFish] = cur
+        end
+    end
+
+    getgenv().FishmanState.ResetSessionStats = function()
+        local stats = getgenv().FishmanState.SessionStats
+        if not stats then return end
+        stats.startTime = os.time()
+        stats.totalCasts = 0
+        stats.totalLegendaryCaught = 0
+        table.clear(stats.legendaryByType)
+        stats.lastInventoryCounts = nil
+        local inv = getgenv().FishmanState.Model and getgenv().FishmanState.Model.GetInventoryData and getgenv().FishmanState.Model.GetInventoryData()
+        if inv then
+            getgenv().FishmanState.UpdateSessionStats(inv)
+        end
+    end
+
     getgenv().FishmanState.Model.CheckInventory = function()
         local inventoryData = getgenv().FishmanState.Model.GetInventoryData()
         if not inventoryData then return end
+
+        if getgenv().FishmanState.UpdateSessionStats then
+            getgenv().FishmanState.UpdateSessionStats(inventoryData)
+        end
         
         if getgenv().FishmanState.Model.State.isMegStackLoc and not getgenv().FishmanState.Model.State.isRefillingMegBait then
             if (inventoryData["Common Fish Bait"] or 0) <= 0 then
@@ -1759,6 +1817,10 @@ local function DoFishingCycle()
         pcall(function() actionRemote:InvokeServer({ Action = "Cancel" }) end)
         task.wait(0.5)
         return true 
+    end
+
+    if getgenv().FishmanState.SessionStats then
+        getgenv().FishmanState.SessionStats.totalCasts = (getgenv().FishmanState.SessionStats.totalCasts or 0) + 1
     end
     
     local sessionKey = throwResponse.SessionKey
