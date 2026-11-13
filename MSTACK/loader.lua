@@ -75,7 +75,19 @@ getgenv().FishmanDefaultDestination = chosenDest
 print("[Fishman Loader] Account detected: " .. playerName)
 print("[Fishman Loader] Assigned PS Code: " .. chosenCode)
 
-local scriptURL = "https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/main/MSTACK/Modularized/Main.lua?t=" .. tostring(tick())
+local ref = "main"
+local ok, body = pcall(function()
+    return game:HttpGet("https://api.github.com/repos/KENZAKI-arch/FISHMAN23/commits/main?t=" .. tostring(os.time()))
+end)
+if ok and type(body) == "string" then
+    local sha = body:match('"sha"%s*:%s*"([a-f0-9]+)"')
+    if sha then
+        ref = sha
+    end
+end
+getgenv().FishmanGitRef = ref
+
+local scriptURL = "https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/" .. ref .. "/MSTACK/Modularized/Main.lua?t=" .. tostring(os.time())
 
 print("[Fishman Loader] Loading modular Main.lua...")
 local success, err = pcall(function()

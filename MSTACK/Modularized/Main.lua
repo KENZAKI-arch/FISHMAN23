@@ -4,7 +4,8 @@ print("[Fishman] Loading Modular Architecture...")
 -- 🔄 Generation counter to cleanly terminate any zombie threads from previous executions
 getgenv().FishmanSession = (getgenv().FishmanSession or 0) + 1
 
-local repoURL = "https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/MSTACK/Modularized/"
+local ref = getgenv().FishmanGitRef or "refs/heads/main"
+local repoURL = "https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/" .. ref .. "/MSTACK/Modularized/"
 
 local modules = {
     "Config.lua",
