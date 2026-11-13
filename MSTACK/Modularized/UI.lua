@@ -1570,13 +1570,6 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
             end
 
             local spotPos = Vector3.new(104, 9, -56)
-            local char = LocalPlayer.Character
-            local hrp = char and char:FindFirstChild("HumanoidRootPart")
-            if hrp and (hrp.Position - spotPos).Magnitude <= 8 then
-                setLegBaitFeatures(opts, true)
-                return
-            end
-
             if opts.T_MoveToFishingSpot then
                 if getgenv().FishmanState.Fluent and getgenv().FishmanState.Fluent.Notify then
                     getgenv().FishmanState.Fluent:Notify({
@@ -1602,7 +1595,7 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
                         and opts.T_AutoLegBait and opts.T_AutoLegBait.Value then
                         local c = LocalPlayer.Character
                         local root = c and c:FindFirstChild("HumanoidRootPart")
-                        if root and (root.Position - spotPos).Magnitude <= 12 then
+                        if root and (root.Position - spotPos).Magnitude <= 5 then
                             setLegBaitFeatures(opts, true)
                         end
                     end
