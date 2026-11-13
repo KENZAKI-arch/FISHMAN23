@@ -445,7 +445,13 @@ function Fluent:CreateWindow(options)
         contentPad.PaddingLeft = UDim.new(0, 8)
         contentPad.PaddingRight = UDim.new(0, 8)
         local contentLayout = Instance.new("UIListLayout", contentScroll)
+        contentLayout.SortOrder = Enum.SortOrder.LayoutOrder
         contentLayout.Padding = UDim.new(0, 4)
+        local itemOrder = 0
+        local function nextOrder()
+            itemOrder = itemOrder + 1
+            return itemOrder
+        end
         contentLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
             contentScroll.CanvasSize = UDim2.new(0, 0, 0, contentLayout.AbsoluteContentSize.Y + 12)
         end)
@@ -472,6 +478,7 @@ function Fluent:CreateWindow(options)
             btn.TextXAlignment = Enum.TextXAlignment.Left
             btn.Font = THEME.FontMain
             btn.TextSize = 11
+            btn.LayoutOrder = nextOrder()
             btn.Parent = contentScroll
 
             local FakeToggle = { Value = tArgs.Default or false }
@@ -501,6 +508,7 @@ function Fluent:CreateWindow(options)
             btn.TextXAlignment = Enum.TextXAlignment.Left
             btn.Font = THEME.FontMain
             btn.TextSize = 11
+            btn.LayoutOrder = nextOrder()
             btn.Parent = contentScroll
             btn.MouseButton1Click:Connect(function() if bArgs.Callback then task.spawn(bArgs.Callback) end end)
         end
@@ -512,6 +520,7 @@ function Fluent:CreateWindow(options)
             frame.BackgroundColor3 = THEME.Card
             frame.BorderSizePixel = 1
             frame.BorderColor3 = THEME.Border
+            frame.LayoutOrder = nextOrder()
             frame.Parent = contentScroll
 
             local lbl = Instance.new("TextLabel")
@@ -572,6 +581,7 @@ function Fluent:CreateWindow(options)
             frame.BorderSizePixel = 1
             frame.BorderColor3 = THEME.Border
             frame.ClipsDescendants = true
+            frame.LayoutOrder = nextOrder()
             frame.Parent = contentScroll
 
             local btn = Instance.new("TextButton")
@@ -680,6 +690,7 @@ function Fluent:CreateWindow(options)
             card.BackgroundColor3 = THEME.Card
             card.BorderSizePixel = 1
             card.BorderColor3 = THEME.Border
+            card.LayoutOrder = nextOrder()
             card.Parent = contentScroll
 
             local pad = Instance.new("UIPadding", card)
@@ -712,6 +723,7 @@ function Fluent:CreateWindow(options)
             frame.BackgroundColor3 = THEME.Card
             frame.BorderSizePixel = 1
             frame.BorderColor3 = THEME.Border
+            frame.LayoutOrder = nextOrder()
             frame.Parent = contentScroll
 
             local lbl = Instance.new("TextLabel")
