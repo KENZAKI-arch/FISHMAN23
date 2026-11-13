@@ -4,26 +4,6 @@ print("[Fishman] Loading Modular Architecture...")
 -- 🔄 Generation counter to cleanly terminate any zombie threads from previous executions
 getgenv().FishmanSession = (getgenv().FishmanSession or 0) + 1
 
--- 📉 Automatically set Graphics Quality bar to Level 1 on load
-pcall(function()
-    settings().Rendering.QualityLevel = 1
-end)
-pcall(function()
-    local ugs = UserSettings():GetService("UserGameSettings")
-    ugs.SavedQualityLevel = Enum.SavedQualitySetting.QualityLevel1
-end)
-
--- 🔒 Disable Shift Lock
-pcall(function()
-    local lp = game:GetService("Players").LocalPlayer
-    if lp then
-        lp.DevEnableMouseLock = false
-        lp:GetPropertyChangedSignal("DevEnableMouseLock"):Connect(function()
-            if lp.DevEnableMouseLock then lp.DevEnableMouseLock = false end
-        end)
-    end
-end)
-
 local repoURL = "https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/MSTACK/Modularized/"
 
 local modules = {
@@ -33,19 +13,22 @@ local modules = {
     "UI.lua"
 }
 
--- ⚡ CONCURRENT DOWNLOADS
+-- ⚡ CONCURRENT DOWNLOADS (with automatic retry on network hiccup)
 local scriptCache = {}
 local threads = {}
 
 for _, mod in ipairs(modules) do
     table.insert(threads, task.spawn(function()
-        local success, result = pcall(function()
-            return game:HttpGet(repoURL .. mod .. "?t=" .. tostring(tick()))
-        end)
-        if success then
-            scriptCache[mod] = result
-        else
-            warn("[Fishman] Failed to download " .. mod .. ": " .. tostring(result))
+        for attempt = 1, 3 do
+            local success, result = pcall(function()
+                return game:HttpGet(repoURL .. mod .. "?t=" .. tostring(tick()))
+            end)
+            if success and type(result) == "string" and #result > 0 then
+                scriptCache[mod] = result
+                return
+            end
+            warn(string.format("[Fishman] Download attempt %d/3 failed for %s: %s", attempt, mod, tostring(result)))
+            if attempt < 3 then task.wait(0.5) end
         end
     end))
 end

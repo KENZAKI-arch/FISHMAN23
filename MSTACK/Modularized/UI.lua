@@ -12,39 +12,51 @@ local VirtualInputManager = game:GetService("VirtualInputManager")
 local LocalPlayer = Players.LocalPlayer
 local env = getgenv and getgenv() or shared
 local GlobalMem = env
-
--- Bind state variables locally for ease of use in this file
-local _running = getgenv().FishmanState._running
-local _connections = getgenv().FishmanState._connections
-local Tabs = getgenv().FishmanState.Tabs
-local Fluent = getgenv().FishmanState.Fluent
-local addConn = getgenv().FishmanState.addConn
-local disconnectAll = getgenv().FishmanState.disconnectAll
-local TriggerSafeguardShutdown = getgenv().FishmanState.TriggerSafeguardShutdown
-local SaveConfig = getgenv().FishmanState.SaveConfig
 local isLobby = getgenv().FishmanState.isLobby
-
 local mySession = getgenv().FishmanSession or 0
 
 -- ======================================================================
 -- 🎨 CUSTOM LIGHTWEIGHT UI INTEGRATION
 -- ======================================================================
-Fluent = { Options = {} }
+local Fluent = { Options = {} }
 getgenv().FishmanState.Fluent = Fluent
+
+local notifyGui, notifyContainer
+local function getNotifyContainer()
+    if notifyContainer and notifyContainer.Parent then return notifyContainer end
+    local coreGui = game:GetService("CoreGui")
+    local existing = coreGui:FindFirstChild("FishmanNotify")
+    if existing then existing:Destroy() end
+
+    notifyGui = Instance.new("ScreenGui")
+    notifyGui.Name = "FishmanNotify"
+    notifyGui.Parent = coreGui
+
+    notifyContainer = Instance.new("Frame")
+    notifyContainer.Size = UDim2.new(0, 200, 1, -20)
+    notifyContainer.Position = UDim2.new(1, -210, 0, 10)
+    notifyContainer.BackgroundTransparency = 1
+    notifyContainer.Parent = notifyGui
+
+    local layout = Instance.new("UIListLayout")
+    layout.SortOrder = Enum.SortOrder.LayoutOrder
+    layout.VerticalAlignment = Enum.VerticalAlignment.Bottom
+    layout.Padding = UDim.new(0, 5)
+    layout.Parent = notifyContainer
+
+    return notifyContainer
+end
 
 function Fluent:Notify(options)
     task.spawn(function()
-        local sg = Instance.new("ScreenGui")
-        sg.Name = "FishmanNotify"
-        sg.Parent = game:GetService("CoreGui")
+        local container = getNotifyContainer()
         
         local frame = Instance.new("Frame")
-        frame.Size = UDim2.new(0, 200, 0, 50)
-        frame.Position = UDim2.new(1, -210, 1, -60)
+        frame.Size = UDim2.new(1, 0, 0, 50)
         frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
         frame.BorderSizePixel = 1
         frame.BorderColor3 = Color3.fromRGB(60, 60, 60)
-        frame.Parent = sg
+        frame.Parent = container
         
         local txt = Instance.new("TextLabel")
         txt.Size = UDim2.new(1, -10, 1, -10)
@@ -60,7 +72,7 @@ function Fluent:Notify(options)
         txt.Parent = frame
         
         task.wait(options.Duration or 3)
-        sg:Destroy()
+        if frame and frame.Parent then frame:Destroy() end
     end)
 end
 
@@ -71,7 +83,10 @@ function Fluent:CreateWindow(options)
     sg.Name = "FishmanHubCustom"
     sg.Parent = game:GetService("CoreGui")
     
-    FakeWindow.Destroy = function(self) sg:Destroy() end
+    FakeWindow.Destroy = function(self)
+        sg:Destroy()
+        if notifyGui and notifyGui.Parent then notifyGui:Destroy() end
+    end
     env.Fishman_DestroyUI = function() pcall(function() FakeWindow:Destroy() end) end
     
     local mainFrame = Instance.new("Frame")
@@ -132,11 +147,11 @@ function Fluent:CreateWindow(options)
     closeBtn.MouseButton1Click:Connect(function() FakeWindow:Destroy() end)
     
     if options.MinimizeKey then
-        game:GetService("UserInputService").InputBegan:Connect(function(input, processed)
+        getgenv().FishmanState.addConn(UserInputService.InputBegan:Connect(function(input, processed)
             if not processed and input.KeyCode == options.MinimizeKey then
                 toggleMinimize()
             end
-        end)
+        end))
     end
     
     local dragging, dragStart, startPos
@@ -146,12 +161,12 @@ function Fluent:CreateWindow(options)
             input.Changed:Connect(function() if input.UserInputState == Enum.UserInputState.End then dragging = false end end)
         end
     end)
-    game:GetService("UserInputService").InputChanged:Connect(function(input)
+    getgenv().FishmanState.addConn(UserInputService.InputChanged:Connect(function(input)
         if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
             local delta = input.Position - dragStart
             mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
         end
-    end)
+    end))
 
     local tabContainer = Instance.new("ScrollingFrame")
     tabContainer.Size = UDim2.new(0, 120, 1, -25)
@@ -281,14 +296,14 @@ function Fluent:CreateWindow(options)
             end
             local dragging = false
             bg.InputBegan:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then dragging = true end end)
-            game:GetService("UserInputService").InputEnded:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then dragging = false end end)
-            game:GetService("UserInputService").InputChanged:Connect(function(input)
+            getgenv().FishmanState.addConn(UserInputService.InputEnded:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then dragging = false end end))
+            getgenv().FishmanState.addConn(UserInputService.InputChanged:Connect(function(input)
                 if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
                     local pct = math.clamp(input.Position.X - bg.AbsolutePosition.X, 0, bg.AbsoluteSize.X) / bg.AbsoluteSize.X
                     local step = sArgs.Rounding and (10 ^ -sArgs.Rounding) or 1
                     update(math.floor((sArgs.Min + (sArgs.Max - sArgs.Min) * pct) / step + 0.5) * step)
                 end
-            end)
+            end))
             FakeSlider.SetValue = function(self, val) update(val) end
             if not isTable and id then getgenv().FishmanState.Fluent.Options[id] = FakeSlider end
             update(FakeSlider.Value); return FakeSlider
@@ -460,7 +475,7 @@ end
 
 local Window = getgenv().FishmanState.Fluent:CreateWindow({
     Title = "🐟 Fishman Hub",
-    SubTitle = "Unified Auto-Fisher 1.0.3 v3.5",
+    SubTitle = "Unified Auto-Fisher 1.0.3 v3.6",
     MinimizeKey = Enum.KeyCode.RightShift
 })
 
@@ -480,7 +495,7 @@ pcall(function()
     game:GetService("ContextActionService"):UnbindAction("FluentMinimize")
 end)
 
-Tabs = {
+local Tabs = {
     Teleport = Window:AddTab({ Title = "Teleport", Icon = "plane" }),
     Navigation = Window:AddTab({ Title = "Navigation", Icon = "map" }),
     Fishing = Window:AddTab({ Title = "Fishing", Icon = "anchor" }),
@@ -1146,8 +1161,8 @@ getgenv().FishmanState.Tabs.Teleport:AddButton({
 
     getgenv().FishmanState.Tabs.Navigation:AddToggle("T_FruitESP", { Title = "Fruit ESP", Default = false, Callback = function(Value) 
         getgenv().FishmanState.Model.State.isFruitESP = Value
-        local targetFruits = {
-            "Dragon", "Venom", "Mochi", "Soul", "Pika", "Buddha", "Magu", "Goro", "Goru",
+        local targetFruits = getgenv().FishmanState.targetFruits or {
+            "Dragon", "Venom", "Mochi", "Soul", "Pika", "Buddha", "Magu", "Goro", "Goru", "Gura",
             "Hie", "Kage", "Mera", "Tori", "Pteranodon", "Smoke", "Yami", "Suna", "Yuki", "Ope", "Zushi", "Ito", "Paw"
         }
         
@@ -2042,10 +2057,12 @@ getgenv().FishmanState.Tabs.Autofarm:AddButton({
             end
             
             if not targetPos then
-                for _, obj in ipairs(game.Workspace:GetDescendants()) do
+                local npcsFolder = workspace:FindFirstChild("NPCs")
+                local searchScope = npcsFolder and npcsFolder:GetChildren() or workspace:GetDescendants()
+                for _, obj in ipairs(searchScope) do
                     if obj:IsA("Model") and string.find(string.lower(obj.Name), "merchant") and obj:FindFirstChild("HumanoidRootPart") then
                         targetPos = obj.HumanoidRootPart.Position
-                        print("[Logic] Found Merchant getgenv().FishmanState.Model in Workspace at: ", targetPos)
+                        print("[Logic] Found Merchant Model in Workspace at: ", targetPos)
                         break
                     end
                 end
@@ -2238,15 +2255,48 @@ getgenv().FishmanState.Tabs.Settings:AddButton({
 
 getgenv().FishmanState.Tabs.Settings:AddButton({
     Title = "🔄 Update / Load Latest Version",
-    Description = "Destroys the current UI and executes the latest joinersystem from GitHub.",
+    Description = "Shuts down the current script and executes the latest version from GitHub.",
     Callback = function()
-        getgenv().FishmanState.Fluent:Notify({ Title = "Updating", Content = "Fetching latest script from GitHub...", Duration = 3 })
-        getgenv().FishmanState.ShutdownEverything()
-        if Window and Window.Destroy then
-            Window:Destroy()
-        end
-        task.wait(1)
-        loadstring(game:HttpGet("https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/MSTACK/loader.lua?t="..tostring(tick())))()
+        task.spawn(function()
+            if getgenv().FishmanState.Fluent then
+                getgenv().FishmanState.Fluent:Notify({ Title = "Updating", Content = "Shutting down & fetching latest version...", Duration = 3 })
+            end
+            task.wait(0.5)
+
+            if getgenv().FishmanState.ShutdownEverything then
+                pcall(getgenv().FishmanState.ShutdownEverything)
+            end
+            if Window and Window.Destroy then
+                pcall(function() Window:Destroy() end)
+            end
+            pcall(function()
+                local coreGui = game:GetService("CoreGui")
+                for _, gui in ipairs(coreGui:GetChildren()) do
+                    if gui.Name == "FishmanHubCustom" or gui.Name == "FishmanNotify" then
+                        gui:Destroy()
+                    end
+                end
+            end)
+
+            getgenv().FishmanLoaderLastExecuted = nil
+            task.wait(0.3)
+
+            local cacheBust = "?cb=" .. tostring(os.time()) .. "_" .. tostring(math.random(1000, 9999))
+            local loaderURL = "https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/MSTACK/loader.lua" .. cacheBust
+            local ok, err = pcall(function()
+                loadstring(game:HttpGet(loaderURL))()
+            end)
+            if not ok then
+                warn("[Fishman Update] loader.lua failed (" .. tostring(err) .. "), falling back to Main.lua...")
+                local mainURL = "https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/MSTACK/Modularized/Main.lua" .. cacheBust
+                local okMain, errMain = pcall(function()
+                    loadstring(game:HttpGet(mainURL))()
+                end)
+                if not okMain then
+                    warn("[Fishman Update] Fallback Main.lua also failed: " .. tostring(errMain))
+                end
+            end
+        end)
     end
 })
 

@@ -1,6 +1,6 @@
 -- Config & State Setup
 getgenv().FishmanState = getgenv().FishmanState or {}
--- Version 3.5
+-- Version 3.6
 -- ======================================================================
 -- 🛑 GLOBAL SETUP & DUPLICATE PREVENTION
 -- ======================================================================
@@ -105,9 +105,9 @@ end
 -- 🔒 Disable Shift Lock
 pcall(function()
     LocalPlayer.DevEnableMouseLock = false
-    LocalPlayer:GetPropertyChangedSignal("DevEnableMouseLock"):Connect(function()
+    getgenv().FishmanState.addConn(LocalPlayer:GetPropertyChangedSignal("DevEnableMouseLock"):Connect(function()
         if LocalPlayer.DevEnableMouseLock then LocalPlayer.DevEnableMouseLock = false end
-    end)
+    end))
 end)
 
 local isAppShuttingDown = false
@@ -160,7 +160,6 @@ print("[Fishman] Game fully loaded!")
 
 getgenv().FishmanState.targetPlaceId = 1730877806
 getgenv().FishmanState.isLobby = (game.PlaceId == getgenv().FishmanState.targetPlaceId)
-local GlobalMem = env
 
 getgenv().FishmanState.AccountConfigs = {
     ["ReneButterbones"] = { code = "qj1ttW4JG1", dest = "Second Sea" },
@@ -181,11 +180,12 @@ getgenv().FishmanState.AccountConfigs = {
 local configFileName = "FishmanConfig_" .. tostring(LocalPlayer.UserId) .. ".json"
 
 local isFreshStart = true
+local savedData = nil
 pcall(function()
     if isfile and readfile and isfile(configFileName) then
-        local data = HttpService:JSONDecode(readfile(configFileName))
-        if data and data.LastTeleportTime then
-            if os.time() - data.LastTeleportTime < 180 then -- 3 minutes
+        savedData = HttpService:JSONDecode(readfile(configFileName))
+        if savedData and savedData.LastTeleportTime then
+            if os.time() - savedData.LastTeleportTime < 180 then -- 3 minutes
                 isFreshStart = false
             end
         end
@@ -200,24 +200,20 @@ if isFreshStart then
     GlobalMem.FishmanAutoRouteLobby = true
 end
 
-pcall(function()
-    if isfile and readfile and isfile(configFileName) then
-        local data = HttpService:JSONDecode(readfile(configFileName))
-        if data then
-            if data.FishmanPSCode ~= nil then GlobalMem.FishmanPSCode = data.FishmanPSCode end
-            if data.FishmanPSCodeHistory ~= nil then GlobalMem.FishmanPSCodeHistory = data.FishmanPSCodeHistory end
-            if data.FishmanDestination ~= nil then GlobalMem.FishmanDestination = data.FishmanDestination end
-            if GlobalMem.FishmanAutoTeleport == nil then GlobalMem.FishmanAutoTeleport = data.FishmanAutoTeleport end
-            if GlobalMem.FishmanAutoJoin == nil then GlobalMem.FishmanAutoJoin = data.FishmanAutoJoin end
-            GlobalMem.FishmanAutoReconnect = false
-            if GlobalMem.FishmanAutoRouteLobby == nil then GlobalMem.FishmanAutoRouteLobby = data.FishmanAutoRouteLobby end
-            if GlobalMem.FishmanAutoSpawnShip == nil then GlobalMem.FishmanAutoSpawnShip = data.FishmanAutoSpawnShip end
-            if data.FishmanBaitType ~= nil then GlobalMem.FishmanBaitType = data.FishmanBaitType end
-            if data.FishmanCloseOnDisconnect ~= nil then GlobalMem.FishmanCloseOnDisconnect = data.FishmanCloseOnDisconnect end
-            print("[Fishman] Loaded Config from file.")
-        end
-    end
-end)
+if savedData then
+    if savedData.FishmanPSCode ~= nil then GlobalMem.FishmanPSCode = savedData.FishmanPSCode end
+    if savedData.FishmanPSCodeHistory ~= nil then GlobalMem.FishmanPSCodeHistory = savedData.FishmanPSCodeHistory end
+    if savedData.FishmanDestination ~= nil then GlobalMem.FishmanDestination = savedData.FishmanDestination end
+    if GlobalMem.FishmanAutoTeleport == nil then GlobalMem.FishmanAutoTeleport = savedData.FishmanAutoTeleport end
+    if GlobalMem.FishmanAutoJoin == nil then GlobalMem.FishmanAutoJoin = savedData.FishmanAutoJoin end
+    GlobalMem.FishmanAutoReconnect = false
+    if GlobalMem.FishmanAutoRouteLobby == nil then GlobalMem.FishmanAutoRouteLobby = savedData.FishmanAutoRouteLobby end
+    if GlobalMem.FishmanAutoSpawnShip == nil then GlobalMem.FishmanAutoSpawnShip = savedData.FishmanAutoSpawnShip end
+    if savedData.FishmanBaitType ~= nil then GlobalMem.FishmanBaitType = savedData.FishmanBaitType end
+    if savedData.FishmanCloseOnDisconnect ~= nil then GlobalMem.FishmanCloseOnDisconnect = savedData.FishmanCloseOnDisconnect end
+    if savedData.LastTeleportTime ~= nil and GlobalMem.LastTeleportTime == nil then GlobalMem.LastTeleportTime = savedData.LastTeleportTime end
+    print("[Fishman] Loaded Config from file.")
+end
 
 GlobalMem.FishmanPSCode = GlobalMem.FishmanPSCode or GlobalMem.FishmanDefaultPSCode or "qj1ttW4JG1"
 if type(GlobalMem.FishmanPSCodeHistory) ~= "table" or #GlobalMem.FishmanPSCodeHistory == 0 then
@@ -247,7 +243,8 @@ getgenv().FishmanState.SaveConfig = function()
                 FishmanAutoRouteLobby = GlobalMem.FishmanAutoRouteLobby,
                 FishmanAutoSpawnShip = GlobalMem.FishmanAutoSpawnShip,
                 FishmanBaitType = GlobalMem.FishmanBaitType,
-                FishmanCloseOnDisconnect = GlobalMem.FishmanCloseOnDisconnect
+                FishmanCloseOnDisconnect = GlobalMem.FishmanCloseOnDisconnect,
+                LastTeleportTime = GlobalMem.LastTeleportTime
             }
             writefile(configFileName, HttpService:JSONEncode(data))
         end

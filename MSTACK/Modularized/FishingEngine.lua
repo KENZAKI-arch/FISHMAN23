@@ -13,18 +13,7 @@ local PathfindingService = game:GetService("PathfindingService")
 local LocalPlayer = Players.LocalPlayer
 local env = getgenv and getgenv() or shared
 local GlobalMem = env
-
--- Bind state variables locally for ease of use in this file
-local _running = getgenv().FishmanState._running
-local _connections = getgenv().FishmanState._connections
-local Tabs = getgenv().FishmanState.Tabs
-local Fluent = getgenv().FishmanState.Fluent
-local addConn = getgenv().FishmanState.addConn
-local disconnectAll = getgenv().FishmanState.disconnectAll
-local TriggerSafeguardShutdown = getgenv().FishmanState.TriggerSafeguardShutdown
-local SaveConfig = getgenv().FishmanState.SaveConfig
 local isLobby = getgenv().FishmanState.isLobby
-
 local mySession = getgenv().FishmanSession or 0
 
 -- ======================================================================
@@ -34,50 +23,74 @@ getgenv().FishmanState.Model = { State = {} }
 local shopEvent, buyableItems, sellEvent, questEvent, craftingRemote, Remote
 local statsFolder, inventoryObj, peliObject
 local cachedBaitItems = nil
-    local loadedAnimations = {}
-    getgenv().FishmanState.addConn(LocalPlayer.CharacterAdded:Connect(function() table.clear(loadedAnimations) end))
-    
-    getgenv().FishmanState.isAFKModeActive = false
-    getgenv().FishmanState.secondsSinceLastInput = 0
-local craftHeartbeatConn = nil
-local craftFlyTarget = nil
+local cachedOceanLevel = nil
+local noclipCache = {}
+local lastCharacter = nil
 
-    local EVASION_DIRECTIONS = {
-        Vector3.new(1, 0, 0),   -- 1. Slide Right
-        Vector3.new(0, 1, 0)    -- 2. Climb Up (Only if cornered/trapped)
-    }
+getgenv().FishmanState.isAFKModeActive = false
+getgenv().FishmanState.secondsSinceLastInput = 0
 
-    getgenv().FishmanState.Model.State = {
-        isFishing             = false,
-        strictReel            = false,
-        autoBuy               = not isLobby,
-        autoSell              = false,
-        isBuying              = false,
-        isAutoTraveling       = false,
-        travelStage           = 1,
-        waypoint1             = Vector3.new(406.69, 48.32, -32.21),
-        waypoint2             = Vector3.new(174.10, 10.32, -48.09),
-        finalTarget           = Vector3.new(104, 9, -56),
-        travelMessage         = "",
-        autoCraft             = false,
-        isCurrentlyCrafting   = false,
-        waitingForArrivalToFish = false,
-        isCraftFlying         = false,
-        activeNavigation      = nil,
-        shipSpeed             = 60,
-        selectedBait          = GlobalMem.FishmanBaitType or "Common Fish Bait",
-    }
+local EVASION_DIRECTIONS = {
+    Vector3.new(1, 0, 0),   -- 1. Slide Right
+    Vector3.new(0, 1, 0)    -- 2. Climb Up (Only if cornered/trapped)
+}
+
+getgenv().FishmanState.Model.State = {
+    isFishing             = false,
+    strictReel            = false,
+    autoBuy               = not isLobby,
+    autoSell              = false,
+    isBuying              = false,
+    isAutoTraveling       = false,
+    travelStage           = 1,
+    waypoint1             = Vector3.new(406.69, 48.32, -32.21),
+    waypoint2             = Vector3.new(174.10, 10.32, -48.09),
+    finalTarget           = Vector3.new(104, 9, -56),
+    travelMessage         = "",
+    autoCraft             = false,
+    isCurrentlyCrafting   = false,
+    waitingForArrivalToFish = false,
+    isCraftFlying         = false,
+    activeNavigation      = nil,
+    shipSpeed             = 60,
+    selectedBait          = GlobalMem.FishmanBaitType or "Common Fish Bait",
+}
 
 if not isLobby then
-    shopEvent      = ReplicatedStorage:WaitForChild("Events", 9e9):WaitForChild("Shop", 9e9)
-    buyableItems   = workspace:WaitForChild("BuyableItems", 9e9)
-    sellEvent      = ReplicatedStorage:WaitForChild("FishingShopRemote", 9e9)
-    questEvent     = ReplicatedStorage:WaitForChild("Events", 9e9):WaitForChild("Quest", 9e9)
-    craftingRemote = ReplicatedStorage:WaitForChild("CraftingRemote", 9e9)
-    Remote         = ReplicatedStorage:WaitForChild("Fishing", 9e9):WaitForChild("Remotes", 9e9):WaitForChild("Action", 9e9)
-    statsFolder    = ReplicatedStorage:WaitForChild("Stats" .. LocalPlayer.Name, 9e9)
-    inventoryObj   = statsFolder:WaitForChild("Inventory", 9e9):WaitForChild("Inventory", 9e9)
-    peliObject     = statsFolder:WaitForChild("Stats", 9e9):WaitForChild("Peli", 9e9)
+    -- Resolve remotes & stats non-blockingly so UI.lua always loads even in Trade Hub or slow servers
+    task.spawn(function()
+        local events = ReplicatedStorage:WaitForChild("Events", 30)
+        if events then
+            shopEvent = events:WaitForChild("Shop", 30)
+            questEvent = events:WaitForChild("Quest", 30)
+        end
+    end)
+    task.spawn(function() buyableItems = workspace:WaitForChild("BuyableItems", 30) end)
+    task.spawn(function() sellEvent = ReplicatedStorage:WaitForChild("FishingShopRemote", 30) end)
+    task.spawn(function() craftingRemote = ReplicatedStorage:WaitForChild("CraftingRemote", 30) end)
+    task.spawn(function()
+        local fishingFolder = ReplicatedStorage:WaitForChild("Fishing", 30)
+        local remotesFolder = fishingFolder and fishingFolder:WaitForChild("Remotes", 30)
+        if remotesFolder then
+            Remote = remotesFolder:WaitForChild("Action", 30)
+        end
+    end)
+    task.spawn(function()
+        statsFolder = ReplicatedStorage:WaitForChild("Stats" .. LocalPlayer.Name, 60)
+        if statsFolder then
+            local invContainer = statsFolder:WaitForChild("Inventory", 30)
+            inventoryObj = invContainer and invContainer:WaitForChild("Inventory", 30)
+            local stContainer = statsFolder:WaitForChild("Stats", 30)
+            peliObject = stContainer and stContainer:WaitForChild("Peli", 30)
+            if inventoryObj and getgenv().FishmanState._running then
+                getgenv().FishmanState.addConn(inventoryObj:GetPropertyChangedSignal("Value"):Connect(function()
+                    if getgenv().FishmanState.Model and getgenv().FishmanState.Model.CheckInventory then
+                        getgenv().FishmanState.Model.CheckInventory()
+                    end
+                end))
+            end
+        end
+    end)
     
     local LEGENDARY_FISHES  = { "Anglerfish", "Golden Ribbon Angelfish", "Golden Polka Puffer", "Golden Tigerfin", "Dark Skeletal Shark", "Jack-O'-Bite" }
     local MAX_PELI            = 1000000
@@ -85,45 +98,8 @@ if not isLobby then
     local MIN_BAIT            = 1
     local BUY_AMOUNT          = 300
     local BAIT_SEARCH_RADIUS  = 25
-    local THROW_ANIMATION_ID  = "rbxassetid://140322334422224"
-    local REEL_ANIMATION_ID   = "rbxassetid://136623058564703"
     local fishToSell = { "Crimson Snapper", "Exotic Tigerfin", "Fangfish", "Zebra Ribbon Angelfish", "Blue-Lip Grouper", "Tigerfin", "Crimson Polka Puffer", "Common Fish", "Seaweed", "Old Boot", "Tin Can" }
     local VALID_RODS = { "Devil Fruit Rod", "Merchants Banana Rod", "Lovestruck Rod", "Fishing Rod" }
-    
-    local function clearAnimationCache()
-        for _, track in pairs(loadedAnimations) do pcall(function() track:Stop(0) end) end
-        table.clear(loadedAnimations)
-    end
-
-    local function playAnimation(animationId)
-        local character = LocalPlayer.Character
-        if not character then return nil end
-        local humanoid = character:FindFirstChildOfClass("Humanoid")
-        if not humanoid then return nil end
-        local animator = humanoid:FindFirstChildOfClass("Animator")
-        if not animator then
-            animator = Instance.new("Animator")
-            animator.Parent = humanoid
-        end
-
-        local track = loadedAnimations[animationId]
-        if track and not track.IsPlaying and not pcall(function() return track.Length end) then
-            loadedAnimations[animationId] = nil
-            track = nil
-        end
-
-        if not track then
-            local anim = Instance.new("Animation")
-            anim.AnimationId = animationId
-            track = animator:LoadAnimation(anim)
-            anim:Destroy()
-            track.Priority = Enum.AnimationPriority.Action
-            loadedAnimations[animationId] = track
-        end
-
-        track:Play(0.1)
-        return track
-    end
     
     -- ======================================================================
     -- 🚀 FLIGHT & MOVEMENT SUBSYSTEM
@@ -194,44 +170,37 @@ if not isLobby then
         forwardParams.FilterType = Enum.RaycastFilterType.Exclude
         
         local ignoreList = {object, LocalPlayer.Character}
-        local OCEAN_LEVEL = 0 
-        
         local oceanModel = workspace:FindFirstChild("Ocean")
-        if oceanModel then 
-            table.insert(ignoreList, oceanModel) 
-            local highestWater = -math.huge
-            for _, part in ipairs(oceanModel:GetDescendants()) do
-                if part:IsA("BasePart") then
-                    local topSurface = part.Position.Y + (part.Size.Y / 2)
-                    if topSurface > highestWater then
-                        highestWater = topSurface
+        if oceanModel then table.insert(ignoreList, oceanModel) end
+        local envFolder = workspace:FindFirstChild("Env")
+        local waterStuff = envFolder and envFolder:FindFirstChild("WaterStuff")
+        if waterStuff then table.insert(ignoreList, waterStuff) end
+
+        if not cachedOceanLevel then
+            local level = 0
+            if oceanModel then
+                local highestWater = -math.huge
+                for _, part in ipairs(oceanModel:GetDescendants()) do
+                    if part:IsA("BasePart") then
+                        local topSurface = part.Position.Y + (part.Size.Y / 2)
+                        if topSurface > highestWater then highestWater = topSurface end
                     end
                 end
+                if highestWater ~= -math.huge then level = highestWater end
             end
-            if highestWater ~= -math.huge then
-                OCEAN_LEVEL = highestWater
-            end
-        end
-        
-        local envFolder = workspace:FindFirstChild("Env")
-        if envFolder then
-            local waterStuff = envFolder:FindFirstChild("WaterStuff")
             if waterStuff then
-                table.insert(ignoreList, waterStuff)
                 local highestWater = -math.huge
                 for _, part in ipairs(waterStuff:GetDescendants()) do
                     if part:IsA("BasePart") then
                         local topSurface = part.Position.Y + (part.Size.Y / 2)
-                        if topSurface > highestWater then
-                            highestWater = topSurface
-                        end
+                        if topSurface > highestWater then highestWater = topSurface end
                     end
                 end
-                if highestWater ~= -math.huge and highestWater > OCEAN_LEVEL then
-                    OCEAN_LEVEL = highestWater
-                end
+                if highestWater ~= -math.huge and highestWater > level then level = highestWater end
             end
+            cachedOceanLevel = level
         end
+        local OCEAN_LEVEL = cachedOceanLevel
         
         local npcsFolder = workspace:FindFirstChild("NPCs")
         if npcsFolder then
@@ -1443,6 +1412,7 @@ if not isLobby then
     
     getgenv().FishmanState.Model.BuyNearestBait = function()
         if getgenv().FishmanState.Model.State.isBuying then return end
+        if not buyableItems or not shopEvent then return end
         getgenv().FishmanState.Model.State.isBuying = true
         pcall(function()
             local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
@@ -1640,54 +1610,71 @@ if not isLobby then
         return count
     end
     
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Players = game:GetService("Players")
-
-local LocalPlayer = Players.LocalPlayer
-local actionRemote = ReplicatedStorage:WaitForChild("Fishing", 9e9):WaitForChild("Remotes", 9e9):WaitForChild("Action", 9e9)
-
 -- === FISHING LOGIC ===
+local function getActionRemote()
+    if Remote then return Remote end
+    local fishingFolder = ReplicatedStorage:FindFirstChild("Fishing")
+    local remotesFolder = fishingFolder and fishingFolder:FindFirstChild("Remotes")
+    Remote = remotesFolder and remotesFolder:FindFirstChild("Action")
+    return Remote
+end
+
 local function EquipRod()
     local char = LocalPlayer.Character
-    local backpack = LocalPlayer:WaitForChild("Backpack", 5)
+    local backpack = LocalPlayer:FindFirstChild("Backpack") or LocalPlayer:WaitForChild("Backpack", 5)
     local humanoid = char and char:FindFirstChildOfClass("Humanoid")
     if not humanoid then return false end
     
     for _, tool in ipairs(char:GetChildren()) do
-        if tool:IsA("Tool") and tool.Name:match("Rod") then return true end
+        if tool:IsA("Tool") and (table.find(VALID_RODS, tool.Name) or tool.Name:match("Rod")) then return true end
     end
-    for _, tool in ipairs(backpack:GetChildren()) do
-        if tool:IsA("Tool") and tool.Name:match("Rod") then
-            humanoid:EquipTool(tool)
-            task.wait() 
-            return true
+    if backpack then
+        for _, tool in ipairs(backpack:GetChildren()) do
+            if tool:IsA("Tool") and (table.find(VALID_RODS, tool.Name) or tool.Name:match("Rod")) then
+                humanoid:EquipTool(tool)
+                task.wait() 
+                return true
+            end
         end
     end
     return false
 end
 
+local waterRayParams = RaycastParams.new()
+waterRayParams.FilterType = Enum.RaycastFilterType.Exclude
+waterRayParams.IgnoreWater = false
+local waterCharFilter = { LocalPlayer.Character }
+waterRayParams.FilterDescendantsInstances = waterCharFilter
+getgenv().FishmanState.addConn(LocalPlayer.CharacterAdded:Connect(function(newChar)
+    waterCharFilter[1] = newChar
+    waterRayParams.FilterDescendantsInstances = waterCharFilter
+end))
+local cachedFallbackWaterY = nil
+
 local function GetWaterLevel(targetPos)
-    local rayParams = RaycastParams.new()
-    rayParams.FilterType = Enum.RaycastFilterType.Exclude
-    if LocalPlayer.Character then
-        rayParams.FilterDescendantsInstances = { LocalPlayer.Character }
+    if waterCharFilter[1] ~= LocalPlayer.Character then
+        waterCharFilter[1] = LocalPlayer.Character
+        waterRayParams.FilterDescendantsInstances = waterCharFilter
     end
-    rayParams.IgnoreWater = false
     
     local rayY = (targetPos and targetPos.Y or 10) + 30
     local rayStart = Vector3.new(targetPos.X, rayY, targetPos.Z)
-    local hit = workspace:Raycast(rayStart, Vector3.new(0, -150, 0), rayParams)
+    local hit = workspace:Raycast(rayStart, Vector3.new(0, -150, 0), waterRayParams)
     if hit then
         if hit.Material == Enum.Material.Water or string.find(string.lower(hit.Instance.Name), "water") or string.find(string.lower(hit.Instance.Name), "sea") or string.find(string.lower(hit.Instance.Name), "ocean") then
             return hit.Position.Y
         end
     end
     
+    if cachedFallbackWaterY then
+        return cachedFallbackWaterY
+    end
     local ocean = workspace:FindFirstChild("Ocean")
     if ocean then
         for _, part in ipairs(ocean:GetDescendants()) do
             if part:IsA("BasePart") then
-                return part.Position.Y + (part.Size.Y / 2)
+                cachedFallbackWaterY = part.Position.Y + (part.Size.Y / 2)
+                return cachedFallbackWaterY
             end
         end
     end
@@ -1698,6 +1685,12 @@ end
 
 local function DoFishingCycle()
     if getgenv().FishmanState.Model.State.isCurrentlyCrafting or getgenv().FishmanState.Model.State.isCraftFlying then
+        return true
+    end
+
+    local actionRemote = getActionRemote()
+    if not actionRemote then
+        task.wait(0.5)
         return true
     end
 
@@ -2048,7 +2041,8 @@ task.spawn(function()
                 local hookName = LocalPlayer.Name .. "'s hook"
                 local stuckHook = workspace.Effects:FindFirstChild(hookName)
                 if stuckHook then pcall(function() stuckHook:Destroy() end) end
-                pcall(function() actionRemote:InvokeServer({ Action = "Cancel" }) end)
+                local actionRemote = getActionRemote()
+                if actionRemote then pcall(function() actionRemote:InvokeServer({ Action = "Cancel" }) end) end
                 
                 -- Reposition and re-equip
                 if getgenv().FishmanState.Model.EnsureAtFishingSpot then
@@ -2087,7 +2081,9 @@ end)
                         getgenv().FishmanState.Model.StartTraveling()
                         RunService:Set3dRenderingEnabled(false)
                     end
-                    ActivatePotatoGraphics()
+                    if getgenv().FishmanState.ActivatePotatoGraphics then
+                        getgenv().FishmanState.ActivatePotatoGraphics()
+                    end
                     getgenv().FishmanState.Model.State.waitingForArrivalToFish = true
                 end
             end
@@ -2182,8 +2178,6 @@ end)
         if getgenv().FishmanSession == mySession and getgenv().FishmanState._running and getgenv().FishmanState.Model.State.isAutoTraveling then getgenv().FishmanState.Model.HandleMovement(dt) end
     end))
     
-    local noclipCache = {}
-    local lastCharacter = nil
     local descAddedConn = nil
 
     getgenv().FishmanState.addConn(LocalPlayer.CharacterAdded:Connect(function()
@@ -2216,20 +2210,48 @@ end)
             end
         end
     end))
-    
-    if inventoryObj then
-        getgenv().FishmanState.addConn(inventoryObj:GetPropertyChangedSignal("Value"):Connect(function() getgenv().FishmanState.Model.CheckInventory() end))
-    end
 end
 
 getgenv().FishmanState.ShutdownEverything = function()
     getgenv().FishmanState._running = false
+    getgenv().FishmanSession = (getgenv().FishmanSession or 0) + 1
+    getgenv().FishmanLoaderLastExecuted = nil
+    if getgenv().FishmanState.SaveConfig then
+        pcall(getgenv().FishmanState.SaveConfig)
+    end
+    pcall(function() RunService:Set3dRenderingEnabled(true) end)
     getgenv().FishmanState.disconnectAll()
     if not isLobby then
-        if getgenv().FishmanState.Model and getgenv().FishmanState.Model.StopMovingToFishingSpot then
-            pcall(getgenv().FishmanState.Model.StopMovingToFishingSpot)
+        if getgenv().FishmanState.Model then
+            if getgenv().FishmanState.Model.State then
+                getgenv().FishmanState.Model.State.isFishing = false
+                getgenv().FishmanState.Model.State.isDeepSeaCatcher = false
+                getgenv().FishmanState.Model.State.isAutoTraveling = false
+                getgenv().FishmanState.Model.State.isCraftFlying = false
+                getgenv().FishmanState.Model.State.isCurrentlyCrafting = false
+                if getgenv().FishmanState.Model.State.activeNavigation and getgenv().FishmanState.Model.State.activeNavigation._isNavigating then
+                    pcall(function() getgenv().FishmanState.Model.State.activeNavigation:Cancel() end)
+                end
+            end
+            if getgenv().FishmanState.Model.StopMovingToFishingSpot then
+                pcall(getgenv().FishmanState.Model.StopMovingToFishingSpot)
+            end
+            if getgenv().FishmanState.Model.DisableFlight then
+                pcall(getgenv().FishmanState.Model.DisableFlight)
+            end
         end
-        getgenv().FishmanState.Model.DisableFlight()
+        pcall(function()
+            local effects = workspace:FindFirstChild("Effects")
+            local hookName = LocalPlayer.Name .. "'s hook"
+            local activeHook = effects and effects:FindFirstChild(hookName)
+            if activeHook then
+                activeHook:Destroy()
+            end
+            local actionRemote = getActionRemote()
+            if actionRemote then
+                actionRemote:InvokeServer({ Action = "Cancel" })
+            end
+        end)
     end
     lastCharacter = nil
     table.clear(noclipCache)
@@ -2248,6 +2270,76 @@ getgenv().FishmanState.targetFruits = {
     "Hie", "Kage", "Mera", "Tori", "Pteranodon", "Smoke", "Yami", "Suna", "Yuki", "Ope", "Zushi", "Ito", "Paw"
 }
 
+local function matchSpecialFruit(tool, fruitList)
+    if not tool:IsA("Tool") then return nil end
+    local toolName = string.lower(tool.Name)
+    for _, fruitName in ipairs(fruitList) do
+        if string.find(toolName, string.lower(fruitName)) then
+            if tool:GetAttribute("Category") == "Special" then
+                return fruitName
+            end
+            local attrs = tool:FindFirstChild("Attributes")
+            if attrs and attrs:FindFirstChild("Category") and attrs.Category.Value == "Special" then
+                return fruitName
+            end
+            return nil
+        end
+    end
+    return nil
+end
+
+local function pauseForFruitAction(humanoid)
+    local tempSavedState = {}
+    if getgenv().FishmanState.Model and getgenv().FishmanState.Model.State then
+        tempSavedState = {
+            isFishing = getgenv().FishmanState.Model.State.isFishing,
+            autoBuy = getgenv().FishmanState.Model.State.autoBuy,
+            autoSell = getgenv().FishmanState.Model.State.autoSell,
+            isAutoTraveling = getgenv().FishmanState.Model.State.isAutoTraveling,
+            autoCraft = getgenv().FishmanState.Model.State.autoCraft
+        }
+        
+        getgenv().FishmanState.Model.State.isFishing = false
+        getgenv().FishmanState.Model.State.autoSell = false
+        getgenv().FishmanState.Model.State.isAutoTraveling = false
+        getgenv().FishmanState.Model.State.autoCraft = false
+        
+        if getgenv().FishmanState.Fluent and getgenv().FishmanState.Fluent.Options then
+            if getgenv().FishmanState.Fluent.Options.T_Fish then getgenv().FishmanState.Fluent.Options.T_Fish:SetValue(false) end
+            if getgenv().FishmanState.Fluent.Options.T_Sell then getgenv().FishmanState.Fluent.Options.T_Sell:SetValue(false) end
+            if getgenv().FishmanState.Fluent.Options.T_Travel then getgenv().FishmanState.Fluent.Options.T_Travel:SetValue(false) end
+            if getgenv().FishmanState.Fluent.Options.T_Craft then getgenv().FishmanState.Fluent.Options.T_Craft:SetValue(false) end
+        end
+        
+        task.wait(2)
+        humanoid:UnequipTools()
+        task.wait(0.5)
+    end
+    return tempSavedState
+end
+
+local function resumeAfterFruitAction(tempSavedState)
+    if getgenv().FishmanState.Model and getgenv().FishmanState.Model.State then
+        getgenv().FishmanState.Model.State.isFishing = tempSavedState.isFishing or false
+        getgenv().FishmanState.Model.State.autoBuy = tempSavedState.autoBuy or false
+        getgenv().FishmanState.Model.State.autoSell = tempSavedState.autoSell or false
+        getgenv().FishmanState.Model.State.isAutoTraveling = tempSavedState.isAutoTraveling or false
+        getgenv().FishmanState.Model.State.autoCraft = tempSavedState.autoCraft or false
+        
+        if getgenv().FishmanState.Fluent and getgenv().FishmanState.Fluent.Options then
+            if getgenv().FishmanState.Fluent.Options.T_Fish then getgenv().FishmanState.Fluent.Options.T_Fish:SetValue(getgenv().FishmanState.Model.State.isFishing) end
+            if getgenv().FishmanState.Fluent.Options.T_Buy then getgenv().FishmanState.Fluent.Options.T_Buy:SetValue(getgenv().FishmanState.Model.State.autoBuy) end
+            if getgenv().FishmanState.Fluent.Options.T_Sell then getgenv().FishmanState.Fluent.Options.T_Sell:SetValue(getgenv().FishmanState.Model.State.autoSell) end
+            if getgenv().FishmanState.Fluent.Options.T_Travel then getgenv().FishmanState.Fluent.Options.T_Travel:SetValue(getgenv().FishmanState.Model.State.isAutoTraveling) end
+            if getgenv().FishmanState.Fluent.Options.T_Craft then getgenv().FishmanState.Fluent.Options.T_Craft:SetValue(getgenv().FishmanState.Model.State.autoCraft) end
+        end
+
+        if getgenv().FishmanState.Model.State.isAutoTraveling and getgenv().FishmanState.Model.StartTraveling then
+            getgenv().FishmanState.Model.StartTraveling()
+        end
+    end
+end
+
 getgenv().FishmanState.checkFruits = function(fruitList)
     local character = LocalPlayer.Character
     local backpack = LocalPlayer:FindFirstChild("Backpack")
@@ -2257,26 +2349,9 @@ getgenv().FishmanState.checkFruits = function(fruitList)
     local foundAny = false
     
     for _, tool in pairs(backpack:GetChildren()) do
-        if tool:IsA("Tool") then
-            local toolName = string.lower(tool.Name)
-            for _, fruitName in ipairs(fruitList) do
-                if string.find(toolName, string.lower(fruitName)) then
-                    local isSpecial = false
-                    if tool:GetAttribute("Category") == "Special" then
-                        isSpecial = true
-                    end
-                    local attrs = tool:FindFirstChild("Attributes")
-                    if attrs and attrs:FindFirstChild("Category") and attrs.Category.Value == "Special" then
-                        isSpecial = true
-                    end
-                    
-                    if isSpecial then
-                        inventoryCounts[tool.Name] = (inventoryCounts[tool.Name] or 0) + 1
-                        foundAny = true
-                    end
-                    break
-                end
-            end
+        if matchSpecialFruit(tool, fruitList) then
+            inventoryCounts[tool.Name] = (inventoryCounts[tool.Name] or 0) + 1
+            foundAny = true
         end
     end
     
@@ -2318,142 +2393,51 @@ getgenv().FishmanState.storeFruits = function(fruitList)
     local backpack = LocalPlayer:FindFirstChild("Backpack")
     if not character or not humanoid or not backpack then return end
     
-    -- Check if we even have any target fruits before pausing
     local hasFruits = false
     for _, tool in pairs(backpack:GetChildren()) do
-        if tool:IsA("Tool") and not tool:GetAttribute("StoreFailed") then
-            local toolName = string.lower(tool.Name)
-            for _, fruitName in ipairs(fruitList) do
-                if string.find(toolName, string.lower(fruitName)) then
-                    if getgenv().FishmanState.isFruitAlreadyStored(fruitName) then
-                        break -- Already stored in PlayerGui.Inventory.Main.Inventory.List!
-                    end
-                    local isSpecial = false
-                    if tool:GetAttribute("Category") == "Special" then
-                        isSpecial = true
-                    end
-                    local attrs = tool:FindFirstChild("Attributes")
-                    if attrs and attrs:FindFirstChild("Category") and attrs.Category.Value == "Special" then
-                        isSpecial = true
-                    end
-                    
-                    if isSpecial then
-                        hasFruits = true
-                    end
-                    break
-                end
+        if not tool:GetAttribute("StoreFailed") then
+            local matchedFruitName = matchSpecialFruit(tool, fruitList)
+            if matchedFruitName and not getgenv().FishmanState.isFruitAlreadyStored(matchedFruitName) then
+                hasFruits = true
+                break
             end
         end
     end
     
-    if not hasFruits then return end -- No need to pause if no unstored fruits
+    if not hasFruits then return end
 
-    -- PAUSE FISHING/KILLING
-    local tempSavedState = {}
-    if getgenv().FishmanState.Model and getgenv().FishmanState.Model.State then
-        tempSavedState = {
-            isFishing = getgenv().FishmanState.Model.State.isFishing,
-            autoBuy = getgenv().FishmanState.Model.State.autoBuy,
-            autoSell = getgenv().FishmanState.Model.State.autoSell,
-            isAutoTraveling = getgenv().FishmanState.Model.State.isAutoTraveling,
-            autoCraft = getgenv().FishmanState.Model.State.autoCraft
-        }
-        
-        -- Force stop them
-        getgenv().FishmanState.Model.State.isFishing = false
-        -- getgenv().FishmanState.Model.State.autoBuy = false
-        getgenv().FishmanState.Model.State.autoSell = false
-        getgenv().FishmanState.Model.State.isAutoTraveling = false
-        getgenv().FishmanState.Model.State.autoCraft = false
-        
-        -- Update toggles visually
-        if getgenv().FishmanState.Fluent and getgenv().FishmanState.Fluent.Options then
-            if getgenv().FishmanState.Fluent.Options.T_Fish then getgenv().FishmanState.Fluent.Options.T_Fish:SetValue(false) end
-            -- if getgenv().FishmanState.Fluent.Options.T_Buy then getgenv().FishmanState.Fluent.Options.T_Buy:SetValue(false) end
-            if getgenv().FishmanState.Fluent.Options.T_Sell then getgenv().FishmanState.Fluent.Options.T_Sell:SetValue(false) end
-            if getgenv().FishmanState.Fluent.Options.T_Travel then getgenv().FishmanState.Fluent.Options.T_Travel:SetValue(false) end
-            if getgenv().FishmanState.Fluent.Options.T_Craft then getgenv().FishmanState.Fluent.Options.T_Craft:SetValue(false) end
-        end
-        
-        -- Wait a moment for any current actions (like reeling) to finish
-        task.wait(2)
-        
-        -- Unequip current tools (rod/sword) so we can equip fruits properly
-        humanoid:UnequipTools()
-        task.wait(0.5)
-    end
+    local tempSavedState = pauseForFruitAction(humanoid)
     
     for _, tool in pairs(backpack:GetChildren()) do
         if getgenv()._cancelStoreFruits then break end
-        if tool:IsA("Tool") and not tool:GetAttribute("StoreFailed") then
-            local toolName = string.lower(tool.Name)
-            local isTargetFruit = false
-            local matchedFruitName = nil
-            for _, fruitName in ipairs(fruitList) do
-                if string.find(toolName, string.lower(fruitName)) then
-                    if getgenv().FishmanState.isFruitAlreadyStored(fruitName) then
-                        if getgenv().FishmanState.Fluent then getgenv().FishmanState.Fluent:Notify({ Title = "Already Stored", Content = tool.Name .. " is already in storage! Skipping.", Duration = 3 }) end
-                        break
-                    end
-                    local isSpecial = false
-                    if tool:GetAttribute("Category") == "Special" then
-                        isSpecial = true
-                    end
-                    local attrs = tool:FindFirstChild("Attributes")
-                    if attrs and attrs:FindFirstChild("Category") and attrs.Category.Value == "Special" then
-                        isSpecial = true
-                    end
-                    
-                    if isSpecial then
-                        isTargetFruit = true
-                        matchedFruitName = fruitName
-                    end
-                    break
-                end
-            end
-            
-            if isTargetFruit and not getgenv().FishmanState.isFruitAlreadyStored(matchedFruitName) then
-                humanoid:EquipTool(tool)
-                task.wait(0.2)
-                
-                pcall(function()
-                    ReplicatedStorage.Events.FruitStorage:InvokeServer(true)
-                end)
-                task.wait(0.5)
-                
-                if tool.Parent == character or tool.Parent == backpack then
-                    humanoid:UnequipTools()
-                    tool:SetAttribute("StoreFailed", true)
-                    if getgenv().FishmanState.Fluent then getgenv().FishmanState.Fluent:Notify({ Title = "Storage Full", Content = "Couldn't store: " .. tool.Name .. " (kept in inventory)", Duration = 3 }) end
+        if not tool:GetAttribute("StoreFailed") then
+            local matchedFruitName = matchSpecialFruit(tool, fruitList)
+            if matchedFruitName then
+                if getgenv().FishmanState.isFruitAlreadyStored(matchedFruitName) then
+                    if getgenv().FishmanState.Fluent then getgenv().FishmanState.Fluent:Notify({ Title = "Already Stored", Content = tool.Name .. " is already in storage! Skipping.", Duration = 3 }) end
                 else
-                    if getgenv().FishmanState.Fluent then getgenv().FishmanState.Fluent:Notify({ Title = "Fruit Stored", Content = "Successfully stored: " .. tool.Name, Duration = 3 }) end
+                    humanoid:EquipTool(tool)
+                    task.wait(0.2)
+                    
+                    pcall(function()
+                        ReplicatedStorage.Events.FruitStorage:InvokeServer(true)
+                    end)
+                    task.wait(0.5)
+                    
+                    if tool.Parent == character or tool.Parent == backpack then
+                        humanoid:UnequipTools()
+                        tool:SetAttribute("StoreFailed", true)
+                        if getgenv().FishmanState.Fluent then getgenv().FishmanState.Fluent:Notify({ Title = "Storage Full", Content = "Couldn't store: " .. tool.Name .. " (kept in inventory)", Duration = 3 }) end
+                    else
+                        if getgenv().FishmanState.Fluent then getgenv().FishmanState.Fluent:Notify({ Title = "Fruit Stored", Content = "Successfully stored: " .. tool.Name, Duration = 3 }) end
+                    end
+                    task.wait(0.5)
                 end
-                task.wait(0.5)
             end
         end
     end
 
-    -- RESUME FISHING/KILLING
-    if getgenv().FishmanState.Model and getgenv().FishmanState.Model.State then
-        getgenv().FishmanState.Model.State.isFishing = tempSavedState.isFishing or false
-        getgenv().FishmanState.Model.State.autoBuy = tempSavedState.autoBuy or false
-        getgenv().FishmanState.Model.State.autoSell = tempSavedState.autoSell or false
-        getgenv().FishmanState.Model.State.isAutoTraveling = tempSavedState.isAutoTraveling or false
-        getgenv().FishmanState.Model.State.autoCraft = tempSavedState.autoCraft or false
-        
-        -- Update UI toggles visually to match restored state
-        if getgenv().FishmanState.Fluent and getgenv().FishmanState.Fluent.Options then
-            if getgenv().FishmanState.Fluent.Options.T_Fish then getgenv().FishmanState.Fluent.Options.T_Fish:SetValue(getgenv().FishmanState.Model.State.isFishing) end
-            if getgenv().FishmanState.Fluent.Options.T_Buy then getgenv().FishmanState.Fluent.Options.T_Buy:SetValue(getgenv().FishmanState.Model.State.autoBuy) end
-            if getgenv().FishmanState.Fluent.Options.T_Sell then getgenv().FishmanState.Fluent.Options.T_Sell:SetValue(getgenv().FishmanState.Model.State.autoSell) end
-            if getgenv().FishmanState.Fluent.Options.T_Travel then getgenv().FishmanState.Fluent.Options.T_Travel:SetValue(getgenv().FishmanState.Model.State.isAutoTraveling) end
-            if getgenv().FishmanState.Fluent.Options.T_Craft then getgenv().FishmanState.Fluent.Options.T_Craft:SetValue(getgenv().FishmanState.Model.State.autoCraft) end
-        end
-
-        if getgenv().FishmanState.Model.State.isAutoTraveling and getgenv().FishmanState.Model.StartTraveling then
-            getgenv().FishmanState.Model.StartTraveling()
-        end
-    end
+    resumeAfterFruitAction(tempSavedState)
 end
 
 getgenv().FishmanState.dropFruits = function(fruitList)
@@ -2462,123 +2446,31 @@ getgenv().FishmanState.dropFruits = function(fruitList)
     local backpack = LocalPlayer:FindFirstChild("Backpack")
     if not character or not humanoid or not backpack then return end
     
-    -- Check if we even have any target fruits before pausing
     local hasFruits = false
     for _, tool in pairs(backpack:GetChildren()) do
-        if tool:IsA("Tool") then
-            local toolName = string.lower(tool.Name)
-            for _, fruitName in ipairs(fruitList) do
-                if string.find(toolName, string.lower(fruitName)) then
-                    local isSpecial = false
-                    if tool:GetAttribute("Category") == "Special" then
-                        isSpecial = true
-                    end
-                    local attrs = tool:FindFirstChild("Attributes")
-                    if attrs and attrs:FindFirstChild("Category") and attrs.Category.Value == "Special" then
-                        isSpecial = true
-                    end
-                    
-                    if isSpecial then
-                        hasFruits = true
-                    end
-                    break
-                end
-            end
+        if matchSpecialFruit(tool, fruitList) then
+            hasFruits = true
+            break
         end
     end
     
-    if not hasFruits then return end -- No need to pause if no fruits
+    if not hasFruits then return end
 
-    -- PAUSE FISHING/KILLING
-    local tempSavedState = {}
-    if getgenv().FishmanState.Model and getgenv().FishmanState.Model.State then
-        tempSavedState = {
-            isFishing = getgenv().FishmanState.Model.State.isFishing,
-            autoBuy = getgenv().FishmanState.Model.State.autoBuy,
-            autoSell = getgenv().FishmanState.Model.State.autoSell,
-            isAutoTraveling = getgenv().FishmanState.Model.State.isAutoTraveling,
-            autoCraft = getgenv().FishmanState.Model.State.autoCraft
-        }
-        
-        -- Force stop them
-        getgenv().FishmanState.Model.State.isFishing = false
-        -- getgenv().FishmanState.Model.State.autoBuy = false
-        getgenv().FishmanState.Model.State.autoSell = false
-        getgenv().FishmanState.Model.State.isAutoTraveling = false
-        getgenv().FishmanState.Model.State.autoCraft = false
-        
-        -- Update toggles visually
-        if getgenv().FishmanState.Fluent and getgenv().FishmanState.Fluent.Options then
-            if getgenv().FishmanState.Fluent.Options.T_Fish then getgenv().FishmanState.Fluent.Options.T_Fish:SetValue(false) end
-            -- if getgenv().FishmanState.Fluent.Options.T_Buy then getgenv().FishmanState.Fluent.Options.T_Buy:SetValue(false) end
-            if getgenv().FishmanState.Fluent.Options.T_Sell then getgenv().FishmanState.Fluent.Options.T_Sell:SetValue(false) end
-            if getgenv().FishmanState.Fluent.Options.T_Travel then getgenv().FishmanState.Fluent.Options.T_Travel:SetValue(false) end
-            if getgenv().FishmanState.Fluent.Options.T_Craft then getgenv().FishmanState.Fluent.Options.T_Craft:SetValue(false) end
-        end
-        
-        -- Wait a moment for any current actions (like reeling) to finish
-        task.wait(2)
-        
-        -- Unequip current tools (rod/sword) so we can equip fruits properly
-        humanoid:UnequipTools()
-        task.wait(0.5)
-    end
+    local tempSavedState = pauseForFruitAction(humanoid)
     
     for _, tool in pairs(backpack:GetChildren()) do
         if getgenv()._cancelDropFruits then break end
-        if tool:IsA("Tool") then
-            local toolName = string.lower(tool.Name)
-            local isTargetFruit = false
-            for _, fruitName in ipairs(fruitList) do
-                if string.find(toolName, string.lower(fruitName)) then
-                    local isSpecial = false
-                    if tool:GetAttribute("Category") == "Special" then
-                        isSpecial = true
-                    end
-                    local attrs = tool:FindFirstChild("Attributes")
-                    if attrs and attrs:FindFirstChild("Category") and attrs.Category.Value == "Special" then
-                        isSpecial = true
-                    end
-                    
-                    if isSpecial then
-                        isTargetFruit = true
-                    end
-                    break
-                end
-            end
-            
-            if isTargetFruit then
-                humanoid:EquipTool(tool)
-                task.wait(0.2)
-                VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Backspace, false, game)
-                task.wait(0.1)
-                VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Backspace, false, game)
-                if getgenv().FishmanState.Fluent then getgenv().FishmanState.Fluent:Notify({ Title = "Dropping Fruit", Content = "Dropped: " .. tool.Name, Duration = 3 }) end
-                task.wait(0.5)
-            end
+        if matchSpecialFruit(tool, fruitList) then
+            humanoid:EquipTool(tool)
+            task.wait(0.2)
+            VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Backspace, false, game)
+            task.wait(0.1)
+            VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Backspace, false, game)
+            if getgenv().FishmanState.Fluent then getgenv().FishmanState.Fluent:Notify({ Title = "Dropping Fruit", Content = "Dropped: " .. tool.Name, Duration = 3 }) end
+            task.wait(0.5)
         end
     end
 
-    -- RESUME FISHING/KILLING
-    if getgenv().FishmanState.Model and getgenv().FishmanState.Model.State then
-        getgenv().FishmanState.Model.State.isFishing = tempSavedState.isFishing or false
-        getgenv().FishmanState.Model.State.autoBuy = tempSavedState.autoBuy or false
-        getgenv().FishmanState.Model.State.autoSell = tempSavedState.autoSell or false
-        getgenv().FishmanState.Model.State.isAutoTraveling = tempSavedState.isAutoTraveling or false
-        getgenv().FishmanState.Model.State.autoCraft = tempSavedState.autoCraft or false
-        
-        -- Update UI toggles visually to match restored state
-        if getgenv().FishmanState.Fluent and getgenv().FishmanState.Fluent.Options then
-            if getgenv().FishmanState.Fluent.Options.T_Fish then getgenv().FishmanState.Fluent.Options.T_Fish:SetValue(getgenv().FishmanState.Model.State.isFishing) end
-            if getgenv().FishmanState.Fluent.Options.T_Buy then getgenv().FishmanState.Fluent.Options.T_Buy:SetValue(getgenv().FishmanState.Model.State.autoBuy) end
-            if getgenv().FishmanState.Fluent.Options.T_Sell then getgenv().FishmanState.Fluent.Options.T_Sell:SetValue(getgenv().FishmanState.Model.State.autoSell) end
-            if getgenv().FishmanState.Fluent.Options.T_Travel then getgenv().FishmanState.Fluent.Options.T_Travel:SetValue(getgenv().FishmanState.Model.State.isAutoTraveling) end
-            if getgenv().FishmanState.Fluent.Options.T_Craft then getgenv().FishmanState.Fluent.Options.T_Craft:SetValue(getgenv().FishmanState.Model.State.autoCraft) end
-        end
-
-        if getgenv().FishmanState.Model.State.isAutoTraveling and getgenv().FishmanState.Model.StartTraveling then
-            getgenv().FishmanState.Model.StartTraveling()
-        end
-    end
+    resumeAfterFruitAction(tempSavedState)
 end
 

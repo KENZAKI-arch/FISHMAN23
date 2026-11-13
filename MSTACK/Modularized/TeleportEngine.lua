@@ -12,26 +12,12 @@ local VirtualInputManager = game:GetService("VirtualInputManager")
 local LocalPlayer = Players.LocalPlayer
 local env = getgenv and getgenv() or shared
 local GlobalMem = env
-
--- Bind state variables locally for ease of use in this file
-local _running = getgenv().FishmanState._running
-local _connections = getgenv().FishmanState._connections
-local Tabs = getgenv().FishmanState.Tabs
-local Fluent = getgenv().FishmanState.Fluent
-local addConn = getgenv().FishmanState.addConn
-local disconnectAll = getgenv().FishmanState.disconnectAll
-local TriggerSafeguardShutdown = getgenv().FishmanState.TriggerSafeguardShutdown
-local SaveConfig = getgenv().FishmanState.SaveConfig
 local isLobby = getgenv().FishmanState.isLobby
-
-
 local mySession = getgenv().FishmanSession or 0
 
 -- ======================================================================
 -- 🚀 TELEPORT MEMORY INJECTION
 -- ======================================================================
-local myScriptURL = "https://raw.githubusercontent.com/KENZAKI-arch/FISHMAN23/refs/heads/main/MSTACK/loader.lua"
-local qot = queue_on_teleport or (syn and syn.queue_on_teleport) or (fluxus and fluxus.queue_on_teleport)
 getgenv().FishmanState.UpdateTeleportMemory = nil -- Forward declaration
 
 -- ======================================================================
@@ -173,8 +159,7 @@ getgenv().FishmanState.ActivatePotatoGraphics = function()
         if child:IsA("BasePart") then
             child.CastShadow = false
         elseif child:IsA("ForceField") or child:IsA("Sparkles") or child:IsA("Smoke") or child:IsA("Fire") or child:IsA("Beam") then
-            task.spawn(function()
-                RunService.Heartbeat:Wait()
+            task.defer(function()
                 if child and child.Parent then
                     pcall(function() child:Destroy() end)
                 end
