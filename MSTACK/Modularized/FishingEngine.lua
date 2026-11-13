@@ -111,7 +111,7 @@ if not isLobby then
     local MIN_BAIT            = 1
     local BUY_AMOUNT          = 300
     local BAIT_SEARCH_RADIUS  = 25
-    local fishToSell = { "Crimson Snapper", "Exotic Tigerfin", "Fangfish", "Zebra Ribbon Angelfish", "Blue-Lip Grouper", "Tigerfin", "Crimson Polka Puffer", "Common Fish", "Seaweed", "Old Boot", "Tin Can", "Skeletal Shark", "Candy Corn Squid" }
+    local fishToSell = { "Crimson Snapper", "Exotic Tigerfin", "Fangfish", "Zebra Ribbon Angelfish", "Blue-Lip Grouper", "Tigerfin", "Crimson Polka Puffer", "Skeletal Shark", "Candy Corn Squid" }
     local VALID_RODS = { "Devil Fruit Rod", "Merchants Banana Rod", "Lovestruck Rod", "Fishing Rod" }
     
     -- ======================================================================
