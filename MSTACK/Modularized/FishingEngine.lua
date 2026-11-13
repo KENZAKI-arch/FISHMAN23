@@ -2390,21 +2390,70 @@ local function resumeAfterFruitAction(tempSavedState)
     end
 end
 
+local function scanBackpackFruits(fruitList)
+    local inventoryCounts = {}
+    local foundAny = false
+    local backpack = LocalPlayer:FindFirstChild("Backpack")
+    local character = LocalPlayer.Character
+
+    if backpack then
+        for _, tool in pairs(backpack:GetChildren()) do
+            if matchSpecialFruit(tool, fruitList) then
+                inventoryCounts[tool.Name] = (inventoryCounts[tool.Name] or 0) + 1
+                foundAny = true
+            end
+        end
+    end
+
+    if character then
+        for _, tool in pairs(character:GetChildren()) do
+            if matchSpecialFruit(tool, fruitList) then
+                inventoryCounts[tool.Name] = (inventoryCounts[tool.Name] or 0) + 1
+                foundAny = true
+            end
+        end
+    end
+
+    return inventoryCounts, foundAny
+end
+
+getgenv().FishmanState.getFruitStatus = function(fruitList)
+    fruitList = fruitList or getgenv().FishmanState.targetFruits
+    local backpackCounts = scanBackpackFruits(fruitList)
+    local stored = {}
+    local seen = {}
+
+    local pGui = LocalPlayer:FindFirstChild("PlayerGui")
+    local invGui = pGui and pGui:FindFirstChild("Inventory")
+    local main = invGui and invGui:FindFirstChild("Main")
+    local inv = main and main:FindFirstChild("Inventory")
+    local list = inv and inv:FindFirstChild("List")
+    if list then
+        for _, child in ipairs(list:GetChildren()) do
+            local childLower = string.lower(child.Name)
+            for _, fruitName in ipairs(fruitList) do
+                if not seen[fruitName] and string.find(childLower, string.lower(fruitName)) then
+                    seen[fruitName] = true
+                    table.insert(stored, fruitName)
+                end
+            end
+        end
+        table.sort(stored)
+    end
+
+    return {
+        backpack = backpackCounts,
+        stored = stored
+    }
+end
+
 getgenv().FishmanState.checkFruits = function(fruitList)
     local character = LocalPlayer.Character
     local backpack = LocalPlayer:FindFirstChild("Backpack")
     if not character or not backpack then return end
-    
-    local inventoryCounts = {}
-    local foundAny = false
-    
-    for _, tool in pairs(backpack:GetChildren()) do
-        if matchSpecialFruit(tool, fruitList) then
-            inventoryCounts[tool.Name] = (inventoryCounts[tool.Name] or 0) + 1
-            foundAny = true
-        end
-    end
-    
+
+    local inventoryCounts, foundAny = scanBackpackFruits(fruitList)
+
     if foundAny then
         local lines = {}
         for name, count in pairs(inventoryCounts) do

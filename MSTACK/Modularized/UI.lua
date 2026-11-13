@@ -2319,6 +2319,11 @@ local LegendaryBreakdownPara = getgenv().FishmanState.Tabs.Status:AddParagraph({
     Content = "None caught yet."
 })
 
+local FruitCheckerPara = getgenv().FishmanState.Tabs.Status:AddParagraph({
+    Title = "🍎 Fruits in Inventory",
+    Content = "Checking fruits..."
+})
+
 getgenv().FishmanState.Tabs.Status:AddButton({
     Title = "🔄 Reset Session Stats",
     Description = "Resets session timer, cast counter, and legendary catch counts.",
@@ -2376,6 +2381,23 @@ task.spawn(function()
                 table.insert(lines, string.format("- %s: %d caught (in bag: %d)", fishName, caught, inBag))
             end
             LegendaryBreakdownPara:SetDesc(#lines > 0 and table.concat(lines, "\n ") or "Waiting for data...")
+
+            if FruitCheckerPara then
+                if getgenv().FishmanState.getFruitStatus then
+                    local fruitStatus = getgenv().FishmanState.getFruitStatus(getgenv().FishmanState.targetFruits)
+                    local bpLines = {}
+                    for name, count in pairs(fruitStatus.backpack) do
+                        table.insert(bpLines, string.format("- %dx %s", count, name))
+                    end
+                    table.sort(bpLines)
+
+                    local bpText = (#bpLines > 0) and ("\n" .. table.concat(bpLines, "\n")) or " None"
+                    local storedText = (#fruitStatus.stored > 0) and table.concat(fruitStatus.stored, ", ") or "None"
+                    FruitCheckerPara:SetDesc(string.format("Backpack (Unstored):%s\nStored Inventory: %s", bpText, storedText))
+                else
+                    FruitCheckerPara:SetDesc("Fruit checker unavailable.")
+                end
+            end
         end
         task.wait(2)
     end
