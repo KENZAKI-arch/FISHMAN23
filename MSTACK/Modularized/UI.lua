@@ -106,6 +106,113 @@ function Fluent:Notify(options)
     end)
 end
 
+local function createSidebarProfile(parentFrame, profileH)
+    local profileFrame = Instance.new("Frame")
+    profileFrame.Name = "ProfileFooter"
+    profileFrame.Size = UDim2.new(0, 124, 0, profileH)
+    profileFrame.Position = UDim2.new(0, 0, 1, -profileH)
+    profileFrame.BackgroundColor3 = THEME.Surface
+    profileFrame.BorderSizePixel = 0
+    profileFrame.ClipsDescendants = true
+    profileFrame.Parent = parentFrame
+
+    local profileDivider = Instance.new("Frame")
+    profileDivider.Size = UDim2.new(1, 0, 0, 1)
+    profileDivider.BackgroundColor3 = THEME.Border
+    profileDivider.BorderSizePixel = 0
+    profileDivider.Parent = profileFrame
+
+    local avatarImg = Instance.new("ImageLabel")
+    avatarImg.Size = UDim2.new(0, 30, 0, 30)
+    avatarImg.Position = UDim2.new(0, 7, 0.5, 0)
+    avatarImg.AnchorPoint = Vector2.new(0, 0.5)
+    avatarImg.BackgroundColor3 = THEME.Card
+    avatarImg.BorderSizePixel = 0
+    avatarImg.ScaleType = Enum.ScaleType.Fit
+    avatarImg.Parent = profileFrame
+
+    local avatarCorner = Instance.new("UICorner")
+    avatarCorner.CornerRadius = UDim.new(1, 0)
+    avatarCorner.Parent = avatarImg
+
+    local avatarStroke = Instance.new("UIStroke")
+    avatarStroke.Color = THEME.Border
+    avatarStroke.Thickness = 1
+    avatarStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    avatarStroke.Parent = avatarImg
+
+    local userInfoFrame = Instance.new("Frame")
+    userInfoFrame.Size = UDim2.new(1, -49, 1, -4)
+    userInfoFrame.Position = UDim2.new(0, 43, 0, 3)
+    userInfoFrame.BackgroundTransparency = 1
+    userInfoFrame.ClipsDescendants = true
+    userInfoFrame.Parent = profileFrame
+
+    local userInfoLayout = Instance.new("UIListLayout")
+    userInfoLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    userInfoLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+    userInfoLayout.Padding = UDim.new(0, 1)
+    userInfoLayout.Parent = userInfoFrame
+
+    local userName = (LocalPlayer and LocalPlayer.Name) or "Player"
+    local displayName = (LocalPlayer and LocalPlayer.DisplayName) or userName
+    local hasSeparateDisplay = (displayName ~= "" and displayName ~= userName)
+
+    local displayLabel = Instance.new("TextLabel")
+    displayLabel.Size = UDim2.new(1, 0, 0, 14)
+    displayLabel.BackgroundTransparency = 1
+    displayLabel.Text = hasSeparateDisplay and displayName or userName
+    displayLabel.TextColor3 = THEME.Text
+    displayLabel.TextXAlignment = Enum.TextXAlignment.Left
+    displayLabel.TextTruncate = Enum.TextTruncate.AtEnd
+    displayLabel.Font = THEME.FontMain
+    displayLabel.TextSize = 11
+    displayLabel.LayoutOrder = 1
+    displayLabel.Parent = userInfoFrame
+
+    local handleLabel = Instance.new("TextLabel")
+    handleLabel.Size = UDim2.new(1, 0, 0, 12)
+    handleLabel.BackgroundTransparency = 1
+    handleLabel.Text = "@" .. userName
+    handleLabel.TextColor3 = THEME.Muted
+    handleLabel.TextXAlignment = Enum.TextXAlignment.Left
+    handleLabel.TextTruncate = Enum.TextTruncate.AtEnd
+    handleLabel.Font = THEME.FontMain
+    handleLabel.TextSize = 10
+    handleLabel.Visible = hasSeparateDisplay
+    handleLabel.LayoutOrder = 2
+    handleLabel.Parent = userInfoFrame
+
+    local userId = LocalPlayer and LocalPlayer.UserId or 0
+    if userId > 0 then
+        avatarImg.Image = string.format("rbxthumb://type=AvatarHeadShot&id=%d&w=150&h=150", userId)
+        task.spawn(function()
+            local ok, thumb, isReady = pcall(function()
+                return Players:GetUserThumbnailAsync(userId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size150x150)
+            end)
+            if ok and type(thumb) == "string" and thumb ~= "" and isReady ~= false and avatarImg.Parent then
+                avatarImg.Image = thumb
+            end
+        end)
+    end
+
+    local function layoutProfile(sideW, visible)
+        local compact = sideW < 100
+        local avatarSize = compact and 22 or 30
+        local avatarPad = compact and 5 or 7
+        local textStart = avatarPad + avatarSize + 6
+        profileFrame.Visible = visible
+        profileFrame.Size = UDim2.new(0, sideW, 0, profileH)
+        profileFrame.Position = UDim2.new(0, 0, 1, -profileH)
+        avatarImg.Size = UDim2.fromOffset(avatarSize, avatarSize)
+        avatarImg.Position = UDim2.new(0, avatarPad, 0.5, 0)
+        userInfoFrame.Position = UDim2.new(0, textStart, 0, 3)
+        userInfoFrame.Size = UDim2.new(1, -(textStart + 6), 1, -4)
+    end
+
+    return profileFrame, layoutProfile
+end
+
 function Fluent:CreateWindow(options)
     local FakeWindow = {}
 
@@ -190,11 +297,17 @@ function Fluent:CreateWindow(options)
         return math.clamp(math.floor(x), 0, maxX), math.clamp(math.floor(y), 0, maxY)
     end
 
+    local PROFILE_HEIGHT, PROFILE_MIN_WIN_H = 46, 160
+    local profileFrame, layoutSidebarProfile = nil, nil
+
     local function toggleMinimize()
         isMinimized = not isMinimized
         mainFrame.Size = UDim2.fromOffset(currentW, isMinimized and 28 or currentH)
         for _, c in ipairs(mainFrame:GetChildren()) do
             if c ~= topBar and c.Name ~= "UICorner" then c.Visible = not isMinimized end
+        end
+        if not isMinimized and profileFrame and currentH < PROFILE_MIN_WIN_H then
+            profileFrame.Visible = false
         end
         local cx, cy = clampWindowPosition(mainFrame.Position.X.Offset, mainFrame.Position.Y.Offset)
         mainFrame.Position = UDim2.fromOffset(cx, cy)
@@ -302,7 +415,7 @@ function Fluent:CreateWindow(options)
     end))
 
     local tabContainer = Instance.new("ScrollingFrame")
-    tabContainer.Size = UDim2.new(0, 124, 1, -28)
+    tabContainer.Size = UDim2.new(0, 124, 1, -(28 + PROFILE_HEIGHT))
     tabContainer.Position = UDim2.new(0, 0, 0, 28)
     tabContainer.BackgroundColor3 = THEME.Surface
     tabContainer.BorderSizePixel = 0
@@ -320,6 +433,8 @@ function Fluent:CreateWindow(options)
         tabContainer.CanvasSize = UDim2.new(0, 0, 0, tabLayout.AbsoluteContentSize.Y + 12)
     end)
 
+    profileFrame, layoutSidebarProfile = createSidebarProfile(mainFrame, PROFILE_HEIGHT)
+
     local sideDivider = Instance.new("Frame")
     sideDivider.Size = UDim2.new(0, 1, 1, -28)
     sideDivider.Position = UDim2.new(0, 124, 0, 28)
@@ -335,6 +450,7 @@ function Fluent:CreateWindow(options)
     contentContainer.Parent = mainFrame
 
     attachWindowDrag(tabContainer)
+    attachWindowDrag(profileFrame)
     attachWindowDrag(contentContainer)
 
     applyResponsiveLayout = function(centerIfFirst)
@@ -346,9 +462,12 @@ function Fluent:CreateWindow(options)
 
         currentW, currentH = newW, newH
         local sideW = (newW < 360) and math.max(76, math.floor(newW * 0.27)) or 124
+        local showProfile = newH >= PROFILE_MIN_WIN_H
+        local activeProfileH = showProfile and PROFILE_HEIGHT or 0
 
         mainFrame.Size = UDim2.fromOffset(newW, isMinimized and 28 or newH)
-        tabContainer.Size = UDim2.new(0, sideW, 1, -28)
+        tabContainer.Size = UDim2.new(0, sideW, 1, -(28 + activeProfileH))
+        layoutSidebarProfile(sideW, (not isMinimized) and showProfile)
         sideDivider.Position = UDim2.new(0, sideW, 0, 28)
         contentContainer.Size = UDim2.new(1, -(sideW + 1), 1, -28)
         contentContainer.Position = UDim2.new(0, sideW + 1, 0, 28)
