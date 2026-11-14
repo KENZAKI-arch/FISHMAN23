@@ -1,4 +1,19 @@
 -- Main Loader Orchestrator
+local ALLOWED_PLACE_IDS = {
+    [1730877806] = true, -- Lobby / Main Menu
+    [3978370137] = true, -- First Sea
+    [7465136166] = true, -- Second Sea
+    [7369873099] = true, -- Trade Hub
+    [6811831486] = true, -- Trade Hub (Trade place)
+}
+if game.PlaceId == 0 and not game:IsLoaded() then
+    game.Loaded:Wait()
+end
+if not ALLOWED_PLACE_IDS[game.PlaceId] then
+    warn(string.format("[Fishman] Unsupported PlaceId (%s). Aborting load.", tostring(game.PlaceId)))
+    return
+end
+
 print("[Fishman] Loading Modular Architecture...")
 
 -- 🔄 Generation counter to cleanly terminate any zombie threads from previous executions

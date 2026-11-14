@@ -1,6 +1,21 @@
 -- ==========================================
 -- Fishman Hub Multi-Account Loader
 -- ==========================================
+local ALLOWED_PLACE_IDS = {
+    [1730877806] = true, -- Lobby / Main Menu
+    [3978370137] = true, -- First Sea
+    [7465136166] = true, -- Second Sea
+    [7369873099] = true, -- Trade Hub
+    [6811831486] = true, -- Trade Hub (Trade place)
+}
+if game.PlaceId == 0 and not game:IsLoaded() then
+    game.Loaded:Wait()
+end
+if not ALLOWED_PLACE_IDS[game.PlaceId] then
+    warn(string.format("[Fishman Loader] Unsupported PlaceId (%s). Script will not load.", tostring(game.PlaceId)))
+    return
+end
+
 if getgenv().FishmanLoaderLastExecuted and (tick() - getgenv().FishmanLoaderLastExecuted < 10) then
     warn("[Fishman Loader] Aborting duplicate execution (preventing autoexec/queue_on_teleport overlap)")
     return
