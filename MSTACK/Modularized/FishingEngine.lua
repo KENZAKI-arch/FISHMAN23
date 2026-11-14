@@ -26,6 +26,8 @@ local cachedBaitItems = nil
 local cachedOceanLevel = nil
 local noclipCache = {}
 local lastCharacter = nil
+local activeCycleThread = nil
+local activeCycleStart = nil
 
 getgenv().FishmanState.isAFKModeActive = false
 getgenv().FishmanState.secondsSinceLastInput = 0
@@ -65,6 +67,67 @@ getgenv().FishmanState.Model.State = {
     shipSpeed             = 60,
     selectedBait          = GlobalMem.FishmanBaitType or "Common Fish Bait",
 }
+
+local function getActionRemote()
+    if Remote then return Remote end
+    local fishingFolder = ReplicatedStorage:FindFirstChild("Fishing")
+    local remotesFolder = fishingFolder and fishingFolder:FindFirstChild("Remotes")
+    Remote = remotesFolder and remotesFolder:FindFirstChild("Action")
+    return Remote
+end
+
+local function clearSessionKeys()
+    if getgenv().FishmanState then
+        getgenv().FishmanState._activeSessionKey = nil
+        getgenv().FishmanState._activeActionKey = nil
+    end
+end
+
+local function setSessionKeys(sessionKey, actionKey)
+    if getgenv().FishmanState then
+        getgenv().FishmanState._activeSessionKey = sessionKey
+        getgenv().FishmanState._activeActionKey = actionKey
+    end
+end
+
+local function invokeFishingAction(actionRemote, payload)
+    local ok, resp = pcall(function()
+        return actionRemote:InvokeServer(payload)
+    end)
+    if ok and type(resp) == "table" and resp.ActionKey and getgenv().FishmanState then
+        getgenv().FishmanState._activeActionKey = resp.ActionKey
+    end
+    return ok, resp
+end
+
+local function closeFishingSession(actionRemote, hook, sessionKey, actionKey, fullSequence)
+    if actionRemote then
+        if fullSequence and sessionKey then
+            for _, act in ipairs({ "Reel", "HookReturning", "Cancel" }) do
+                local ok, resp = invokeFishingAction(actionRemote, {
+                    Action = act,
+                    SessionKey = sessionKey,
+                    ActionKey = actionKey
+                })
+                if ok and type(resp) == "table" and resp.ActionKey then
+                    actionKey = resp.ActionKey
+                end
+            end
+        elseif sessionKey then
+            invokeFishingAction(actionRemote, {
+                Action = "Cancel",
+                SessionKey = sessionKey,
+                ActionKey = actionKey
+            })
+        else
+            pcall(function() actionRemote:InvokeServer({ Action = "Cancel" }) end)
+        end
+    end
+    if hook and hook.Parent then
+        pcall(function() hook:Destroy() end)
+    end
+    clearSessionKeys()
+end
 
 if not isLobby then
     -- Resolve remotes & stats non-blockingly so UI.lua always loads even in Trade Hub or slow servers
@@ -1669,14 +1732,6 @@ if not isLobby then
     end
     
 -- === FISHING LOGIC ===
-local function getActionRemote()
-    if Remote then return Remote end
-    local fishingFolder = ReplicatedStorage:FindFirstChild("Fishing")
-    local remotesFolder = fishingFolder and fishingFolder:FindFirstChild("Remotes")
-    Remote = remotesFolder and remotesFolder:FindFirstChild("Action")
-    return Remote
-end
-
 local function EquipRod()
     local char = LocalPlayer.Character
     local backpack = LocalPlayer:FindFirstChild("Backpack") or LocalPlayer:WaitForChild("Backpack", 5)
@@ -1741,7 +1796,29 @@ local function GetWaterLevel(targetPos)
     return targetPos and targetPos.Y or 0
 end
 
+local function pullHookToPlayer(hook)
+    if not hook or not hook.Parent then return end
+    local char = LocalPlayer.Character
+    local targetRoot = char and (char:FindFirstChild("HumanoidRootPart") or char.PrimaryPart)
+    if not targetRoot then return end
+
+    local targetPos = targetRoot.Position
+    local existingBp = hook:FindFirstChildOfClass("BodyPosition")
+    if existingBp then
+        existingBp.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+        existingBp.P = 100000
+        existingBp.D = 1000
+        existingBp.Position = targetPos
+    end
+    if hook:IsA("BasePart") then
+        hook.Anchored = false
+        hook.AssemblyLinearVelocity = Vector3.zero
+    end
+    hook:PivotTo(CFrame.new(targetPos))
+end
+
 local function DoFishingCycle()
+    getgenv().FishmanLastCycleTime = os.clock()
     if getgenv().FishmanState.Model.State.isCurrentlyCrafting or getgenv().FishmanState.Model.State.isCraftFlying then
         return true
     end
@@ -1755,12 +1832,14 @@ local function DoFishingCycle()
     local rootPart = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
     if not rootPart then return true end
 
-    -- Clean up any stuck hook from an earlier disconnect/timeout (0ms delay if none exists)
+    -- Clean up any stuck hook or unclosed session from an earlier disconnect/timeout (0ms delay if none exists)
+    local effectsFolder = workspace:FindFirstChild("Effects")
     local hookName = LocalPlayer.Name .. "'s hook"
-    local existingHook = workspace.Effects:FindFirstChild(hookName)
-    if existingHook then
-        existingHook:Destroy()
-        pcall(function() actionRemote:InvokeServer({ Action = "Cancel" }) end)
+    local existingHook = effectsFolder and effectsFolder:FindFirstChild(hookName)
+    local staleSessionKey = getgenv().FishmanState._activeSessionKey
+    local staleActionKey = getgenv().FishmanState._activeActionKey
+    if existingHook or staleSessionKey then
+        closeFishingSession(actionRemote, existingHook, staleSessionKey, staleActionKey, existingHook ~= nil)
         task.wait()
     end
 
@@ -1805,6 +1884,7 @@ local function DoFishingCycle()
         end
     end
 
+    getgenv().FishmanLastCycleTime = os.clock()
     local success, throwResponse = pcall(function()
         return actionRemote:InvokeServer({ 
             Bait = activeBait, 
@@ -1812,6 +1892,7 @@ local function DoFishingCycle()
             Goal = throwGoal 
         })
     end)
+    getgenv().FishmanLastCycleTime = os.clock()
     
     if not success or type(throwResponse) ~= "table" or not throwResponse.Accepted then
         pcall(function() actionRemote:InvokeServer({ Action = "Cancel" }) end)
@@ -1825,39 +1906,55 @@ local function DoFishingCycle()
     
     local sessionKey = throwResponse.SessionKey
     local actionKey = throwResponse.ActionKey
+    setSessionKeys(sessionKey, actionKey)
 
-    local hookName = LocalPlayer.Name .. "'s hook"
-    local hook = workspace.Effects:WaitForChild(hookName, 5)
+    effectsFolder = effectsFolder or workspace:FindFirstChild("Effects")
+    local hook = effectsFolder and effectsFolder:WaitForChild(hookName, 5)
     
-    if not hook then return true end
+    if not hook then
+        closeFishingSession(actionRemote, nil, sessionKey, actionKey, false)
+        return true
+    end
     
     local surfacePosition = Vector3.new(throwGoal.X, waterLevelY, throwGoal.Z)
     
     hook:PivotTo(CFrame.new(surfacePosition))
-    hook.AssemblyLinearVelocity = Vector3.zero
+    if hook:IsA("BasePart") then
+        hook.AssemblyLinearVelocity = Vector3.zero
+    end
     
     local bp = Instance.new("BodyPosition")
     bp.MaxForce = Vector3.new(0, 2000000000, 0)
     bp.Position = surfacePosition
     bp.Parent = hook
     
-    local landSuccess, landedResponse = pcall(function()
-        return actionRemote:InvokeServer({
+    -- Send Landed immediately (0ms delay); only retry if server rejects while idle/lagging
+    local landedAccepted = false
+    for attempt = 1, 3 do
+        getgenv().FishmanLastCycleTime = os.clock()
+        local landSuccess, landedResponse = invokeFishingAction(actionRemote, {
             Action = "Landed",
             SessionKey = sessionKey,
             ActionKey = actionKey
         })
-    end)
-    
-    if not landSuccess or type(landedResponse) ~= "table" or not landedResponse.Accepted then
-        pcall(function() actionRemote:InvokeServer({ Action = "Cancel", SessionKey = sessionKey, ActionKey = actionKey }) end)
-        if hook then hook:Destroy() end
-        task.wait(0.5)
-        return true
+        if landSuccess and type(landedResponse) == "table" then
+            if landedResponse.ActionKey then
+                actionKey = landedResponse.ActionKey
+            end
+            if landedResponse.Accepted then
+                landedAccepted = true
+                break
+            end
+        end
+        if attempt < 3 and hook.Parent and (getgenv().FishmanState.Model.State.isFishing or getgenv().FishmanState.Model.State.isDeepSeaCatcher) then
+            task.wait(0.05)
+        end
     end
     
-    if landedResponse.ActionKey then
-        actionKey = landedResponse.ActionKey
+    if not landedAccepted then
+        closeFishingSession(actionRemote, hook, sessionKey, actionKey, false)
+        task.wait(0.5)
+        return true
     end
     
     local maxWait = 30 
@@ -1865,10 +1962,13 @@ local function DoFishingCycle()
     local fishBitten = false
     
     while (os.clock() - waitStart) < maxWait do
+        getgenv().FishmanLastCycleTime = os.clock()
         if not (getgenv().FishmanState.Model.State.isFishing or getgenv().FishmanState.Model.State.isDeepSeaCatcher) then
-            pcall(function() actionRemote:InvokeServer({ Action = "Cancel", SessionKey = sessionKey, ActionKey = actionKey }) end)
-            if hook then hook:Destroy() end
+            closeFishingSession(actionRemote, hook, sessionKey, actionKey, false)
             return true
+        end
+        if not hook.Parent then
+            break
         end
         
         if hook:GetAttribute("Caught") == true or hook:FindFirstChild("ReelLoop") then
@@ -1884,7 +1984,7 @@ local function DoFishingCycle()
             local beastDetected = false
             local bWaited = 0
             local initialSoundTime = nil
-            local rootPart = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+            local charRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
             
             if not getgenv().DSC_SoundCache then
                 getgenv().DSC_SoundCache = {}
@@ -1914,15 +2014,15 @@ local function DoFishingCycle()
                     charDescConn = char.DescendantAdded:Connect(onNewSound)
                     getgenv().FishmanState.addConn(charDescConn)
                 end))
-                if rootPart then
-                    for _, child in ipairs(rootPart:GetChildren()) do onNewSound(child) end
+                if charRoot then
+                    for _, child in ipairs(charRoot:GetChildren()) do onNewSound(child) end
                 end
             end
             
             while getgenv().FishmanState._running and hook.Parent do
+                getgenv().FishmanLastCycleTime = os.clock()
                 if not (getgenv().FishmanState.Model.State.isFishing or getgenv().FishmanState.Model.State.isDeepSeaCatcher) then
-                    pcall(function() actionRemote:InvokeServer({ Action = "Cancel", SessionKey = sessionKey, ActionKey = actionKey }) end)
-                    if hook then hook:Destroy() end
+                    closeFishingSession(actionRemote, hook, sessionKey, actionKey, false)
                     return true
                 end
                 local beastSounds = {}
@@ -1930,8 +2030,8 @@ local function DoFishingCycle()
                     local s = getgenv().DSC_SoundCache[i]
                     if s.Parent then table.insert(beastSounds, s) else table.remove(getgenv().DSC_SoundCache, i) end
                 end
-                if rootPart then
-                    for _, child in ipairs(rootPart:GetChildren()) do
+                if charRoot then
+                    for _, child in ipairs(charRoot:GetChildren()) do
                         if child:IsA("Sound") and child.Playing then
                             if not initialSoundTime and (child.Name == "Small" or child.Name == "Medium" or child.Name == "Large" or child.Name == "Giant") then
                                 print("🐟 Initial sound detected:", child.Name, "- Waiting 0.3s for possible Beast sound...")
@@ -1983,124 +2083,187 @@ local function DoFishingCycle()
         if isBeast then
             local reelStart = os.clock()
             while (os.clock() - reelStart) < 5.5 do
+                getgenv().FishmanLastCycleTime = os.clock()
                 if not (getgenv().FishmanState.Model.State.isFishing or getgenv().FishmanState.Model.State.isDeepSeaCatcher) then
-                    pcall(function() actionRemote:InvokeServer({ Action = "Cancel", SessionKey = sessionKey, ActionKey = actionKey }) end)
-                    if hook then hook:Destroy() end
+                    closeFishingSession(actionRemote, hook, sessionKey, actionKey, false)
                     return true
                 end
+                if not hook.Parent then break end
                 task.wait()
             end
             
-            local reelSuccess, reelResponse = pcall(function()
-                return actionRemote:InvokeServer({
+            -- Invoke Reel immediately (0ms extra wait); retry only if server rejects due to idle/timer drift
+            local reelDeadline = os.clock() + 2.5
+            local nilRetries = 0
+            while true do
+                getgenv().FishmanLastCycleTime = os.clock()
+                if not (getgenv().FishmanState.Model.State.isFishing or getgenv().FishmanState.Model.State.isDeepSeaCatcher) then
+                    closeFishingSession(actionRemote, hook, sessionKey, actionKey, false)
+                    return true
+                end
+                local reelSuccess, reelResponse = invokeFishingAction(actionRemote, {
                     Action = "Reel",
                     SessionKey = sessionKey,
-                    ActionKey = actionKey 
+                    ActionKey = actionKey
                 })
-            end)
-            
-            if reelSuccess and type(reelResponse) == "table" and reelResponse.ActionKey then
-                actionKey = reelResponse.ActionKey
+                if reelSuccess and type(reelResponse) == "table" then
+                    if reelResponse.ActionKey then
+                        actionKey = reelResponse.ActionKey
+                    end
+                    if reelResponse.Accepted ~= false then
+                        break
+                    end
+                elseif reelSuccess and reelResponse == nil then
+                    nilRetries += 1
+                    if nilRetries >= 2 then break end
+                end
+                if os.clock() >= reelDeadline or not hook.Parent then
+                    break
+                end
+                task.wait(0.1)
             end
             
-            local retSuccess, retResponse = pcall(function()
-                return actionRemote:InvokeServer({
+            -- Pull the unanchored hook to the player BEFORE HookReturning so position
+            -- replicates during the HookReturning InvokeServer round-trip (0ms extra wait)
+            pullHookToPlayer(hook)
+
+            local retDeadline = os.clock() + 1.5
+            local retNilRetries = 0
+            while true do
+                getgenv().FishmanLastCycleTime = os.clock()
+                local retSuccess, retResponse = invokeFishingAction(actionRemote, {
                     Action = "HookReturning",
                     SessionKey = sessionKey,
                     ActionKey = actionKey
                 })
-            end)
-            
-            if retSuccess and type(retResponse) == "table" and retResponse.ActionKey then
-                actionKey = retResponse.ActionKey
-            end
-            
-            -- PHYSICALLY PULL THE HOOK BACK TO YOU (INSTANT)
-            local char = LocalPlayer.Character
-            if char and char.PrimaryPart and hook and hook.Parent then
-                local targetPos = char.PrimaryPart.Position
-                
-                local existingBp = hook:FindFirstChildOfClass("BodyPosition")
-                if existingBp then existingBp:Destroy() end
-                hook.Anchored = true
-                
-                -- Instantly teleport the hook to your character
-                hook:PivotTo(CFrame.new(targetPos))
-                
-                -- Wait just 1/10th of a second for the fish reward script to catch up
-                task.wait()
+                if retSuccess and type(retResponse) == "table" then
+                    if retResponse.ActionKey then
+                        actionKey = retResponse.ActionKey
+                    end
+                    if retResponse.Accepted ~= false then
+                        break
+                    end
+                elseif retSuccess and retResponse == nil then
+                    retNilRetries += 1
+                    if retNilRetries >= 2 then break end
+                end
+                if os.clock() >= retDeadline or not hook.Parent then
+                    break
+                end
+                pullHookToPlayer(hook)
+                task.wait(0.1)
             end
         else
-            pcall(function()
-                actionRemote:InvokeServer({ Action = "Reel", SessionKey = sessionKey, ActionKey = actionKey })
-            end)
-            task.wait()
-            pcall(function()
-                actionRemote:InvokeServer({ Action = "Cancel", SessionKey = sessionKey, ActionKey = actionKey })
-            end)
-            if hook then hook:Destroy() end
+            local reelOk, reelResp = invokeFishingAction(actionRemote, {
+                Action = "Reel",
+                SessionKey = sessionKey,
+                ActionKey = actionKey
+            })
+            if reelOk and type(reelResp) == "table" and reelResp.ActionKey then
+                actionKey = reelResp.ActionKey
+            end
+            closeFishingSession(actionRemote, hook, sessionKey, actionKey, false)
             return true
         end
     end
     
-    if hook then hook:Destroy() end
-    
-    pcall(function()
-        actionRemote:InvokeServer({
-            Action = "Cancel",
-            SessionKey = sessionKey,
-            ActionKey = actionKey
-        })
-    end)
-    
+    closeFishingSession(actionRemote, hook, sessionKey, actionKey, false)
     return true
 end
 
 -- === MAIN LOOP & WATCHDOG SUPERVISOR ===
 getgenv().FishmanLastCycleTime = os.clock()
+local isRecovering = false
+local recoverStartTime = nil
 
 task.spawn(function()
     print("Auto-Fisher started with Watchdog Supervisor.")
     while getgenv().FishmanSession == mySession and getgenv().FishmanState._running do
-        if (getgenv().FishmanState.Model.State.isFishing or getgenv().FishmanState.Model.State.isDeepSeaCatcher) and not getgenv().FishmanState.Model.State.isCurrentlyCrafting and not getgenv().FishmanState.Model.State.isCraftFlying then
-            local success, err = pcall(DoFishingCycle)
-            if not success then
-                warn("[Fishman Watchdog] Caught cycle error: " .. tostring(err) .. " -> Auto-recovering...")
+        if (getgenv().FishmanState.Model.State.isFishing or getgenv().FishmanState.Model.State.isDeepSeaCatcher)
+            and not isRecovering
+            and not getgenv().FishmanState.Model.State.isCurrentlyCrafting
+            and not getgenv().FishmanState.Model.State.isCraftFlying then
+            local cycleDone = false
+            local cycleOk, cycleErr = true, nil
+            activeCycleStart = os.clock()
+            getgenv().FishmanLastCycleTime = activeCycleStart
+
+            activeCycleThread = task.spawn(function()
+                cycleOk, cycleErr = pcall(DoFishingCycle)
+                cycleDone = true
+            end)
+
+            while not cycleDone
+                and activeCycleThread
+                and coroutine.status(activeCycleThread) ~= "dead"
+                and getgenv().FishmanSession == mySession
+                and getgenv().FishmanState._running do
+                task.wait()
+            end
+
+            activeCycleThread = nil
+            activeCycleStart = nil
+            if not cycleOk then
+                warn("[Fishman Watchdog] Caught cycle error: " .. tostring(cycleErr) .. " -> Auto-recovering...")
                 task.wait(0.5)
             end
             getgenv().FishmanLastCycleTime = os.clock()
+        else
+            activeCycleStart = nil
         end
         task.wait() -- Delay between casts
     end
 end)
 
--- Active Watchdog Thread: Guarantees fishing never gets permanently frozen during lag
+-- Active Watchdog Thread: Guarantees fishing never gets permanently frozen during idle or lag
 task.spawn(function()
     while getgenv().FishmanSession == mySession and getgenv().FishmanState._running do
         task.wait(5)
         local now = os.clock()
+        if isRecovering and recoverStartTime and (now - recoverStartTime) > 10 then
+            isRecovering = false
+            recoverStartTime = nil
+        end
         local state = getgenv().FishmanState.Model and getgenv().FishmanState.Model.State
-        if state and (state.isFishing or state.isDeepSeaCatcher) then
-            -- If fishing is on but no progress made in 35 seconds (frozen/stuck during lag):
-            if (now - (getgenv().FishmanLastCycleTime or now)) > 35 then
-                warn("[Fishman Watchdog] ⚠️ Fishing stalled for >35s during lag! Forcing recovery...")
+        if state and (state.isFishing or state.isDeepSeaCatcher) and not state.isCurrentlyCrafting and not state.isCraftFlying and not isRecovering then
+            local progressStalled = (now - (getgenv().FishmanLastCycleTime or now)) > 15
+            local cycleTimedOut = activeCycleStart and (now - activeCycleStart) > 50
+            if progressStalled or cycleTimedOut then
+                warn(string.format("[Fishman Watchdog] ⚠️ Fishing stalled (%s)! Canceling stuck cycle & forcing recovery...", progressStalled and "no progress >15s" or "cycle >50s"))
                 
                 -- Clear all stuck locks
                 state.isCurrentlyCrafting = false
                 state.isCraftFlying = false
                 state.isBuying = false
                 
-                -- Clean up any stuck hook
-                local hookName = LocalPlayer.Name .. "'s hook"
-                local stuckHook = workspace.Effects:FindFirstChild(hookName)
-                if stuckHook then pcall(function() stuckHook:Destroy() end) end
-                local actionRemote = getActionRemote()
-                if actionRemote then pcall(function() actionRemote:InvokeServer({ Action = "Cancel" }) end) end
-                
-                -- Re-equip rod in place
-                pcall(EquipRod)
-                
+                -- Cancel frozen cycle thread so the main loop can start a fresh cast
+                if activeCycleThread and coroutine.status(activeCycleThread) ~= "dead" then
+                    pcall(task.cancel, activeCycleThread)
+                end
+                activeCycleThread = nil
+                activeCycleStart = nil
                 getgenv().FishmanLastCycleTime = os.clock()
+
+                -- Clean up stuck hook, close remembered session keys, and reset rod before next cast
+                local staleSessionKey = getgenv().FishmanState._activeSessionKey
+                local staleActionKey = getgenv().FishmanState._activeActionKey
+                clearSessionKeys()
+                isRecovering = true
+                recoverStartTime = os.clock()
+                task.spawn(function()
+                    pcall(function()
+                        local effectsFolder = workspace:FindFirstChild("Effects")
+                        local stuckHook = effectsFolder and effectsFolder:FindFirstChild(LocalPlayer.Name .. "'s hook")
+                        closeFishingSession(getActionRemote(), stuckHook, staleSessionKey, staleActionKey, true)
+                        local char = LocalPlayer.Character
+                        local hum = char and char:FindFirstChildOfClass("Humanoid")
+                        if hum then pcall(function() hum:UnequipTools() end) end
+                        pcall(EquipRod)
+                    end)
+                    isRecovering = false
+                    recoverStartTime = nil
+                    getgenv().FishmanLastCycleTime = os.clock()
+                end)
             end
         else
             getgenv().FishmanLastCycleTime = os.clock()
@@ -2291,16 +2454,15 @@ getgenv().FishmanState.ShutdownEverything = function()
             end
         end
         pcall(function()
+            if activeCycleThread and coroutine.status(activeCycleThread) ~= "dead" then
+                pcall(task.cancel, activeCycleThread)
+            end
+            activeCycleThread = nil
+            activeCycleStart = nil
             local effects = workspace:FindFirstChild("Effects")
             local hookName = LocalPlayer.Name .. "'s hook"
             local activeHook = effects and effects:FindFirstChild(hookName)
-            if activeHook then
-                activeHook:Destroy()
-            end
-            local actionRemote = getActionRemote()
-            if actionRemote then
-                actionRemote:InvokeServer({ Action = "Cancel" })
-            end
+            closeFishingSession(getActionRemote(), activeHook, getgenv().FishmanState._activeSessionKey, getgenv().FishmanState._activeActionKey, false)
         end)
     end
     lastCharacter = nil
