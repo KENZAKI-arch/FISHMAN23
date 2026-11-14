@@ -2635,8 +2635,8 @@ local LegendaryBreakdownPara = getgenv().FishmanState.Tabs.Status:AddParagraph({
 })
 
 local FruitCheckerPara = getgenv().FishmanState.Tabs.Status:AddParagraph({
-    Title = "🍎 Fruits in Inventory",
-    Content = "Checking fruits..."
+    Title = "🍎 Fruits & Items in Inventory",
+    Content = "Checking inventory..."
 })
 
 getgenv().FishmanState.Tabs.Status:AddButton({
@@ -2699,7 +2699,11 @@ task.spawn(function()
 
             if FruitCheckerPara then
                 if getgenv().FishmanState.getFruitStatus then
-                    local fruitStatus = getgenv().FishmanState.getFruitStatus(getgenv().FishmanState.targetFruits, invData)
+                    local fruitStatus = getgenv().FishmanState.getFruitStatus(
+                        getgenv().FishmanState.targetFruits,
+                        invData,
+                        getgenv().FishmanState.trackedItems
+                    )
                     local bpLines = {}
                     for name, count in pairs(fruitStatus.backpack) do
                         table.insert(bpLines, string.format("- %dx %s", count, name))
@@ -2710,7 +2714,7 @@ task.spawn(function()
                     local storedText = (#fruitStatus.stored > 0) and table.concat(fruitStatus.stored, ", ") or "None"
                     FruitCheckerPara:SetDesc(string.format("Backpack (Unstored):%s\nStored Inventory: %s", bpText, storedText))
                 else
-                    FruitCheckerPara:SetDesc("Fruit checker unavailable.")
+                    FruitCheckerPara:SetDesc("Item checker unavailable.")
                 end
             end
         end

@@ -2482,8 +2482,12 @@ getgenv().FishmanState.targetFruits = {
     "Hie", "Kage", "Mera", "Tori", "Pteranodon", "Smoke", "Yami", "Suna", "Yuki", "Ope", "Zushi", "Ito", "Paw"
 }
 
+getgenv().FishmanState.trackedItems = {
+    "Legendary Fruit Chest"
+}
+
 local function matchSpecialFruit(tool, fruitList)
-    if not tool:IsA("Tool") then return nil end
+    if not tool:IsA("Tool") or type(fruitList) ~= "table" then return nil end
     local toolName = string.lower(tool.Name)
     for _, fruitName in ipairs(fruitList) do
         if string.find(toolName, string.lower(fruitName)) then
@@ -2495,6 +2499,16 @@ local function matchSpecialFruit(tool, fruitList)
                 return fruitName
             end
             return nil
+        end
+    end
+    return nil
+end
+
+local function matchTrackedItem(nameLower, itemList)
+    if type(nameLower) ~= "string" or type(itemList) ~= "table" then return nil end
+    for _, itemName in ipairs(itemList) do
+        if string.find(nameLower, string.lower(itemName), 1, true) then
+            return itemName
         end
     end
     return nil
@@ -2552,29 +2566,24 @@ local function resumeAfterFruitAction(tempSavedState)
     end
 end
 
-local function scanBackpackFruits(fruitList)
+local function scanBackpackFruits(fruitList, itemList)
     local inventoryCounts = {}
     local foundAny = false
-    local backpack = LocalPlayer:FindFirstChild("Backpack")
-    local character = LocalPlayer.Character
 
-    if backpack then
-        for _, tool in pairs(backpack:GetChildren()) do
-            if matchSpecialFruit(tool, fruitList) then
-                inventoryCounts[tool.Name] = (inventoryCounts[tool.Name] or 0) + 1
-                foundAny = true
+    local function scanContainer(container)
+        if not container then return end
+        for _, tool in ipairs(container:GetChildren()) do
+            if tool:IsA("Tool") then
+                if matchSpecialFruit(tool, fruitList) or matchTrackedItem(string.lower(tool.Name), itemList) then
+                    inventoryCounts[tool.Name] = (inventoryCounts[tool.Name] or 0) + 1
+                    foundAny = true
+                end
             end
         end
     end
 
-    if character then
-        for _, tool in pairs(character:GetChildren()) do
-            if matchSpecialFruit(tool, fruitList) then
-                inventoryCounts[tool.Name] = (inventoryCounts[tool.Name] or 0) + 1
-                foundAny = true
-            end
-        end
-    end
+    scanContainer(LocalPlayer:FindFirstChild("Backpack"))
+    scanContainer(LocalPlayer.Character)
 
     return inventoryCounts, foundAny
 end
@@ -2588,11 +2597,12 @@ local function isStoredFruitKey(itemKeyLower, fruitLower)
     return false
 end
 
-getgenv().FishmanState.getFruitStatus = function(fruitList, invData)
-    fruitList = fruitList or getgenv().FishmanState.targetFruits
-    local backpackCounts = scanBackpackFruits(fruitList)
+getgenv().FishmanState.getFruitStatus = function(fruitList, invData, itemList)
+    fruitList = fruitList or getgenv().FishmanState.targetFruits or {}
+    itemList = itemList or getgenv().FishmanState.trackedItems or {}
+    local backpackCounts = scanBackpackFruits(fruitList, itemList)
     local stored = {}
-    local seenFruit = {}
+    local seenItem = {}
 
     if not invData and getgenv().FishmanState.Model and getgenv().FishmanState.Model.GetInventoryData then
         invData = getgenv().FishmanState.Model.GetInventoryData()
@@ -2603,12 +2613,19 @@ getgenv().FishmanState.getFruitStatus = function(fruitList, invData)
             local count = (type(itemVal) == "number" and itemVal) or (itemVal == true and 1) or tonumber(itemVal) or 0
             if count > 0 and type(itemKey) == "string" then
                 local keyLower = string.lower(itemKey)
+                local matchedName = nil
                 for _, fruitName in ipairs(fruitList) do
                     if isStoredFruitKey(keyLower, string.lower(fruitName)) then
-                        seenFruit[fruitName] = true
-                        table.insert(stored, count > 1 and string.format("%dx %s", count, itemKey) or itemKey)
+                        matchedName = fruitName
                         break
                     end
+                end
+                if not matchedName then
+                    matchedName = matchTrackedItem(keyLower, itemList)
+                end
+                if matchedName then
+                    seenItem[matchedName] = true
+                    table.insert(stored, count > 1 and string.format("%dx %s", count, itemKey) or itemKey)
                 end
             end
         end
@@ -2622,10 +2639,12 @@ getgenv().FishmanState.getFruitStatus = function(fruitList, invData)
     if list then
         for _, child in ipairs(list:GetChildren()) do
             local childLower = string.lower(child.Name)
-            for _, fruitName in ipairs(fruitList) do
-                if not seenFruit[fruitName] and string.find(childLower, string.lower(fruitName)) then
-                    seenFruit[fruitName] = true
-                    table.insert(stored, fruitName)
+            for _, entries in ipairs({ fruitList, itemList }) do
+                for _, entryName in ipairs(entries) do
+                    if not seenItem[entryName] and string.find(childLower, string.lower(entryName), 1, true) then
+                        seenItem[entryName] = true
+                        table.insert(stored, entryName)
+                    end
                 end
             end
         end
